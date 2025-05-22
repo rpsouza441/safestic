@@ -3,5 +3,29 @@
 *.log
 /logs/
 
+# Arquivos gerados por Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Backup temporários
+*~
+*.swp
+*.bak
+
+# Ignorar arquivos de credenciais da nuvem (caso existam)
+*.json
+
+
 # Garantir que o arquivo de exemplo seja versionado
 !.env.example

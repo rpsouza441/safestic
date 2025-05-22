@@ -1,101 +1,138 @@
-# 🔐 Backup Automatizado com Restic para AWS S3
+# 🔐 Backup Automatizado com Restic (AWS, Azure, GCP)
 
-Este projeto fornece scripts em Python, um `.env` configurável e um `Makefile` para realizar **backups automatizados com Restic** em buckets S3 da AWS. Ele é multiplataforma (Linux/Windows), com suporte a versionamento, retenção e restauração.
+Este projeto fornece uma solução de backup automática e criptografada com [Restic](https://restic.net/), suportando múltiplos provedores de nuvem: **AWS S3**, **Azure Blob Storage** e **Google Cloud Storage**.
 
 ---
 
 ## 🚀 Funcionalidades
 
-- Backup incremental e criptografado com Restic
+- Backup incremental, seguro e criptografado com Restic
 - Suporte a múltiplos diretórios de origem
-- Exclusões configuráveis
-- Tags para organização dos snapshots
-- Política de retenção configurável (diária, semanal, mensal)
-- Possibilidade de desativar retenção automática
-- Logs por execução
-- Verificação de ambiente (`make check`)
-- Compatível com AWS S3 via credenciais no `.env`
+- Exclusões e tags configuráveis
+- Retenção automática de snapshots (ou manual)
+- Scripts multiplataforma (Windows/Linux) com `.env`
+- Makefile para facilitar uso
+- Compatível com `cron`, `Agendador de Tarefas`, pipelines e WSL
 
 ---
 
-## 📦 Pré-requisitos
+## 🧰 Pré-requisitos
 
 - Python 3.7+
-- Restic instalado no sistema: https://restic.net/
-- Biblioteca Python:
+- Restic instalado: https://restic.net/
+- Instalar dependências:
   ```bash
   pip install python-dotenv
   ```
 
 ---
 
+## 🪟 Como usar no Windows
+
+### Opção recomendada: Git Bash
+
+1. Instale o Git for Windows: https://gitforwindows.org/
+2. Clique com botão direito na pasta do projeto > **Git Bash Here**
+3. Execute:
+   ```bash
+   make backup
+   ```
+
+---
+
 ## ⚙️ Configuração do `.env`
 
-Copie o arquivo de exemplo:
+Use o arquivo de exemplo:
 
 ```bash
 cp .env.example .env
 ```
 
-Preencha com suas informações:
+Edite as variáveis conforme seu provedor:
 
 ```dotenv
-RESTIC_REPOSITORY=s3:s3.amazonaws.com/seu-nome-do-bucket
+# Provedor: aws | azure | gcp
+STORAGE_PROVIDER=aws
+STORAGE_BUCKET=restic-backup-meuservidor
 RESTIC_PASSWORD=sua_senha_segura
 
-BACKUP_SOURCE_DIRS=C:/Users/Administrator/Documents,D:/Projetos
-RESTIC_EXCLUDES=*.log,*.tmp,node_modules
-RESTIC_TAGS=diario,servidorX
+# Diretórios
+BACKUP_SOURCE_DIRS=/etc,/home/user
+RESTIC_EXCLUDES=*.log
+RESTIC_TAGS=diario,servidor
 
+# Retenção
 RETENTION_ENABLED=true
 RETENTION_KEEP_DAILY=7
 RETENTION_KEEP_WEEKLY=4
 RETENTION_KEEP_MONTHLY=6
 
-AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxx
-AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Autenticação AWS
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
 
-LOG_DIR=logs
+# Autenticação Azure
+AZURE_ACCOUNT_NAME=...
+AZURE_ACCOUNT_KEY=...
+
+# Autenticação GCP
+GOOGLE_PROJECT_ID=...
+GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
 ```
 
 ---
 
-## 🛠️ Comandos via Makefile
+## 📦 Comandos via `make`
 
-| Comando                 | Descrição                                                   |
-| ----------------------- | ----------------------------------------------------------- |
-| `make` ou `make help`   | Mostra ajuda                                                |
-| `make check`            | Verifica se tudo está pronto (PATH, .env, acesso ao bucket) |
-| `make backup`           | Executa backup e aplica retenção (se ativada)               |
-| `make list`             | Lista snapshots existentes                                  |
-| `make restore`          | Restaura o último snapshot                                  |
-| `make restore-id ID=xx` | Restaura snapshot específico                                |
-| `make manual-prune`     | Executa retenção manual, útil se `RETENTION_ENABLED=false`  |
+| Comando                  | Descrição                                          |
+| ------------------------ | -------------------------------------------------- |
+| `make backup`            | Executa o backup e aplica retenção se ativada      |
+| `make list`              | Lista todos os snapshots no repositório            |
+| `make restore`           | Restaura o snapshot mais recente                   |
+| `make restore-id ID=xxx` | Restaura um snapshot específico                    |
+| `make manual-prune`      | Aplica retenção manual via script                  |
+| `make check`             | Verifica Restic, variáveis e acesso ao repositório |
+| `make help`              | Mostra a lista de comandos disponíveis             |
 
 ---
 
 ## 🧪 Verificação rápida
 
-Antes do primeiro backup, execute:
+Execute:
 
 ```bash
 make check
 ```
 
-Esse comando validará:
+Isso verifica:
 
-- Presença do Restic no PATH
-- Variáveis obrigatórias no `.env`
-- Acesso ao bucket S3
-- Inicialização do repositório, se necessário
+- Se `restic` está no `PATH`
+- Se as variáveis obrigatórias estão presentes
+- Se o repositório é acessível (ou será inicializado)
 
 ---
 
 ## 🔒 Segurança
 
-- Nunca envie o `.env` para um repositório público
-- Use variáveis de ambiente ou soluções como AWS Secrets Manager em produção
-- Os backups são criptografados pelo próprio Restic com AES-256
+- Os backups são criptografados com AES-256 pelo próprio Restic
+- Nunca suba `.env` em repositórios públicos (já ignorado no `.gitignore`)
+
+---
+
+## 📁 Estrutura esperada do projeto
+
+```
+.
+├── .env.example
+├── Makefile
+├── README.md
+├── .gitignore
+├── restic_backup.py
+├── restore_snapshot.py
+├── list_snapshots.py
+├── check_restic_access.py
+└── manual_prune.py
+```
 
 ---
 
