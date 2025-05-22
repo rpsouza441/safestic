@@ -1,0 +1,7 @@
+# Ignorar o arquivo de configuração com dados sensíveis
+.env
+*.log
+/logs/
+
+# Garantir que o arquivo de exemplo seja versionado
+!.env.example
