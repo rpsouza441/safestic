@@ -13,6 +13,8 @@ Este projeto fornece uma solução de backup automática e criptografada com [Re
 - Scripts multiplataforma (Windows/Linux) com `.env`
 - Makefile para facilitar uso
 - Compatível com `cron`, `Agendador de Tarefas`, pipelines e WSL
+- Restauração de arquivos ou pastas específicas
+- Listagem de conteúdo do snapshot antes da restauração
 
 ---
 
@@ -84,15 +86,17 @@ GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
 
 ## 📦 Comandos via `make`
 
-| Comando                  | Descrição                                          |
-| ------------------------ | -------------------------------------------------- |
-| `make backup`            | Executa o backup e aplica retenção se ativada      |
-| `make list`              | Lista todos os snapshots no repositório            |
-| `make restore`           | Restaura o snapshot mais recente                   |
-| `make restore-id ID=xxx` | Restaura um snapshot específico                    |
-| `make manual-prune`      | Aplica retenção manual via script                  |
-| `make check`             | Verifica Restic, variáveis e acesso ao repositório |
-| `make help`              | Mostra a lista de comandos disponíveis             |
+| Comando                            | Descrição                                          |
+| ---------------------------------- | -------------------------------------------------- |
+| `make backup`                      | Executa o backup e aplica retenção se ativada      |
+| `make list`                        | Lista todos os snapshots no repositório            |
+| `make list-files ID=xxx`           | Lista conteúdo de um snapshot específico           |
+| `make restore`                     | Restaura o snapshot mais recente                   |
+| `make restore-id ID=xxx`           | Restaura um snapshot específico                    |
+| `make restore-file ID=xxx FILE=xx` | Restaura arquivo específico de um snapshot         |
+| `make manual-prune`                | Aplica retenção manual via script Python           |
+| `make check`                       | Verifica Restic, variáveis e acesso ao repositório |
+| `make help`                        | Mostra a lista de comandos disponíveis             |
 
 ---
 
@@ -124,12 +128,14 @@ Isso verifica:
 ```
 .
 ├── .env.example
+├── .gitignore
 ├── Makefile
 ├── README.md
-├── .gitignore
 ├── restic_backup.py
 ├── restore_snapshot.py
+├── restore_file.py
 ├── list_snapshots.py
+├── list_snapshot_files.py
 ├── check_restic_access.py
 └── manual_prune.py
 ```
