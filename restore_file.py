@@ -18,7 +18,7 @@ RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
 if PROVIDER == "aws":
     RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
 elif PROVIDER == "azure":
-    RESTIC_REPOSITORY = f"azure:{BUCKET}"
+    RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
 elif PROVIDER == "gcp":
     RESTIC_REPOSITORY = f"gs:{BUCKET}"
 else:

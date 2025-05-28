@@ -18,7 +18,7 @@ LOG_DIR = os.getenv("LOG_DIR", "logs")  # onde os logs serão salvos
 if PROVIDER == "aws":
     RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
 elif PROVIDER == "azure":
-    RESTIC_REPOSITORY = f"azure:{BUCKET}"
+    RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
 elif PROVIDER == "gcp":
     RESTIC_REPOSITORY = f"gs:{BUCKET}"
 else:
@@ -94,7 +94,7 @@ def run_backup():
             log("Aplicando política de retenção...", log_file)
             cmd_retention = [
                 "restic", "-r", RESTIC_REPOSITORY, "forget",
-                "--keep-hourly", RETENTION_KEEP_HOURLY,
+                "--keep-hourly", RETENTION_KEEP_HOURLY,     
                 "--keep-daily", RETENTION_KEEP_DAILY,
                 "--keep-weekly", RETENTION_KEEP_WEEKLY,
                 "--keep-monthly", RETENTION_KEEP_MONTHLY,
