@@ -32,6 +32,7 @@ TAGS = os.getenv("RESTIC_TAGS", "").split(",")                # tags aplicadas a
 
 # === Política de retenção configurável ===
 RETENTION_ENABLED = os.getenv("RETENTION_ENABLED", "true").lower() == "true"
+RETENTION_KEEP_HOURLY  = os.getenv("RETENTION_KEEP_HOURLY", "0")  
 RETENTION_KEEP_DAILY = os.getenv("RETENTION_KEEP_DAILY", "7")
 RETENTION_KEEP_WEEKLY = os.getenv("RETENTION_KEEP_WEEKLY", "4")
 RETENTION_KEEP_MONTHLY = os.getenv("RETENTION_KEEP_MONTHLY", "6")
@@ -93,6 +94,7 @@ def run_backup():
             log("Aplicando política de retenção...", log_file)
             cmd_retention = [
                 "restic", "-r", RESTIC_REPOSITORY, "forget",
+                "--keep-hourly", RETENTION_KEEP_HOURLY,
                 "--keep-daily", RETENTION_KEEP_DAILY,
                 "--keep-weekly", RETENTION_KEEP_WEEKLY,
                 "--keep-monthly", RETENTION_KEEP_MONTHLY,
