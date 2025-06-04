@@ -1,5 +1,9 @@
 # Caminho para o Python (ajuste conforme necessario)
-PYTHON=python
+ifeq ($(OS),Windows_NT)
+	PYTHON=python
+else
+	PYTHON=python3
+endif
 
 .PHONY: backup list restore restore-id restore-file list-files manual-prune check help
 
