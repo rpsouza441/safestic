@@ -65,7 +65,7 @@ help:
 	@printf "%-45s %s\n" "make list-files ID=xxx"   "Lista arquivos contidos em um snapshot"
 	@printf "%-45s %s\n" "make restore"             "Restaura o ultimo snapshot (latest)"
 	@printf "%-45s %s\n" "make restore-id ID=xxx"   "Restaura um snapshot especifico por ID"
-	@printf "%-45s %s\n" "make restore-file ID=xxx FILE=/caminho" "Restaura arquivo especifico"
+	@printf "%-45s %s\n" "make restore-file ID=xxx FILE=caminho/arquivo" "Restaura arquivo especifico. Nao comecar com barra"
 	@printf "%-45s %s\n" "make manual-prune"        "Aplica retencao manual usando script Python"
 	@printf "%-45s %s\n" "make check"               "Valida PATH, .env e acesso ao repositorio Restic"
 	@printf "%-45s %s\n" "make help"                "Exibe esta ajuda"
