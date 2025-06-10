@@ -19,6 +19,11 @@ list:
 	@echo "Listando snapshots disponiveis..."
 	$(PYTHON) list_snapshots.py
 
+## Lista todos os snapshots com tamanho estimado
+list-size:
+	@echo "Listando snapshots com tamanho estimado..."
+	$(PYTHON) list_snapshots_with_size.py
+
 ## Lista arquivos contidos em um snapshot especifico (ex: make list-files ID=abc123)
 list-files:
 ifndef ID
@@ -66,6 +71,7 @@ help:
 	@echo "Comandos disponiveis:"
 	@printf "%-45s %s\n" "make backup"              "Executa backup com ou sem retencao"
 	@printf "%-45s %s\n" "make list"                "Lista snapshots existentes no repositorio"
+	@printf "%-45s %s\n" "make list-size"           "Lista snapshots existentes no repositorio com tamanho estimado"
 	@printf "%-45s %s\n" "make list-files ID=xxx"   "Lista arquivos contidos em um snapshot"
 	@printf "%-45s %s\n" "make restore"             "Restaura o ultimo snapshot (latest)"
 	@printf "%-45s %s\n" "make restore-id ID=xxx"   "Restaura um snapshot especifico por ID"
