@@ -66,6 +66,11 @@ check:
 	@echo "Executando verificacao da configuracao Restic..."
 	$(PYTHON) check_restic_access.py
 
+## Exibe o total de dados únicos armazenados no repositório
+repo-size:
+	@echo "Calculando uso real do repositório..."
+	$(PYTHON) repository_stats.py
+
 ## Mostra ajuda com todos os comandos disponiveis
 help:
 	@echo "Comandos disponiveis:"
@@ -79,3 +84,4 @@ help:
 	@printf "%-45s %s\n" "make manual-prune"        "Aplica retencao manual usando script Python"
 	@printf "%-45s %s\n" "make check"               "Valida PATH, .env e acesso ao repositorio Restic"
 	@printf "%-45s %s\n" "make help"                "Exibe esta ajuda"
+	@printf "%-45s %s\n" "make repo-size"            "Mostra o total em GiB armazenado no repositório (raw data)"
