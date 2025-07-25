@@ -1,4 +1,3 @@
-# restore_file.py
 import os
 import subprocess
 import sys
@@ -19,7 +18,8 @@ try:
     PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
     BUCKET = os.getenv("STORAGE_BUCKET", "")
     RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-    BASE_RESTORE_TARGET  = os.getenv("RESTORE_TARGET_DIR", "restore")
+    BASE_RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
+    LOG_DIR = os.getenv("LOG_DIR", "logs")
 
     if PROVIDER == "aws":
         RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
@@ -44,63 +44,76 @@ try:
 
     if not INCLUDE_PATH:
         raise ValueError("Caminho do arquivo/diretório a restaurar não informado.")
-    print(f"[DEBUG] INCLUDE_PATH corrigido: {INCLUDE_PATH}")
 
 except Exception as e:
     print(f"[FATAL] Erro nos argumentos: {e}")
     print("Uso: python restore_file.py <snapshot_id> <caminho_do_arquivo>")
     sys.exit(1)
 
-# === 4. GARANTE QUE DIRETÓRIO DE RESTAURAÇÃO EXISTA ===
+# === 4. PREPARA AMBIENTE DE LOG ===
 try:
-    Path(BASE_RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
+    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+    now = datetime.now()
+    log_filename = now.strftime(f"{LOG_DIR}/restore_file_%Y%m%d_%H%M%S.log")
 except Exception as e:
-    print(f"[FATAL] Falha ao criar diretório de restauração: {e}")
-    sys.exit(1)
-    
-
-# === 5. BUSCA DATA DO SNAPSHOT COM restic snapshots --json ===
-print("🔎 Buscando data do snapshot...")
-
-try:
-    result = subprocess.run(
-        ["restic", "-r", RESTIC_REPOSITORY, "snapshots", "--json"],
-        check=True,
-        capture_output=True,
-        env=os.environ.copy()
-    )
-    snapshots = json.loads(result.stdout)
-    snapshot = next((s for s in snapshots if s["short_id"] == SNAPSHOT_ID or s["id"].startswith(SNAPSHOT_ID)), None)
-
-    if not snapshot:
-        raise ValueError(f"Snapshot com ID '{SNAPSHOT_ID}' não encontrado.")
-
-    # Converte data ISO para YYYY-MM-DD_HHMMSS
-    snapshot_time = datetime.fromisoformat(snapshot["time"].replace("Z", "+00:00"))
-    timestamp_str = snapshot_time.strftime("%Y-%m-%d_%H%M%S")
-except Exception as e:
-    print(f"[FATAL] Erro ao obter data do snapshot: {e}")
+    print(f"[FATAL] Falha ao criar diretório de log: {e}")
     sys.exit(1)
 
-# === 6. CRIA DESTINO FINAL: BASE + TIMESTAMP ===
-RESTORE_TARGET = os.path.join(BASE_RESTORE_TARGET, timestamp_str)
-Path(RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
+# Função para registrar mensagens no console e no arquivo
+def log(msg, log_file):
+    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    line = f"{timestamp} {msg}"
+    print(line)
+    log_file.write(line + "\n")
 
-# === 5. EXECUTA O COMANDO RESTIC RESTORE COM --include ===
-print(f"🔍 Restaurando '{INCLUDE_PATH}' do snapshot '{SNAPSHOT_ID}' para: {RESTORE_TARGET}\n")
+# === 5. EXECUÇÃO PRINCIPAL COM LOG ===
+def run_restore_file():
+    with open(log_filename, "w", encoding="utf-8") as log_file:
+        log("=== Iniciando restauração de arquivo com Restic ===", log_file)
+        try:
+            Path(BASE_RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
+            log(f"Buscando informações do snapshot '{SNAPSHOT_ID}'...", log_file)
+            result = subprocess.run(
+                ["restic", "-r", RESTIC_REPOSITORY, "snapshots", SNAPSHOT_ID, "--json"],
+                check=True, capture_output=True, text=True, env=os.environ.copy()
+            )
+            snapshot_data = json.loads(result.stdout)[0]
+            snapshot_time = datetime.fromisoformat(snapshot_data["time"].replace("Z", "+00:00"))
+            timestamp_str = snapshot_time.strftime("%Y-%m-%d_%H%M%S")
+            RESTORE_TARGET = os.path.join(BASE_RESTORE_TARGET, timestamp_str)
+            Path(RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
 
-env = os.environ.copy()
+            log(f"Snapshot ID: {snapshot_data['short_id']}", log_file)
+            log(f"Data do Snapshot: {snapshot_time.strftime('%Y-%m-%d %H:%M:%S')}", log_file)
+            log(f"Arquivo/diretório a restaurar: {INCLUDE_PATH}", log_file)
+            log(f"Destino da restauração: {RESTORE_TARGET}", log_file)
+            
+            # --- Execução do Restore ---
+            # Removido "stderr=log_file" para que o progresso apareça no console
+            subprocess.run(
+                [
+                    "restic", "-r", RESTIC_REPOSITORY,
+                    "restore", SNAPSHOT_ID,
+                    "--target", RESTORE_TARGET,
+                    "--include", INCLUDE_PATH
+                ],
+                env=os.environ.copy(),
+                check=True
+            )
+            
+            log("✅ Arquivo ou diretório restaurado com sucesso.", log_file)
 
-try:
-    subprocess.run(
-        [
-            "restic", "-r", RESTIC_REPOSITORY,
-            "restore", SNAPSHOT_ID,
-            "--target", RESTORE_TARGET,
-            "--include", INCLUDE_PATH
-        ],
-        env=env, check=True
-    )
-    print("✅ Arquivo ou diretório restaurado com sucesso.")
-except subprocess.CalledProcessError as e:
-    print(f"[ERRO] Falha na restauração: {e}")
+        except subprocess.CalledProcessError as e:
+            # Este bloco agora pegará o erro, mas a saída do Restic terá aparecido no console
+            log(f"[ERRO] O Restic finalizou com um erro.", log_file)
+            print(f"Comando com falha: {' '.join(e.cmd)}")
+            
+        except Exception as e:
+            log(f"[ERRO] Uma falha inesperada ocorreu: {e}", log_file)
+        
+        finally:
+            log("=== Fim do processo de restauração ===", log_file)
+
+# === 6. PONTO DE ENTRADA DO SCRIPT ===
+if __name__ == "__main__":
+    run_restore_file()
