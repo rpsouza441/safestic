@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from services.restic import load_restic_env
+from services.logger import create_log_file, log
 
 try:
     RESTIC_REPOSITORY, env, _ = load_restic_env()
@@ -13,30 +14,23 @@ except ValueError as e:
     print(f"[FATAL] {e}")
     sys.exit(1)
 
-RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
-LOG_DIR = os.getenv("LOG_DIR", "logs")
+RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")  # destino da restauração
+LOG_DIR = os.getenv("LOG_DIR", "logs")  # diretório para logs
 
 # === 3. ARGUMENTOS DA LINHA DE COMANDO ===
-SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"
+SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"  # id do snapshot
 
-# === 4. PREPARA AMBIENTE DE LOG ===
+# === 4. PREPARA ARQUIVO DE LOG ===
 try:
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    now = datetime.datetime.now()
-    log_filename = now.strftime(f"{LOG_DIR}/restore_snapshot_%Y%m%d_%H%M%S.log")
+    log_filename = create_log_file("restore_snapshot", LOG_DIR)
 except Exception as e:
-    print(f"[FATAL] Falha ao criar diretório de log: {e}")
+    print(f"[FATAL] Falha ao preparar log: {e}")
     sys.exit(1)
-
-# Função para registrar mensagens no console e no arquivo
-def log(msg, log_file):
-    timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    line = f"{timestamp} {msg}"
-    print(line)
-    log_file.write(line + "\n")
 
 # === 5. FUNÇÃO PRINCIPAL DE RESTAURAÇÃO ===
 def run_restore_snapshot():
+    """Restaura um snapshot inteiro para o diretório alvo."""
+
     with open(log_filename, "w", encoding="utf-8") as log_file:
         log("=== Iniciando restauração de snapshot com Restic ===", log_file)
         
