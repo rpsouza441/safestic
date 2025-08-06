@@ -3,39 +3,18 @@ import subprocess
 import sys
 import datetime
 import json
-from dotenv import load_dotenv
 from pathlib import Path
 
-# === 1. CARREGAR VARIÁVEIS DO .ENV ===
+from services.restic import load_restic_env
+
 try:
-    load_dotenv()
-except Exception as e:
-    print(f"[FATAL] Erro ao carregar variáveis do .env: {e}")
+    RESTIC_REPOSITORY, env, _ = load_restic_env()
+except ValueError as e:
+    print(f"[FATAL] {e}")
     sys.exit(1)
 
-# === 2. CONFIGURAÇÃO DO REPOSITÓRIO E LOGS ===
-try:
-    PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
-    BUCKET = os.getenv("STORAGE_BUCKET", "")
-    RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-    RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
-    LOG_DIR = os.getenv("LOG_DIR", "logs")
-
-    if PROVIDER == "aws":
-        RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
-    elif PROVIDER == "azure":
-        RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
-    elif PROVIDER == "gcp":
-        RESTIC_REPOSITORY = f"gs:{BUCKET}"
-    else:
-        raise ValueError("STORAGE_PROVIDER inválido. Use 'aws', 'azure' ou 'gcp'")
-
-    if not RESTIC_REPOSITORY or not RESTIC_PASSWORD:
-        raise ValueError("RESTIC_REPOSITORY e RESTIC_PASSWORD precisam estar definidos.")
-
-except Exception as e:
-    print(f"[FATAL] Erro na configuração do repositório: {e}")
-    sys.exit(1)
+RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
+LOG_DIR = os.getenv("LOG_DIR", "logs")
 
 # === 3. ARGUMENTOS DA LINHA DE COMANDO ===
 SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"
@@ -70,7 +49,7 @@ def run_restore_snapshot():
             
             result = subprocess.run(
                 ["restic", "-r", RESTIC_REPOSITORY, "snapshots", SNAPSHOT_ID, "--json"],
-                check=True, capture_output=True, text=True, env=os.environ.copy()
+                check=True, capture_output=True, text=True, env=env
             )
             snapshot_data = json.loads(result.stdout)[0]
             
@@ -89,7 +68,7 @@ def run_restore_snapshot():
                     "restore", SNAPSHOT_ID,
                     "--target", RESTORE_TARGET
                 ],
-                env=os.environ.copy(),
+                env=env,
                 check=True
             )
             

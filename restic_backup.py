@@ -3,27 +3,17 @@ import subprocess
 import datetime
 import sys
 from pathlib import Path
-from dotenv import load_dotenv
 
-# === Carrega as variáveis do .env para o ambiente ===
-load_dotenv()
+from services.restic import load_restic_env
 
-# === Detecta o tipo de provedor e monta o repositório RESTIC ===
-PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
-BUCKET = os.getenv("STORAGE_BUCKET", "")
-RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-LOG_DIR = os.getenv("LOG_DIR", "logs")  # onde os logs serão salvos
-
-# Define a URL do repositório conforme o provedor
-if PROVIDER == "aws":
-    RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
-elif PROVIDER == "azure":
-    RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
-elif PROVIDER == "gcp":
-    RESTIC_REPOSITORY = f"gs:{BUCKET}"
-else:
-    print("[FATAL] STORAGE_PROVIDER inválido. Use 'aws', 'azure' ou 'gcp'")
+# === Carregar configurações do Restic ===
+try:
+    RESTIC_REPOSITORY, env, _ = load_restic_env()
+except ValueError as e:
+    print(f"[FATAL] {e}")
     sys.exit(1)
+
+LOG_DIR = os.getenv("LOG_DIR", "logs")  # onde os logs serão salvos
 
 # === Configurações de backup ===
 SOURCE_DIRS = os.getenv("BACKUP_SOURCE_DIRS", "").split(",")  # múltiplos diretórios
@@ -32,13 +22,13 @@ TAGS = os.getenv("RESTIC_TAGS", "").split(",")                # tags aplicadas a
 
 # === Política de retenção configurável ===
 RETENTION_ENABLED = os.getenv("RETENTION_ENABLED", "true").lower() == "true"
-RETENTION_KEEP_HOURLY  = os.getenv("RETENTION_KEEP_HOURLY", "0")  
+RETENTION_KEEP_HOURLY  = os.getenv("RETENTION_KEEP_HOURLY", "0")
 RETENTION_KEEP_DAILY = os.getenv("RETENTION_KEEP_DAILY", "7")
 RETENTION_KEEP_WEEKLY = os.getenv("RETENTION_KEEP_WEEKLY", "4")
 RETENTION_KEEP_MONTHLY = os.getenv("RETENTION_KEEP_MONTHLY", "6")
 
 # === Verificações mínimas obrigatórias ===
-if not RESTIC_REPOSITORY or not RESTIC_PASSWORD or not any(SOURCE_DIRS):
+if not any(SOURCE_DIRS):
     print("[FATAL] Variáveis obrigatórias ausentes no .env")
     sys.exit(1)
 
@@ -62,7 +52,6 @@ def build_args(prefix, items):
 def run_backup():
     with open(log_filename, "w", encoding="utf-8") as log_file:
         log("=== Iniciando backup com Restic ===", log_file)
-        env = os.environ.copy()
 
         # === Verifica se o repositório é acessível ===
         log("🔍 Verificando acesso ao repositório...", log_file)

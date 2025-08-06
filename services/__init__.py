@@ -1,0 +1,2 @@
+"""Utilities for Safestic scripts."""
+

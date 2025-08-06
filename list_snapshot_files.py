@@ -1,36 +1,20 @@
 import os
 import subprocess
 import sys
-from dotenv import load_dotenv
 
-# === 1. Carregar variáveis do .env ===
-load_dotenv()
+from services.restic import load_restic_env
 
-# === 2. Determinar provedor e montar o RESTIC_REPOSITORY ===
-PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
-BUCKET = os.getenv("STORAGE_BUCKET", "")
-RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-
-if PROVIDER == "aws":
-    RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
-elif PROVIDER == "azure":
-    RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
-elif PROVIDER == "gcp":
-    RESTIC_REPOSITORY = f"gs:{BUCKET}"
-else:
-    print("[FATAL] STORAGE_PROVIDER inválido ou não definido. Use 'aws', 'azure' ou 'gcp'")
+# === 1. Carregar configurações do Restic ===
+try:
+    RESTIC_REPOSITORY, env, _ = load_restic_env()
+except ValueError as e:
+    print(f"[FATAL] {e}")
     sys.exit(1)
 
-# === 3. Validar variáveis obrigatórias ===
-if not RESTIC_REPOSITORY or not RESTIC_PASSWORD:
-    print("[FATAL] RESTIC_REPOSITORY e RESTIC_PASSWORD precisam estar definidos corretamente.")
-    sys.exit(1)
-
-# === 4. Obter o snapshot ID da linha de comando (ou usar 'latest') ===
+# === 2. Obter o snapshot ID da linha de comando (ou usar 'latest') ===
 SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"
 
-# === 5. Executar o comando restic ls para listar os arquivos do snapshot ===
-env = os.environ.copy()
+# === 3. Executar o comando restic ls para listar os arquivos do snapshot ===
 
 print(f"📂 Listando arquivos do snapshot '{SNAPSHOT_ID}'...")
 

@@ -1,32 +1,17 @@
 import os
 import subprocess
 import sys
-from dotenv import load_dotenv
 
-# === 1. Carregar variáveis do .env ===
-load_dotenv()
+from services.restic import load_restic_env
 
-# === 2. Detectar provedor e montar RESTIC_REPOSITORY ===
-PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
-BUCKET = os.getenv("STORAGE_BUCKET", "")
-RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-
-if PROVIDER == "aws":
-    RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
-elif PROVIDER == "azure":
-    RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
-elif PROVIDER == "gcp":
-    RESTIC_REPOSITORY = f"gs:{BUCKET}"
-else:
-    print("[FATAL] STORAGE_PROVIDER inválido. Use 'aws', 'azure' ou 'gcp'")
+# === 1. Carregar configurações do Restic ===
+try:
+    RESTIC_REPOSITORY, env, _ = load_restic_env()
+except ValueError as e:
+    print(f"[FATAL] {e}")
     sys.exit(1)
 
-# === 3. Verificar variáveis obrigatórias ===
-if not RESTIC_REPOSITORY or not RESTIC_PASSWORD:
-    print("[FATAL] Variáveis obrigatórias ausentes no .env")
-    sys.exit(1)
-
-# === 4. Coletar políticas de retenção do .env ou usar defaults ===
+# === 2. Coletar políticas de retenção do .env ou usar defaults ===
 RETENTION_KEEP_DAILY = os.getenv("RETENTION_KEEP_DAILY", "7")
 RETENTION_KEEP_WEEKLY = os.getenv("RETENTION_KEEP_WEEKLY", "4")
 RETENTION_KEEP_MONTHLY = os.getenv("RETENTION_KEEP_MONTHLY", "6")
@@ -37,8 +22,7 @@ print(f"  Semanal:  {RETENTION_KEEP_WEEKLY}")
 print(f"  Mensal:   {RETENTION_KEEP_MONTHLY}")
 print()
 
-# === 5. Executar comando restic forget --prune ===
-env = os.environ.copy()
+# === 3. Executar comando restic forget --prune ===
 
 try:
     subprocess.run(

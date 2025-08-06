@@ -1,30 +1,16 @@
-# repository_stats.py
+"""Exibe estatísticas do repositório Restic."""
+
 import os
 import subprocess
 import json
-from dotenv import load_dotenv
 
-load_dotenv()
+from services.restic import load_restic_env
 
-PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
-BUCKET = os.getenv("STORAGE_BUCKET", "")
-RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-
-if PROVIDER == "aws":
-    RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
-elif PROVIDER == "azure":
-    RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
-elif PROVIDER == "gcp":
-    RESTIC_REPOSITORY = f"gs:{BUCKET}"
-else:
-    print("[FATAL] STORAGE_PROVIDER inválido.")
+try:
+    RESTIC_REPOSITORY, env, _ = load_restic_env()
+except ValueError as e:
+    print(f"[FATAL] {e}")
     exit(1)
-
-if not RESTIC_REPOSITORY or not RESTIC_PASSWORD:
-    print("[FATAL] Variáveis obrigatórias ausentes.")
-    exit(1)
-
-env = os.environ.copy()
 
 print(f" Obtendo estatísticas gerais do repositório: {RESTIC_REPOSITORY}\n")
 
