@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 
 from services.restic import load_restic_env
+from services.logger import create_log_file, log
 
 try:
     RESTIC_REPOSITORY, env, _ = load_restic_env()
@@ -14,12 +15,12 @@ except ValueError as e:
     sys.exit(1)
 
 BASE_RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
-LOG_DIR = os.getenv("LOG_DIR", "logs")
+LOG_DIR = os.getenv("LOG_DIR", "logs")  # diretório para salvar logs
 
 # === 3. OBTÊM SNAPSHOT_ID E INCLUDE_PATH DA LINHA DE COMANDO ===
 try:
-    SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"
-    INCLUDE_PATH = sys.argv[2] if len(sys.argv) > 2 else None
+    SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"  # id do snapshot
+    INCLUDE_PATH = sys.argv[2] if len(sys.argv) > 2 else None       # caminho a restaurar
 
     if not INCLUDE_PATH:
         raise ValueError("Caminho do arquivo/diretório a restaurar não informado.")
@@ -29,24 +30,17 @@ except Exception as e:
     print("Uso: python restore_file.py <snapshot_id> <caminho_do_arquivo>")
     sys.exit(1)
 
-# === 4. PREPARA AMBIENTE DE LOG ===
+# === 4. PREPARA ARQUIVO DE LOG ===
 try:
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    now = datetime.now()
-    log_filename = now.strftime(f"{LOG_DIR}/restore_file_%Y%m%d_%H%M%S.log")
+    log_filename = create_log_file("restore_file", LOG_DIR)
 except Exception as e:
-    print(f"[FATAL] Falha ao criar diretório de log: {e}")
+    print(f"[FATAL] Falha ao preparar log: {e}")
     sys.exit(1)
-
-# Função para registrar mensagens no console e no arquivo
-def log(msg, log_file):
-    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    line = f"{timestamp} {msg}"
-    print(line)
-    log_file.write(line + "\n")
 
 # === 5. EXECUÇÃO PRINCIPAL COM LOG ===
 def run_restore_file():
+    """Restaura arquivo ou diretório específico do snapshot."""
+
     with open(log_filename, "w", encoding="utf-8") as log_file:
         log("=== Iniciando restauração de arquivo com Restic ===", log_file)
         try:

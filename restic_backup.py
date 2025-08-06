@@ -1,10 +1,9 @@
 import os
 import subprocess
-import datetime
 import sys
-from pathlib import Path
 
 from services.restic import load_restic_env
+from services.logger import create_log_file, log
 
 # === Carregar configurações do Restic ===
 try:
@@ -13,7 +12,8 @@ except ValueError as e:
     print(f"[FATAL] {e}")
     sys.exit(1)
 
-LOG_DIR = os.getenv("LOG_DIR", "logs")  # onde os logs serão salvos
+# Diretório onde os logs serão salvos
+LOG_DIR = os.getenv("LOG_DIR", "logs")
 
 # === Configurações de backup ===
 SOURCE_DIRS = os.getenv("BACKUP_SOURCE_DIRS", "").split(",")  # múltiplos diretórios
@@ -32,20 +32,20 @@ if not any(SOURCE_DIRS):
     print("[FATAL] Variáveis obrigatórias ausentes no .env")
     sys.exit(1)
 
-# === Cria pasta de logs (se não existir) ===
-Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-now = datetime.datetime.now()
-log_filename = now.strftime(f"{LOG_DIR}/backup_%Y%m%d_%H%M%S.log")
-
-# === Função de log com timestamp ===
-def log(msg, log_file):
-    timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    line = f"{timestamp} {msg}"
-    print(line)
-    log_file.write(line + "\n")
+# === Cria arquivo de log com timestamp ===
+log_filename = create_log_file("backup", LOG_DIR)
 
 # === Monta argumentos repetidos como --tag ou --exclude ===
 def build_args(prefix, items):
+    """Repete ``prefix`` para cada item não vazio.
+
+    Parameters
+    ----------
+    prefix: str
+        Flag a ser repetida, por exemplo ``"--tag"``.
+    items: list[str]
+        Itens que serão associados ao prefixo.
+    """
     return [arg for i in items for arg in (prefix, i.strip()) if i.strip()]
 
 # === Função principal que executa backup e retenção ===
