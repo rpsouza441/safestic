@@ -1,23 +1,31 @@
-import os
+"""List all snapshots stored in the configured Restic repository."""
+
+from __future__ import annotations
+
 import subprocess
+import sys
 
 from services.restic import load_restic_env
 
-# === 1. Carregar configurações do Restic ===
-try:
-    RESTIC_REPOSITORY, env, _ = load_restic_env()
-except ValueError as e:
-    print(f"[FATAL] {e}")
-    exit(1)
 
-# === 4. EXECUTAR O COMANDO RESTIC PARA LISTAR SNAPSHOTS ===
-print(f"istando snapshots do repositório: {RESTIC_REPOSITORY}\n")
+def list_snapshots() -> None:
+    """Fetch and print all snapshots from the repository."""
 
-try:
-    subprocess.run(
-        ["restic", "-r", RESTIC_REPOSITORY, "snapshots"],
-        env=env,
-        check=True
-    )
-except subprocess.CalledProcessError as e:
-    print(f"[ERRO] Falha ao listar snapshots: {e}")
+    try:
+        repository, env, _ = load_restic_env()
+    except ValueError as exc:  # pragma: no cover - configuration errors
+        print(f"[FATAL] {exc}")
+        sys.exit(1)
+
+    print(f"Listando snapshots do repositório: {repository}\n")
+    try:
+        subprocess.run(
+            ["restic", "-r", repository, "snapshots"], env=env, check=True
+        )
+    except subprocess.CalledProcessError as exc:
+        print(f"[ERRO] Falha ao listar snapshots: {exc}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    list_snapshots()
