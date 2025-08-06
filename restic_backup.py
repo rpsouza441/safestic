@@ -48,6 +48,27 @@ def build_args(prefix, items):
     """
     return [arg for i in items for arg in (prefix, i.strip()) if i.strip()]
 
+# === Executa um comando via subprocess e registra saída/detalhes ===
+def run_cmd(cmd, log_file, success_msg, error_msg):
+    """Executa ``cmd`` registrando stdout/stderr e resultado.
+
+    Retorna ``True`` se o comando foi bem-sucedido."""
+
+    log(f"Comando: {' '.join(cmd)}", log_file)
+    result = subprocess.run(cmd, env=env, text=True, capture_output=True)
+    if result.stdout:
+        log_file.write(result.stdout)
+    if result.stderr:
+        log_file.write(result.stderr)
+
+    if result.returncode == 0:
+        log(success_msg, log_file)
+        return True
+
+    log(f"{error_msg} (código {result.returncode})", log_file)
+    return False
+
+
 # === Função principal que executa backup e retenção ===
 def run_backup():
     with open(log_filename, "w", encoding="utf-8") as log_file:
@@ -55,14 +76,12 @@ def run_backup():
 
         # === Verifica se o repositório é acessível ===
         log("🔍 Verificando acesso ao repositório...", log_file)
-        try:
-            subprocess.run(
-                ["restic", "-r", RESTIC_REPOSITORY, "snapshots"],
-                env=env, check=True, stdout=log_file, stderr=log_file
-            )
-            log("✅ Repositório acessível.", log_file)
-        except subprocess.CalledProcessError:
-            log("Não foi possível acessar o repositório. Abortando.", log_file)
+        if not run_cmd(
+            ["restic", "-r", RESTIC_REPOSITORY, "snapshots"],
+            log_file,
+            "✅ Repositório acessível.",
+            "Não foi possível acessar o repositório. Abortando.",
+        ):
             return
 
         # === Executa o backup propriamente dito ===
@@ -72,28 +91,27 @@ def run_backup():
         cmd_backup += build_args("--tag", TAGS)
 
         log(f"Executando backup de: {', '.join(SOURCE_DIRS)}", log_file)
-        try:
-            subprocess.run(cmd_backup, env=env, check=True, stdout=log_file, stderr=log_file)
-            log("Backup concluído.", log_file)
-        except subprocess.CalledProcessError:
-            log("Erro durante o backup.", log_file)
+        run_cmd(cmd_backup, log_file, "Backup concluído.", "Erro durante o backup.")
 
         # === Se ativado, aplica política de retenção ===
         if RETENTION_ENABLED:
             log("Aplicando política de retenção...", log_file)
             cmd_retention = [
-                "restic", "-r", RESTIC_REPOSITORY, "forget",
-                "--keep-hourly", RETENTION_KEEP_HOURLY,     
-                "--keep-daily", RETENTION_KEEP_DAILY,
-                "--keep-weekly", RETENTION_KEEP_WEEKLY,
-                "--keep-monthly", RETENTION_KEEP_MONTHLY,
-                "--prune"
+                "restic",
+                "-r",
+                RESTIC_REPOSITORY,
+                "forget",
+                "--keep-hourly",
+                RETENTION_KEEP_HOURLY,
+                "--keep-daily",
+                RETENTION_KEEP_DAILY,
+                "--keep-weekly",
+                RETENTION_KEEP_WEEKLY,
+                "--keep-monthly",
+                RETENTION_KEEP_MONTHLY,
+                "--prune",
             ]
-            try:
-                subprocess.run(cmd_retention, env=env, check=True, stdout=log_file, stderr=log_file)
-                log("Política de retenção aplicada.", log_file)
-            except subprocess.CalledProcessError:
-                log("Erro ao aplicar retenção.", log_file)
+            run_cmd(cmd_retention, log_file, "Política de retenção aplicada.", "Erro ao aplicar retenção.")
         else:
             log("Retenção desativada via .env.", log_file)
 
