@@ -2,40 +2,19 @@ import os
 import subprocess
 import sys
 import json
-from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime
 
-# === 1. CARREGAR VARIÁVEIS DO .ENV ===
+from services.restic import load_restic_env
+
 try:
-    load_dotenv()
-except Exception as e:
-    print(f"[FATAL] Erro ao carregar variáveis do .env: {e}")
+    RESTIC_REPOSITORY, env, _ = load_restic_env()
+except ValueError as e:
+    print(f"[FATAL] {e}")
     sys.exit(1)
 
-# === 2. DETERMINAR PROVEDOR E MONTAR O RESTIC_REPOSITORY ===
-try:
-    PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
-    BUCKET = os.getenv("STORAGE_BUCKET", "")
-    RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-    BASE_RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
-    LOG_DIR = os.getenv("LOG_DIR", "logs")
-
-    if PROVIDER == "aws":
-        RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
-    elif PROVIDER == "azure":
-        RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
-    elif PROVIDER == "gcp":
-        RESTIC_REPOSITORY = f"gs:{BUCKET}"
-    else:
-        raise ValueError("STORAGE_PROVIDER inválido. Use 'aws', 'azure' ou 'gcp'")
-
-    if not RESTIC_REPOSITORY or not RESTIC_PASSWORD:
-        raise ValueError("RESTIC_REPOSITORY e RESTIC_PASSWORD precisam estar definidos.")
-
-except Exception as e:
-    print(f"[FATAL] Erro na configuração do repositório: {e}")
-    sys.exit(1)
+BASE_RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
+LOG_DIR = os.getenv("LOG_DIR", "logs")
 
 # === 3. OBTÊM SNAPSHOT_ID E INCLUDE_PATH DA LINHA DE COMANDO ===
 try:
@@ -75,7 +54,7 @@ def run_restore_file():
             log(f"Buscando informações do snapshot '{SNAPSHOT_ID}'...", log_file)
             result = subprocess.run(
                 ["restic", "-r", RESTIC_REPOSITORY, "snapshots", SNAPSHOT_ID, "--json"],
-                check=True, capture_output=True, text=True, env=os.environ.copy()
+                check=True, capture_output=True, text=True, env=env
             )
             snapshot_data = json.loads(result.stdout)[0]
             snapshot_time = datetime.fromisoformat(snapshot_data["time"].replace("Z", "+00:00"))
@@ -97,7 +76,7 @@ def run_restore_file():
                     "--target", RESTORE_TARGET,
                     "--include", INCLUDE_PATH
                 ],
-                env=os.environ.copy(),
+                env=env,
                 check=True
             )
             

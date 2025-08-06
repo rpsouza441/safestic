@@ -1,25 +1,17 @@
 import os
 import subprocess
 import sys
-from dotenv import load_dotenv
 
-# === 1. Carregar variáveis do .env ===
-load_dotenv()
+from services.restic import load_restic_env
 
-# === 2. Montar RESTIC_REPOSITORY dinamicamente com base no provedor ===
-PROVIDER = os.getenv("STORAGE_PROVIDER", "").lower()
-BUCKET = os.getenv("STORAGE_BUCKET", "")
-RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
-
-if PROVIDER == "aws":
-    RESTIC_REPOSITORY = f"s3:s3.amazonaws.com/{BUCKET}"
-elif PROVIDER == "azure":
-    RESTIC_REPOSITORY = f"azure:{BUCKET}:restic"
-elif PROVIDER == "gcp":
-    RESTIC_REPOSITORY = f"gs:{BUCKET}"
-else:
-    print("[FATAL] STORAGE_PROVIDER inválido. Use 'aws', 'azure' ou 'gcp'")
+# === 1. Carregar configurações do Restic ===
+try:
+    RESTIC_REPOSITORY, env, PROVIDER = load_restic_env()
+except ValueError as e:
+    print(f"[FATAL] {e}")
     sys.exit(1)
+
+RESTIC_PASSWORD = os.getenv("RESTIC_PASSWORD")
 
 # === 3. Verificar variáveis obrigatórias ===
 print("🔍 Verificando variáveis essenciais do .env")
@@ -60,7 +52,7 @@ print("\nTestando acesso ao repositório...")
 try:
     subprocess.run(
         ["restic", "-r", RESTIC_REPOSITORY, "snapshots"],
-        env=os.environ.copy(),
+        env=env,
         check=True
     )
     print("Acesso ao repositório bem-sucedido.")
@@ -71,7 +63,7 @@ except subprocess.CalledProcessError as e:
     try:
         subprocess.run(
             ["restic", "-r", RESTIC_REPOSITORY, "init"],
-            env=os.environ.copy(),
+            env=env,
             check=True
         )
         print("Repositório foi inicializado com sucesso!")
