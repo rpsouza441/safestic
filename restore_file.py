@@ -1,12 +1,11 @@
 import os
-import subprocess
 import sys
 import json
 from pathlib import Path
 from datetime import datetime
 
 from services.restic import load_restic_env
-from services.logger import create_log_file, log
+from services.logger import create_log_file, log, run_cmd
 
 try:
     RESTIC_REPOSITORY, env, _ = load_restic_env()
@@ -46,10 +45,21 @@ def run_restore_file():
         try:
             Path(BASE_RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
             log(f"Buscando informações do snapshot '{SNAPSHOT_ID}'...", log_file)
-            result = subprocess.run(
-                ["restic", "-r", RESTIC_REPOSITORY, "snapshots", SNAPSHOT_ID, "--json"],
-                check=True, capture_output=True, text=True, env=env
+            success, result = run_cmd(
+                [
+                    "restic",
+                    "-r",
+                    RESTIC_REPOSITORY,
+                    "snapshots",
+                    SNAPSHOT_ID,
+                    "--json",
+                ],
+                log_file,
+                env=env,
+                error_msg="Falha ao buscar informações do snapshot",
             )
+            if not success or result is None:
+                return
             snapshot_data = json.loads(result.stdout)[0]
             snapshot_time = datetime.fromisoformat(snapshot_data["time"].replace("Z", "+00:00"))
             timestamp_str = snapshot_time.strftime("%Y-%m-%d_%H%M%S")
@@ -63,18 +73,23 @@ def run_restore_file():
             
             # --- Execução do Restore ---
             # Removido "stderr=log_file" para que o progresso apareça no console
-            subprocess.run(
+            run_cmd(
                 [
-                    "restic", "-r", RESTIC_REPOSITORY,
-                    "restore", SNAPSHOT_ID,
-                    "--target", RESTORE_TARGET,
-                    "--include", INCLUDE_PATH
+                    "restic",
+                    "-r",
+                    RESTIC_REPOSITORY,
+                    "restore",
+                    SNAPSHOT_ID,
+                    "--target",
+                    RESTORE_TARGET,
+                    "--include",
+                    INCLUDE_PATH,
                 ],
+                log_file,
                 env=env,
-                check=True
+                success_msg="✅ Arquivo ou diretório restaurado com sucesso.",
+                error_msg="Erro durante a restauração",
             )
-            
-            log("✅ Arquivo ou diretório restaurado com sucesso.", log_file)
 
         except subprocess.CalledProcessError as e:
             # Este bloco agora pegará o erro, mas a saída do Restic terá aparecido no console
