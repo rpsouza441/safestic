@@ -1,10 +1,19 @@
-"""Utility helpers for timestamped logging in scripts."""
+"""Utility helpers for timestamped logging in scripts.
+
+This module centralises logging-related helpers so that every script in the
+project can easily create timestamped log files and record detailed
+information about the commands being executed.  The goal is to make debugging
+easier by exposing the full stdout/stderr of external processes and any
+exceptions raised during execution.
+"""
 
 from __future__ import annotations
 
 import datetime
+import subprocess
+import sys
 from pathlib import Path
-from typing import TextIO
+from typing import TextIO, Sequence
 
 
 def create_log_file(prefix: str, log_dir: str) -> str:
@@ -34,3 +43,54 @@ def log(msg: str, log_file: TextIO) -> None:
     line = f"{timestamp} {msg}"
     print(line)
     log_file.write(line + "\n")
+
+
+def run_cmd(
+    cmd: Sequence[str],
+    log_file: TextIO,
+    env: dict[str, str] | None = None,
+    success_msg: str | None = None,
+    error_msg: str | None = None,
+) -> tuple[bool, subprocess.CompletedProcess[str] | None]:
+    """Execute ``cmd`` capturing stdout and stderr.
+
+    All output is written both to ``log_file`` and to the console so the user
+    can follow the progress in real time.  The function returns a tuple where
+    the first element indicates success and the second is the underlying
+    ``CompletedProcess`` instance (``None`` when the command could not be
+    spawned).
+    """
+
+    log(f"Comando: {' '.join(cmd)}", log_file)
+    try:
+        result = subprocess.run(
+            cmd,
+            env=env,
+            text=True,
+            capture_output=True,
+        )
+    except Exception as exc:  # pragma: no cover - runtime issues
+        log(
+            f"{error_msg or 'Falha ao executar comando'}: {exc}",
+            log_file,
+        )
+        return False, None
+
+    if result.stdout:
+        print(result.stdout, end="")
+        log_file.write(result.stdout)
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+        log_file.write(result.stderr)
+
+    if result.returncode == 0:
+        if success_msg:
+            log(success_msg, log_file)
+        return True, result
+
+    log(
+        f"{error_msg or 'Comando falhou'} (código {result.returncode})",
+        log_file,
+    )
+    return False, result
+
