@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import datetime
+import subprocess
 from pathlib import Path
-from typing import TextIO
+from typing import TextIO, List, Optional
 
 
 def create_log_file(prefix: str, log_dir: str) -> str:
@@ -34,3 +35,28 @@ def log(msg: str, log_file: TextIO) -> None:
     line = f"{timestamp} {msg}"
     print(line)
     log_file.write(line + "\n")
+
+
+def run_cmd(
+    cmd: List[str],
+    log_file: TextIO,
+    success_msg: str,
+    error_msg: str,
+    env: Optional[dict[str, str]] = None,
+) -> subprocess.CompletedProcess:
+    """Execute ``cmd`` capturing stdout/stderr and log details."""
+
+    log(f"Comando: {' '.join(cmd)}", log_file)
+    result = subprocess.run(cmd, env=env, text=True, capture_output=True)
+
+    if result.stdout:
+        log_file.write(result.stdout)
+    if result.stderr:
+        log_file.write(result.stderr)
+
+    if result.returncode == 0:
+        log(success_msg, log_file)
+    else:
+        log(f"{error_msg} (código {result.returncode})", log_file)
+
+    return result
