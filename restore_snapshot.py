@@ -1,97 +1,78 @@
-import os
-import sys
+import argparse
 import datetime
 import json
+import os
 from pathlib import Path
 
-from services.restic import load_restic_env
-from services.logger import create_log_file, log, run_cmd
+from services.script import ResticScript
 
-try:
-    RESTIC_REPOSITORY, env, _ = load_restic_env()
-except ValueError as e:
-    print(f"[FATAL] {e}")
-    sys.exit(1)
 
-RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")  # destino da restauração
-LOG_DIR = os.getenv("LOG_DIR", "logs")  # diretório para logs
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Restaura um snapshot inteiro para o diretório alvo",
+    )
+    parser.add_argument("--id", default="latest", help="ID do snapshot a restaurar")
+    return parser.parse_args()
 
-# === 3. ARGUMENTOS DA LINHA DE COMANDO ===
-SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"  # id do snapshot
 
-# === 4. PREPARA ARQUIVO DE LOG ===
-try:
-    log_filename = create_log_file("restore_snapshot", LOG_DIR)
-except Exception as e:
-    print(f"[FATAL] Falha ao preparar log: {e}")
-    sys.exit(1)
-
-# === 5. FUNÇÃO PRINCIPAL DE RESTAURAÇÃO ===
-def run_restore_snapshot():
+def run_restore_snapshot(snapshot_id: str) -> None:
     """Restaura um snapshot inteiro para o diretório alvo."""
 
-    with open(log_filename, "w", encoding="utf-8") as log_file:
-        log("=== Iniciando restauração de snapshot com Restic ===", log_file)
-        
+    with ResticScript("restore_snapshot") as ctx:
+        restore_target = os.getenv("RESTORE_TARGET_DIR", "restore")
+        ctx.log("=== Iniciando restauração de snapshot com Restic ===")
+
         try:
-            # Garante que o diretório de restauração exista
-            Path(RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
-            
-            # --- Informações do processo sendo logadas ---
-            log(f"Buscando informações do snapshot '{SNAPSHOT_ID}'...", log_file)
-            
-            success, result = run_cmd(
+            Path(restore_target).mkdir(parents=True, exist_ok=True)
+            ctx.log(f"Buscando informações do snapshot '{snapshot_id}'...")
+
+            success, result = ctx.run_cmd(
                 [
                     "restic",
                     "-r",
-                    RESTIC_REPOSITORY,
+                    ctx.repository,
                     "snapshots",
-                    SNAPSHOT_ID,
+                    snapshot_id,
                     "--json",
                 ],
-                log_file,
-                env=env,
                 error_msg="Falha ao buscar informações do snapshot",
             )
             if not success or result is None:
                 return
             snapshot_data = json.loads(result.stdout)[0]
-            
-            snapshot_time = datetime.datetime.fromisoformat(snapshot_data["time"].replace("Z", "+00:00"))
 
-            log(f"Snapshot ID: {snapshot_data['short_id']}", log_file)
-            log(f"Data do Snapshot: {snapshot_time.strftime('%Y-%m-%d %H:%M:%S')}", log_file)
-            log(f"Destino da restauração: {RESTORE_TARGET}", log_file)
+            snapshot_time = datetime.datetime.fromisoformat(
+                snapshot_data["time"].replace("Z", "+00:00")
+            )
+
+            ctx.log(f"Snapshot ID: {snapshot_data['short_id']}")
+            ctx.log(
+                f"Data do Snapshot: {snapshot_time.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            ctx.log(f"Destino da restauração: {restore_target}")
             print("\nIniciando processo de restauração... O progresso será exibido abaixo.")
-            
-            # --- Execução do Restore ---
-            # Removido "stderr=log_file" para que o progresso apareça no console
-            run_cmd(
+
+            ctx.run_cmd(
                 [
                     "restic",
                     "-r",
-                    RESTIC_REPOSITORY,
+                    ctx.repository,
                     "restore",
-                    SNAPSHOT_ID,
+                    snapshot_id,
                     "--target",
-                    RESTORE_TARGET,
+                    restore_target,
                 ],
-                log_file,
-                env=env,
                 success_msg="✅ Restauração de snapshot concluída com sucesso.",
                 error_msg="Erro durante a restauração",
             )
 
-        except subprocess.CalledProcessError as e:
-            log(f"[ERRO] O Restic finalizou com um erro.", log_file)
-            print(f"Comando com falha: {' '.join(e.cmd)}")
-            
-        except Exception as e:
-            log(f"[ERRO] Uma falha inesperada ocorreu: {e}", log_file)
-        
-        finally:
-            log("=== Fim do processo de restauração ===", log_file)
+        except Exception as exc:
+            ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
 
-# === 6. PONTO DE ENTRADA DO SCRIPT ===
+        finally:
+            ctx.log("=== Fim do processo de restauração ===")
+
+
 if __name__ == "__main__":
-    run_restore_snapshot()
+    args = parse_args()
+    run_restore_snapshot(args.id)

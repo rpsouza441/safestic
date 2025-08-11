@@ -1,117 +1,83 @@
 import os
 import sys
 
-from services.restic import load_restic_env
-from services.logger import create_log_file, log, run_cmd
+from services.script import ResticScript
 
-# === Carregar configurações do Restic ===
-try:
-    RESTIC_REPOSITORY, env, _ = load_restic_env()
-except ValueError as e:
-    print(f"[FATAL] {e}")
-    sys.exit(1)
 
-# Diretório onde os logs serão salvos
-LOG_DIR = os.getenv("LOG_DIR", "logs")
-
-# === Configurações de backup ===
-SOURCE_DIRS = os.getenv("BACKUP_SOURCE_DIRS", "").split(",")  # múltiplos diretórios
-EXCLUDES = os.getenv("RESTIC_EXCLUDES", "").split(",")        # padrões de exclusão
-TAGS = os.getenv("RESTIC_TAGS", "").split(",")                # tags aplicadas ao snapshot
-
-# === Política de retenção configurável ===
-RETENTION_ENABLED = os.getenv("RETENTION_ENABLED", "true").lower() == "true"
-RETENTION_KEEP_HOURLY  = os.getenv("RETENTION_KEEP_HOURLY", "0")
-RETENTION_KEEP_DAILY = os.getenv("RETENTION_KEEP_DAILY", "7")
-RETENTION_KEEP_WEEKLY = os.getenv("RETENTION_KEEP_WEEKLY", "4")
-RETENTION_KEEP_MONTHLY = os.getenv("RETENTION_KEEP_MONTHLY", "6")
-
-# === Verificações mínimas obrigatórias ===
-if not any(SOURCE_DIRS):
-    print("[FATAL] Variáveis obrigatórias ausentes no .env")
-    sys.exit(1)
-
-# === Cria arquivo de log com timestamp ===
-log_filename = create_log_file("backup", LOG_DIR)
-
-# === Monta argumentos repetidos como --tag ou --exclude ===
 def build_args(prefix, items):
-    """Repete ``prefix`` para cada item não vazio.
-
-    Parameters
-    ----------
-    prefix: str
-        Flag a ser repetida, por exemplo ``"--tag"``.
-    items: list[str]
-        Itens que serão associados ao prefixo.
-    """
+    """Repete ``prefix`` para cada item não vazio."""
     return [arg for i in items for arg in (prefix, i.strip()) if i.strip()]
 
-# === Função principal que executa backup e retenção ===
-def run_backup():
-    with open(log_filename, "w", encoding="utf-8") as log_file:
-        log("=== Iniciando backup com Restic ===", log_file)
 
-        # === Verifica se o repositório é acessível ===
-        log("🔍 Verificando acesso ao repositório...", log_file)
-        if not run_cmd(
-            ["restic", "-r", RESTIC_REPOSITORY, "snapshots"],
-            log_file,
-            env=env,
+def run_backup():
+    with ResticScript("backup") as ctx:
+        source_dirs = os.getenv("BACKUP_SOURCE_DIRS", "").split(",")
+        excludes = os.getenv("RESTIC_EXCLUDES", "").split(",")
+        tags = os.getenv("RESTIC_TAGS", "").split(",")
+
+        retention_enabled = os.getenv("RETENTION_ENABLED", "true").lower() == "true"
+        keep_hourly = os.getenv("RETENTION_KEEP_HOURLY", "0")
+        keep_daily = os.getenv("RETENTION_KEEP_DAILY", "7")
+        keep_weekly = os.getenv("RETENTION_KEEP_WEEKLY", "4")
+        keep_monthly = os.getenv("RETENTION_KEEP_MONTHLY", "6")
+
+        if not any(source_dirs):
+            print("[FATAL] Variáveis obrigatórias ausentes no .env")
+            sys.exit(1)
+
+        ctx.log("=== Iniciando backup com Restic ===")
+
+        ctx.log("🔍 Verificando acesso ao repositório...")
+        if not ctx.run_cmd(
+            ["restic", "-r", ctx.repository, "snapshots"],
             success_msg="✅ Repositório acessível.",
             error_msg="Não foi possível acessar o repositório. Abortando.",
         )[0]:
             return
 
-        # === Executa o backup propriamente dito ===
-        cmd_backup = ["restic", "-r", RESTIC_REPOSITORY, "backup"]
-        cmd_backup += [d.strip() for d in SOURCE_DIRS if d.strip()]
-        cmd_backup += build_args("--exclude", EXCLUDES)
-        cmd_backup += build_args("--tag", TAGS)
+        cmd_backup = ["restic", "-r", ctx.repository, "backup"]
+        cmd_backup += [d.strip() for d in source_dirs if d.strip()]
+        cmd_backup += build_args("--exclude", excludes)
+        cmd_backup += build_args("--tag", tags)
 
-        log(f"Executando backup de: {', '.join(SOURCE_DIRS)}", log_file)
-        run_cmd(
+        ctx.log(f"Executando backup de: {', '.join(source_dirs)}")
+        ctx.run_cmd(
             cmd_backup,
-            log_file,
-            env=env,
             success_msg="Backup concluído.",
             error_msg="Erro durante o backup.",
         )
 
-        # === Se ativado, aplica política de retenção ===
-        if RETENTION_ENABLED:
-            log("Aplicando política de retenção...", log_file)
+        if retention_enabled:
+            ctx.log("Aplicando política de retenção...")
             cmd_retention = [
                 "restic",
                 "-r",
-                RESTIC_REPOSITORY,
+                ctx.repository,
                 "forget",
                 "--keep-hourly",
-                RETENTION_KEEP_HOURLY,
+                keep_hourly,
                 "--keep-daily",
-                RETENTION_KEEP_DAILY,
+                keep_daily,
                 "--keep-weekly",
-                RETENTION_KEEP_WEEKLY,
+                keep_weekly,
                 "--keep-monthly",
-                RETENTION_KEEP_MONTHLY,
+                keep_monthly,
                 "--prune",
             ]
-            run_cmd(
+            ctx.run_cmd(
                 cmd_retention,
-                log_file,
-                env=env,
                 success_msg="Política de retenção aplicada.",
                 error_msg="Erro ao aplicar retenção.",
             )
         else:
-            log("Retenção desativada via .env.", log_file)
+            ctx.log("Retenção desativada via .env.")
 
-        log("=== Fim do backup ===", log_file)
+        ctx.log("=== Fim do backup ===")
 
-# === Execução principal ===
+
 if __name__ == "__main__":
     try:
         run_backup()
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - runtime errors
         print(f"[FATAL] Erro inesperado: {e}")
         sys.exit(1)

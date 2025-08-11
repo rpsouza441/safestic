@@ -1,107 +1,85 @@
-import os
-import sys
+import argparse
 import json
-from pathlib import Path
+import os
 from datetime import datetime
+from pathlib import Path
 
-from services.restic import load_restic_env
-from services.logger import create_log_file, log, run_cmd
+from services.script import ResticScript
 
-try:
-    RESTIC_REPOSITORY, env, _ = load_restic_env()
-except ValueError as e:
-    print(f"[FATAL] {e}")
-    sys.exit(1)
 
-BASE_RESTORE_TARGET = os.getenv("RESTORE_TARGET_DIR", "restore")
-LOG_DIR = os.getenv("LOG_DIR", "logs")  # diretório para salvar logs
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Restaura arquivo ou diretório específico de um snapshot",
+    )
+    parser.add_argument("--id", default="latest", help="ID do snapshot (default: latest)")
+    parser.add_argument(
+        "--path",
+        required=True,
+        help="Caminho do arquivo ou diretório a restaurar",
+    )
+    return parser.parse_args()
 
-# === 3. OBTÊM SNAPSHOT_ID E INCLUDE_PATH DA LINHA DE COMANDO ===
-try:
-    SNAPSHOT_ID = sys.argv[1] if len(sys.argv) > 1 else "latest"  # id do snapshot
-    INCLUDE_PATH = sys.argv[2] if len(sys.argv) > 2 else None       # caminho a restaurar
 
-    if not INCLUDE_PATH:
-        raise ValueError("Caminho do arquivo/diretório a restaurar não informado.")
-
-except Exception as e:
-    print(f"[FATAL] Erro nos argumentos: {e}")
-    print("Uso: python restore_file.py <snapshot_id> <caminho_do_arquivo>")
-    sys.exit(1)
-
-# === 4. PREPARA ARQUIVO DE LOG ===
-try:
-    log_filename = create_log_file("restore_file", LOG_DIR)
-except Exception as e:
-    print(f"[FATAL] Falha ao preparar log: {e}")
-    sys.exit(1)
-
-# === 5. EXECUÇÃO PRINCIPAL COM LOG ===
-def run_restore_file():
+def run_restore_file(snapshot_id: str, include_path: str) -> None:
     """Restaura arquivo ou diretório específico do snapshot."""
 
-    with open(log_filename, "w", encoding="utf-8") as log_file:
-        log("=== Iniciando restauração de arquivo com Restic ===", log_file)
+    with ResticScript("restore_file") as ctx:
+        base_restore_target = os.getenv("RESTORE_TARGET_DIR", "restore")
+        ctx.log("=== Iniciando restauração de arquivo com Restic ===")
         try:
-            Path(BASE_RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
-            log(f"Buscando informações do snapshot '{SNAPSHOT_ID}'...", log_file)
-            success, result = run_cmd(
+            Path(base_restore_target).mkdir(parents=True, exist_ok=True)
+            ctx.log(f"Buscando informações do snapshot '{snapshot_id}'...")
+            success, result = ctx.run_cmd(
                 [
                     "restic",
                     "-r",
-                    RESTIC_REPOSITORY,
+                    ctx.repository,
                     "snapshots",
-                    SNAPSHOT_ID,
+                    snapshot_id,
                     "--json",
                 ],
-                log_file,
-                env=env,
                 error_msg="Falha ao buscar informações do snapshot",
             )
             if not success or result is None:
                 return
             snapshot_data = json.loads(result.stdout)[0]
-            snapshot_time = datetime.fromisoformat(snapshot_data["time"].replace("Z", "+00:00"))
+            snapshot_time = datetime.fromisoformat(
+                snapshot_data["time"].replace("Z", "+00:00")
+            )
             timestamp_str = snapshot_time.strftime("%Y-%m-%d_%H%M%S")
-            RESTORE_TARGET = os.path.join(BASE_RESTORE_TARGET, timestamp_str)
-            Path(RESTORE_TARGET).mkdir(parents=True, exist_ok=True)
+            restore_target = os.path.join(base_restore_target, timestamp_str)
+            Path(restore_target).mkdir(parents=True, exist_ok=True)
 
-            log(f"Snapshot ID: {snapshot_data['short_id']}", log_file)
-            log(f"Data do Snapshot: {snapshot_time.strftime('%Y-%m-%d %H:%M:%S')}", log_file)
-            log(f"Arquivo/diretório a restaurar: {INCLUDE_PATH}", log_file)
-            log(f"Destino da restauração: {RESTORE_TARGET}", log_file)
-            
-            # --- Execução do Restore ---
-            # Removido "stderr=log_file" para que o progresso apareça no console
-            run_cmd(
+            ctx.log(f"Snapshot ID: {snapshot_data['short_id']}")
+            ctx.log(
+                f"Data do Snapshot: {snapshot_time.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            ctx.log(f"Arquivo/diretório a restaurar: {include_path}")
+            ctx.log(f"Destino da restauração: {restore_target}")
+
+            ctx.run_cmd(
                 [
                     "restic",
                     "-r",
-                    RESTIC_REPOSITORY,
+                    ctx.repository,
                     "restore",
-                    SNAPSHOT_ID,
+                    snapshot_id,
                     "--target",
-                    RESTORE_TARGET,
+                    restore_target,
                     "--include",
-                    INCLUDE_PATH,
+                    include_path,
                 ],
-                log_file,
-                env=env,
                 success_msg="✅ Arquivo ou diretório restaurado com sucesso.",
                 error_msg="Erro durante a restauração",
             )
 
-        except subprocess.CalledProcessError as e:
-            # Este bloco agora pegará o erro, mas a saída do Restic terá aparecido no console
-            log(f"[ERRO] O Restic finalizou com um erro.", log_file)
-            print(f"Comando com falha: {' '.join(e.cmd)}")
-            
-        except Exception as e:
-            log(f"[ERRO] Uma falha inesperada ocorreu: {e}", log_file)
-        
-        finally:
-            log("=== Fim do processo de restauração ===", log_file)
+        except Exception as exc:
+            ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
 
-# === 6. PONTO DE ENTRADA DO SCRIPT ===
+        finally:
+            ctx.log("=== Fim do processo de restauração ===")
+
+
 if __name__ == "__main__":
-    run_restore_file()
+    args = parse_args()
+    run_restore_file(args.id, args.path)

@@ -30,7 +30,7 @@ ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make list-files ID=abc123)
 endif
 	@echo "Listando arquivos do snapshot ID=$(ID)..."
-	$(PYTHON) list_snapshot_files.py $(ID)
+$(PYTHON) list_snapshot_files.py --id $(ID)
 
 ## Restaura o snapshot mais recente (default = latest)
 restore:
@@ -43,7 +43,7 @@ ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make restore-id ID=abc123)
 endif
 	@echo "Restaurando snapshot ID=$(ID)..."
-	$(PYTHON) restore_snapshot.py $(ID)
+$(PYTHON) restore_snapshot.py --id $(ID)
 
 ## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE=/etc/hosts)
 restore-file:
@@ -54,7 +54,7 @@ ifndef FILE
 	$(error Voce precisa passar o caminho do arquivo: make restore-file ID=abc123 FILE=/caminho)
 endif
 	@echo "Restaurando arquivo $(FILE) do snapshot ID=$(ID)..."
-	$(PYTHON) restore_file.py $(ID) $(FILE)
+$(PYTHON) restore_file.py --id $(ID) --path $(FILE)
 
 ## Aplica retencao manual usando o script Python dedicado
 manual-prune:
