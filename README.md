@@ -98,6 +98,8 @@ GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
 | `make check`                       | Verifica Restic, variáveis e acesso ao repositório |
 | `make help`                        | Mostra a lista de comandos disponíveis             |
 
+> **Nota:** ao usar `make restore-file`, cada restauração é colocada em um subdiretório com timestamp dentro de `RESTORE_TARGET_DIR` para evitar sobreposições.
+
 ---
 
 ## 🧪 Verificação rápida
