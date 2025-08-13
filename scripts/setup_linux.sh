@@ -1,0 +1,340 @@
+#!/usr/bin/env bash
+# Setup script para Linux - FASE 2
+# Detecta distribuição e instala dependências necessárias para o Safestic
+# Uso: ./scripts/setup_linux.sh [--assume-yes]
+
+set -euo pipefail
+
+# Processar argumentos
+ASSUME_YES=false
+for arg in "$@"; do
+    case $arg in
+        --assume-yes)
+            ASSUME_YES=true
+            shift
+            ;;
+        *)
+            echo "Uso: $0 [--assume-yes]"
+            exit 1
+            ;;
+    esac
+done
+
+# Cores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+log_info() {
+    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] ${BLUE}ℹ️  $1${NC}"
+}
+
+log_success() {
+    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] ${GREEN}✅ $1${NC}"
+}
+
+log_warning() {
+    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] ${YELLOW}⚠️  $1${NC}"
+}
+
+log_error() {
+    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] ${RED}❌ $1${NC}"
+}
+
+detect_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        DISTRO=$ID
+        VERSION=$VERSION_ID
+    elif [ -f /etc/redhat-release ]; then
+        DISTRO="rhel"
+    elif [ -f /etc/debian_version ]; then
+        DISTRO="debian"
+    else
+        DISTRO="unknown"
+    fi
+    
+    log_info "Distribuição detectada: $DISTRO $VERSION"
+}
+
+check_command() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+install_packages() {
+    local packages="$1"
+    local install_cmd=""
+    
+    case $DISTRO in
+        ubuntu|debian)
+            log_info "Atualizando lista de pacotes..."
+            sudo apt update
+            install_cmd="sudo apt install"
+            if [ "$ASSUME_YES" = true ]; then
+                install_cmd="$install_cmd -y"
+            fi
+            ;;
+        fedora|centos|rhel)
+            if check_command dnf; then
+                install_cmd="sudo dnf install"
+            elif check_command yum; then
+                install_cmd="sudo yum install"
+            fi
+            if [ "$ASSUME_YES" = true ]; then
+                install_cmd="$install_cmd -y"
+            fi
+            ;;
+        arch|manjaro)
+            install_cmd="sudo pacman -S"
+            if [ "$ASSUME_YES" = true ]; then
+                install_cmd="$install_cmd --noconfirm"
+            fi
+            ;;
+        opensuse*)
+            install_cmd="sudo zypper install"
+            if [ "$ASSUME_YES" = true ]; then
+                install_cmd="$install_cmd -y"
+            fi
+            ;;
+        *)
+            log_error "Distribuição não suportada: $DISTRO"
+            exit 1
+            ;;
+    esac
+    
+    log_info "Instalando pacotes: $packages"
+    if $install_cmd $packages; then
+        log_success "Pacotes instalados com sucesso"
+    else
+        log_error "Falha ao instalar pacotes: $packages"
+        exit 1
+    fi
+}
+
+install_restic() {
+    if check_command restic; then
+        log_success "Restic já instalado: $(restic version)"
+        return 0
+    fi
+    
+    log_info "Instalando Restic..."
+    
+    # Tentar instalar via gerenciador de pacotes primeiro
+    case $DISTRO in
+        ubuntu|debian)
+            if apt-cache search restic | grep -q "^restic "; then
+                local cmd="sudo apt install restic"
+                if [ "$ASSUME_YES" = true ]; then
+                    cmd="$cmd -y"
+                fi
+                if $cmd; then
+                    return 0
+                fi
+            fi
+            ;;
+        fedora)
+            if dnf search restic 2>/dev/null | grep -q restic; then
+                local cmd="sudo dnf install restic"
+                if [ "$ASSUME_YES" = true ]; then
+                    cmd="$cmd -y"
+                fi
+                if $cmd; then
+                    return 0
+                fi
+            fi
+            ;;
+        arch|manjaro)
+            if pacman -Ss restic | grep -q restic; then
+                local cmd="sudo pacman -S restic"
+                if [ "$ASSUME_YES" = true ]; then
+                    cmd="$cmd --noconfirm"
+                fi
+                if $cmd; then
+                    return 0
+                fi
+            fi
+            ;;
+    esac
+    
+    # Se não estiver disponível no repositório, instalar manualmente
+    log_warning "Restic não encontrado nos repositórios. Instalando manualmente..."
+    
+    # Detectar arquitetura
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64) RESTIC_ARCH="amd64" ;;
+        aarch64) RESTIC_ARCH="arm64" ;;
+        armv7l) RESTIC_ARCH="arm" ;;
+        *) log_error "Arquitetura não suportada: $ARCH"; exit 1 ;;
+    esac
+    
+    # Baixar e instalar Restic
+    RESTIC_VERSION="0.16.4"
+    RESTIC_URL="https://github.com/restic/restic/releases/download/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_${RESTIC_ARCH}.bz2"
+    
+    log_info "Baixando Restic v$RESTIC_VERSION para $RESTIC_ARCH..."
+    if curl -L "$RESTIC_URL" | bunzip2 > /tmp/restic; then
+        chmod +x /tmp/restic
+        sudo mv /tmp/restic /usr/local/bin/restic
+        log_success "Restic instalado: $(restic version)"
+    else
+        log_error "Falha ao baixar/instalar Restic"
+        exit 1
+    fi
+}
+
+
+
+
+
+log_info "=== SETUP SAFESTIC PARA LINUX ==="
+log_info "Detectando distribuição..."
+
+detect_distro
+
+# Lista de pacotes básicos necessários
+BASIC_PACKAGES="git make python3 python3-pip curl bzip2"
+
+# Ajustar nomes de pacotes por distribuição
+case $DISTRO in
+    ubuntu|debian)
+        PACKAGES="$BASIC_PACKAGES python3-venv"
+        ;;
+    fedora|centos|rhel)
+        PACKAGES="$BASIC_PACKAGES python3-devel"
+        ;;
+    arch|manjaro)
+        PACKAGES="git make python python-pip curl bzip2"
+        ;;
+    opensuse*)
+        PACKAGES="$BASIC_PACKAGES python3-devel"
+        ;;
+    *)
+        PACKAGES="$BASIC_PACKAGES"
+        ;;
+esac
+
+# Verificar se já estão instalados
+log_info "Verificando dependências..."
+
+MISSING_PACKAGES=""
+TOOLS_TO_CHECK=("git" "make" "python3")
+
+for tool in "${TOOLS_TO_CHECK[@]}"; do
+    if ! check_command "$tool"; then
+        case $tool in
+            python3)
+                if [ "$DISTRO" = "arch" ] || [ "$DISTRO" = "manjaro" ]; then
+                    MISSING_PACKAGES="$MISSING_PACKAGES python"
+                else
+                    MISSING_PACKAGES="$MISSING_PACKAGES python3"
+                fi
+                ;;
+            *)
+                MISSING_PACKAGES="$MISSING_PACKAGES $tool"
+                ;;
+        esac
+    fi
+done
+
+# Verificar pip separadamente
+if ! check_command pip3 && ! check_command pip; then
+    if [ "$DISTRO" = "arch" ] || [ "$DISTRO" = "manjaro" ]; then
+        MISSING_PACKAGES="$MISSING_PACKAGES python-pip"
+    else
+        MISSING_PACKAGES="$MISSING_PACKAGES python3-pip"
+    fi
+fi
+
+if [ -n "$MISSING_PACKAGES" ]; then
+    log_warning "Pacotes faltando:$MISSING_PACKAGES"
+    install_packages "$PACKAGES"
+else
+    log_success "Todas as dependências básicas já estão instaladas"
+fi
+
+# Verificar versão do Python
+PYTHON_CMD="python3"
+if [ "$DISTRO" = "arch" ] || [ "$DISTRO" = "manjaro" ]; then
+    PYTHON_CMD="python"
+fi
+
+if check_command "$PYTHON_CMD"; then
+    PYTHON_VERSION=$($PYTHON_CMD -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+    
+    if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 10 ]; then
+        log_success "Python $PYTHON_VERSION encontrado"
+    else
+        log_error "Python 3.10+ necessário. Encontrado: $PYTHON_VERSION"
+        exit 1
+    fi
+else
+    log_error "Python não encontrado após instalação"
+    exit 1
+fi
+
+# Instalar Restic
+install_restic
+
+# Instalar dependências Python do projeto
+log_info "Instalando dependências Python do projeto..."
+
+# Usar pip3 se disponível, senão pip
+PIP_CMD="pip3"
+if ! check_command pip3; then
+    PIP_CMD="pip"
+fi
+
+if [ -f "pyproject.toml" ]; then
+    log_info "Detectado pyproject.toml. Instalando dependências..."
+    if $PIP_CMD install -e .; then
+        log_success "Dependências do pyproject.toml instaladas"
+    else
+        log_error "Falha ao instalar dependências do pyproject.toml"
+        exit 1
+    fi
+elif [ -f "requirements.txt" ]; then
+    log_info "Detectado requirements.txt. Instalando dependências..."
+    if $PIP_CMD install --user -r requirements.txt; then
+        log_success "Dependências do requirements.txt instaladas"
+    else
+        log_error "Falha ao instalar dependências do requirements.txt"
+        exit 1
+    fi
+else
+    log_warning "Nenhum arquivo de dependências encontrado (pyproject.toml ou requirements.txt)"
+fi
+
+# Verificação final
+log_info "=== VERIFICAÇÃO FINAL ==="
+
+TOOLS=("git --version" "make --version" "$PYTHON_CMD --version" "$PIP_CMD --version" "restic version")
+ALL_OK=true
+
+for tool_cmd in "${TOOLS[@]}"; do
+    tool_name=$(echo $tool_cmd | cut -d' ' -f1)
+    if eval $tool_cmd >/dev/null 2>&1; then
+        version=$(eval $tool_cmd 2>&1 | head -n1)
+        log_success "$tool_name: $version"
+    else
+        log_error "$tool_name: FALHOU"
+        ALL_OK=false
+    fi
+done
+
+if [ "$ALL_OK" = false ]; then
+    log_error "Algumas ferramentas falharam na verificação"
+    log_warning "Pode ser necessário reiniciar o terminal ou verificar o PATH"
+    exit 1
+fi
+
+log_success "=== SETUP CONCLUÍDO COM SUCESSO ==="
+log_info "Todas as dependências foram instaladas e verificadas!"
+log_info "Próximos passos:"
+log_info "1. Configure o arquivo .env baseado no .env.example"
+log_info "2. Execute: make init"
+log_info "3. Execute: make backup"

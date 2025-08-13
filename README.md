@@ -1,6 +1,21 @@
-# 🔐 Backup Automatizado com Restic (AWS, Azure, GCP)
+# Safestic
 
-Este projeto fornece uma solução de backup automática e criptografada com [Restic](https://restic.net/), suportando múltiplos provedores de nuvem: **AWS S3**, **Azure Blob Storage**, **Google Cloud Storage** e **armazenamento local**.
+Safestic é uma ferramenta de backup automatizada que utiliza o Restic para criar backups seguros e eficientes de seus dados importantes.
+
+## Características
+
+- 🔒 **Seguro**: Criptografia AES-256 e autenticação
+- 🌐 **Multi-cloud**: Suporte para AWS S3, Azure Blob, Google Cloud Storage e armazenamento local
+- 📦 **Deduplicação**: Armazena apenas dados únicos, economizando espaço
+- 🔄 **Incremental**: Backups rápidos após o primeiro backup completo
+- 📋 **Logging**: Logs detalhados de todas as operações
+- ⚙️ **Configurável**: Fácil configuração através de variáveis de ambiente
+- 🐍 **Python**: Scripts Python para máxima compatibilidade
+- 🛠️ **Makefile**: Interface simples através de comandos make
+- 🚀 **Setup Automatizado**: Scripts de instalação para Windows e Linux
+- 📅 **Agendamento**: Configuração automática de tarefas agendadas
+- 🔧 **Manutenção**: Ferramentas avançadas de reparo e otimização
+- 📊 **Monitoramento**: Verificação de saúde e relatórios detalhados
 
 ---
 
@@ -24,33 +39,48 @@ Este projeto fornece uma solução de backup automática e criptografada com [Re
 
 ---
 
-## 🧰 Pré-requisitos
+## Instalação Rápida
 
-- Python 3.10+
-- Restic instalado: https://restic.net/
-- Instalar dependências:
-  ```bash
-  pip install -r requirements.txt
-  ```
+### 🚀 Instalação Automática
 
-### Desenvolvimento e Testes
+**Windows (PowerShell como Administrador):**
+```powershell
+# Clone o repositório
+git clone <repository-url>
+cd safestic
 
-```bash
-# Instalar dependências de desenvolvimento
-pip install -r requirements.txt
+# Execute o bootstrap (instala todas as dependências)
+.\scripts\bootstrap_windows.ps1
 
-# Executar testes
-pytest
+# Configure o ambiente
+cp .env.example .env
+# Edite o arquivo .env com suas configurações
 
-# Verificar cobertura de testes
-pytest --cov=services
-
-# Verificar tipagem
-mypy services
-
-# Verificar estilo de código
-ruff check services
+# Execute a configuração inicial
+make first-run
 ```
+
+**Linux/macOS:**
+```bash
+# Clone o repositório
+git clone <repository-url>
+cd safestic
+
+# Execute o setup (instala dependências se necessário)
+./scripts/setup_linux.sh
+
+# Configure o ambiente
+cp .env.example .env
+# Edite o arquivo .env com suas configurações
+
+# Execute a configuração inicial
+make first-run
+```
+
+### 📖 Guia Completo
+
+Para instruções detalhadas de instalação e configuração, consulte:
+**[SETUP_SAFESTIC.md](SETUP_SAFESTIC.md)**
 
 ---
 
@@ -76,6 +106,32 @@ cp .env.example .env
 ```
 
 Edite as variáveis conforme seu provedor:
+
+## Configuração
+
+O arquivo `.env` contém todas as configurações necessárias. Principais variáveis:
+
+### Configurações Básicas
+- `STORAGE_PROVIDER`: Provedor de armazenamento (local, aws, azure, gcp)
+- `STORAGE_BUCKET`: Caminho ou bucket de armazenamento
+- `RESTIC_PASSWORD`: Senha para criptografia
+- `BACKUP_SOURCE_DIRS`: Diretórios para backup (separados por vírgula)
+- `LOG_DIR`: Diretório para logs
+- `LOG_LEVEL`: Nível de log (DEBUG, INFO, WARNING, ERROR)
+
+### Configurações de Retenção
+- `RETENTION_ENABLED`: Habilitar política de retenção (true/false)
+- `KEEP_HOURLY`: Manter backups por hora
+- `KEEP_DAILY`: Manter backups diários
+- `KEEP_WEEKLY`: Manter backups semanais
+- `KEEP_MONTHLY`: Manter backups mensais
+
+### Configurações de Nuvem
+- **AWS**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`
+- **Azure**: `AZURE_ACCOUNT_NAME`, `AZURE_ACCOUNT_KEY`
+- **GCP**: `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_PROJECT_ID`
+
+Veja `.env.example` para todas as opções disponíveis e `SETUP_SAFESTIC.md` para guia detalhado.
 
 ```dotenv
 # Provedor: aws | azure | gcp | local
@@ -155,7 +211,56 @@ CREDENTIAL_SOURCE=sops SOPS_FILE=.env.enc make backup
 
 ---
 
-## 📦 Comandos via `make`
+## Uso
+
+### Comandos Principais
+
+```bash
+# Verificar saúde do sistema
+make health
+
+# Fazer backup
+make backup
+
+# Listar snapshots
+make list
+
+# Restaurar último backup
+make restore
+
+# Verificar integridade
+make check
+
+# Limpar snapshots antigos
+make prune
+
+# Ver todos os comandos disponíveis
+make help
+```
+
+### Comandos de Setup e Manutenção
+
+```bash
+# Configuração inicial completa
+make first-run
+
+# Instalar agendamento automático
+make schedule-install
+
+# Verificar status do agendamento
+make schedule-status
+
+# Remover agendamento
+make schedule-remove
+
+# Reparar repositório
+make repair
+
+# Reconstruir índice
+make rebuild-index
+```
+
+### Comandos Detalhados via `make`
 
 | Comando                            | Descrição                                          |
 | ---------------------------------- | -------------------------------------------------- |
@@ -193,6 +298,53 @@ Veja um exemplo completo em `examples/async_backup.py`.
 
 > **Nota:** ao usar `make restore-file`, cada restauração é colocada em um subdiretório com timestamp dentro de `RESTORE_TARGET_DIR` para evitar sobreposições.
 
+## Agendamento Automático
+
+O Safestic pode configurar automaticamente backups regulares:
+
+```bash
+# Instalar agendamento (backup diário + limpeza semanal)
+make schedule-install
+
+# Verificar status
+make schedule-status
+
+# Remover agendamento
+make schedule-remove
+```
+
+**Windows**: Usa Agendador de Tarefas  
+**Linux**: Usa systemd timers
+
+## Monitoramento e Manutenção
+
+```bash
+# Verificar saúde geral do sistema
+make health
+
+# Validar configuração
+make validate
+
+# Reparar problemas no repositório
+make repair
+
+# Otimizar repositório
+make rebuild-index
+
+# Montar repositório como sistema de arquivos
+make mount
+
+# Desmontar repositório
+make unmount
+```
+
+## Solução de Problemas
+
+Para problemas comuns e soluções, consulte:
+- `make health` - Diagnóstico completo
+- `make validate` - Verificar configuração
+- `SETUP_SAFESTIC.md` - Guia de solução de problemas
+
 ---
 
 ## 🧪 Verificação rápida
@@ -218,25 +370,71 @@ Isso verifica:
 
 ---
 
-## 📁 Estrutura esperada do projeto
+## Estrutura do Projeto
 
 ```
-.
-├── .env.example
-├── .gitignore
-├── Makefile
-├── README.md
-├── restic_backup.py
-├── restore_snapshot.py
-├── restore_file.py
-├── list_snapshots.py
-├── list_snapshot_files.py
-├── check_restic_access.py
-└── manual_prune.py
+safestic/
+├── scripts/                    # Scripts Python e Shell
+│   ├── backup.py              # Script de backup
+│   ├── restore.py             # Script de restauração
+│   ├── list.py                # Listagem de snapshots
+│   ├── prune.py               # Limpeza de snapshots
+│   ├── check.py               # Verificação de integridade
+│   ├── validate_config.py     # Validação de configuração
+│   ├── health_check.py        # Verificação de saúde
+│   ├── forget_snapshots.py    # Esquecimento de snapshots
+│   ├── mount_repo.py          # Montagem do repositório
+│   ├── unmount_repo.py        # Desmontagem do repositório
+│   ├── rebuild_index.py       # Reconstrução de índice
+│   ├── repair_repo.py         # Reparo do repositório
+│   ├── bootstrap_windows.ps1  # Bootstrap Windows
+│   ├── setup_windows.sh       # Setup Windows (Git Bash)
+│   ├── setup_linux.sh         # Setup Linux
+│   ├── schedule_windows.ps1   # Agendamento Windows
+│   ├── schedule_linux.sh      # Agendamento Linux
+│   └── validate-setup.sh      # Validação do setup
+├── logs/                      # Arquivos de log
+├── .env.example              # Exemplo de configuração
+├── .env                      # Suas configurações (criar)
+├── Makefile                  # Comandos make
+├── requirements.txt          # Dependências Python
+├── pyproject.toml           # Configuração do projeto Python
+├── README.md                # Este arquivo
+└── SETUP_SAFESTIC.md        # Guia completo de instalação
 ```
 
 ---
 
-## 📄 Licença
+## Suporte
 
-MIT License.
+- 📖 **Documentação**: [SETUP_SAFESTIC.md](SETUP_SAFESTIC.md)
+- 🐛 **Issues**: Abra uma issue no GitHub
+- 💬 **Discussões**: Use as discussões do GitHub
+- 📚 **Restic**: [Documentação oficial do Restic](https://restic.readthedocs.io/)
+
+## Status do Projeto
+
+✅ **Funcionalidades Implementadas:**
+- Setup automatizado para Windows e Linux
+- Agendamento automático de backups
+- Ferramentas avançadas de manutenção e reparo
+- Sistema completo de monitoramento e saúde
+- Suporte completo multi-cloud
+- Interface unificada via Makefile
+- Documentação abrangente
+
+🚀 **Pronto para Produção!**
+
+## Contribuição
+
+Contribuições são bem-vindas! Por favor:
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
+
+## Licença
+
+Este projeto está licenciado sob a MIT License - veja o arquivo LICENSE para detalhes.
