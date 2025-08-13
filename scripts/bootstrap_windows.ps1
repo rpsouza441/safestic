@@ -8,14 +8,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Configurar codificacao UTF-8 para resolver problemas com acentos
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 | Out-Null
+
 function Write-Status {
     param([string]$Message, [string]$Type = "INFO")
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     switch ($Type) {
-        "ERROR" { Write-Host "[$timestamp] ❌ $Message" -ForegroundColor Red }
-        "SUCCESS" { Write-Host "[$timestamp] ✅ $Message" -ForegroundColor Green }
-        "WARNING" { Write-Host "[$timestamp] ⚠️  $Message" -ForegroundColor Yellow }
-        default { Write-Host "[$timestamp] ℹ️  $Message" -ForegroundColor Cyan }
+        "ERROR" { Write-Host "[$timestamp] [ERROR] $Message" -ForegroundColor Red }
+        "SUCCESS" { Write-Host "[$timestamp] [SUCCESS] $Message" -ForegroundColor Green }
+        "WARNING" { Write-Host "[$timestamp] [WARNING] $Message" -ForegroundColor Yellow }
+        default { Write-Host "[$timestamp] [INFO] $Message" -ForegroundColor Cyan }
     }
 }
 
@@ -33,13 +38,38 @@ function Install-WithWinget {
     param([string]$Package, [string]$Name)
     try {
         Write-Status "Instalando $Name via winget..."
-        if ($AssumeYes) {
-            winget install --id $Package --silent --accept-package-agreements --accept-source-agreements
-        } else {
-            winget install --id $Package --interactive
+        Write-Status "Isso pode levar alguns minutos. Aguarde..." "WARNING"
+        
+        # Criar job para mostrar progresso
+        $job = Start-Job -ScriptBlock {
+            param($pkg, $assumeYes)
+            if ($assumeYes) {
+                winget install --id $pkg --silent --accept-package-agreements --accept-source-agreements --verbose
+            } else {
+                winget install --id $pkg --interactive --verbose
+            }
+        } -ArgumentList $Package, $AssumeYes
+        
+        # Mostrar progresso enquanto instala
+        $dots = 0
+        while ($job.State -eq "Running") {
+            $dots = ($dots + 1) % 4
+            $progress = "." * $dots + " " * (3 - $dots)
+            Write-Host "`r[$(Get-Date -Format 'HH:mm:ss')] Instalando $Name$progress" -NoNewline -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
         }
-        Write-Status "$Name instalado com sucesso" "SUCCESS"
-        return $true
+        
+        Write-Host "" # Nova linha
+        $result = Receive-Job -Job $job
+        Remove-Job -Job $job
+        
+        if ($job.State -eq "Completed") {
+            Write-Status "$Name instalado com sucesso" "SUCCESS"
+            return $true
+        } else {
+            Write-Status "Falha ao instalar $Name" "ERROR"
+            return $false
+        }
     } catch {
         Write-Status "Falha ao instalar $Name via winget: $($_.Exception.Message)" "ERROR"
         return $false
@@ -50,13 +80,38 @@ function Install-WithChoco {
     param([string]$Package, [string]$Name)
     try {
         Write-Status "Instalando $Name via chocolatey..."
-        if ($AssumeYes) {
-            choco install $Package -y
-        } else {
-            choco install $Package
+        Write-Status "Isso pode levar alguns minutos. Aguarde..." "WARNING"
+        
+        # Criar job para mostrar progresso
+        $job = Start-Job -ScriptBlock {
+            param($pkg, $assumeYes)
+            if ($assumeYes) {
+                choco install $pkg -y --verbose
+            } else {
+                choco install $pkg --verbose
+            }
+        } -ArgumentList $Package, $AssumeYes
+        
+        # Mostrar progresso enquanto instala
+        $dots = 0
+        while ($job.State -eq "Running") {
+            $dots = ($dots + 1) % 4
+            $progress = "." * $dots + " " * (3 - $dots)
+            Write-Host "`r[$(Get-Date -Format 'HH:mm:ss')] Instalando $Name$progress" -NoNewline -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
         }
-        Write-Status "$Name instalado com sucesso" "SUCCESS"
-        return $true
+        
+        Write-Host "" # Nova linha
+        $result = Receive-Job -Job $job
+        Remove-Job -Job $job
+        
+        if ($job.State -eq "Completed") {
+            Write-Status "$Name instalado com sucesso" "SUCCESS"
+            return $true
+        } else {
+            Write-Status "Falha ao instalar $Name" "ERROR"
+            return $false
+        }
     } catch {
         Write-Status "Falha ao instalar $Name via chocolatey: $($_.Exception.Message)" "ERROR"
         return $false
@@ -64,13 +119,13 @@ function Install-WithChoco {
 }
 
 Write-Status "=== BOOTSTRAP SAFESTIC PARA WINDOWS ==="
-Write-Status "Verificando e instalando dependências..."
+Write-Status "Verificando e instalando dependencias..."
 
 # Verificar se está executando como administrador
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Status "Este script precisa ser executado como Administrador" "ERROR"
-    Write-Status "Clique com botão direito no PowerShell e selecione 'Executar como Administrador'" "WARNING"
+    Write-Status "Clique com botao direito no PowerShell e selecione 'Executar como Administrador'" "WARNING"
     exit 1
 }
 
@@ -104,7 +159,7 @@ if (-not $hasWinget -and -not $hasChoco) {
 
 # Instalar Git for Windows (se não estiver instalado)
 if (-not (Test-Command "git")) {
-    Write-Status "Git não encontrado. Instalando..."
+    Write-Status "Git nao encontrado. Instalando..."
     $installed = $false
     if ($hasWinget) {
         $installed = Install-WithWinget "Git.Git" "Git for Windows"
@@ -117,15 +172,29 @@ if (-not (Test-Command "git")) {
         exit 1
     }
 } else {
-    Write-Status "Git já instalado: $(git --version)" "SUCCESS"
+    Write-Status "Git ja instalado: $(git --version)" "SUCCESS"
 }
 
 # Instalar GNU Make
 if (-not (Test-Command "make")) {
-    Write-Status "Make não encontrado. Instalando..."
+    Write-Status "Make nao encontrado. Instalando..."
     $installed = $false
     if ($hasWinget) {
-        $installed = Install-WithWinget "GnuWin32.Make" "GNU Make"
+        try {
+            Write-Status "Instalando GNU Make via winget..."
+            winget install -e --id GnuWin32.Make --silent --accept-package-agreements --accept-source-agreements
+            Write-Status "GNU Make instalado com sucesso" "SUCCESS"
+            $installed = $true
+            
+            # Adicionar ao PATH da sessão atual
+            $makePath = "C:\Program Files (x86)\GnuWin32\bin"
+            if (Test-Path $makePath) {
+                $env:PATH += ";$makePath"
+                Write-Status "PATH atualizado para a sessão atual" "SUCCESS"
+            }
+        } catch {
+            Write-Status "Falha ao instalar via winget: $($_.Exception.Message)" "WARNING"
+        }
     }
     if (-not $installed -and $hasChoco) {
         $installed = Install-WithChoco "make" "GNU Make"
@@ -135,12 +204,12 @@ if (-not (Test-Command "make")) {
         exit 1
     }
 } else {
-    Write-Status "Make já instalado: $(make --version | Select-Object -First 1)" "SUCCESS"
+    Write-Status "Make ja instalado: $(make --version | Select-Object -First 1)" "SUCCESS"
 }
 
 # Instalar Python 3.10+
 if (-not (Test-Command "python")) {
-    Write-Status "Python não encontrado. Instalando..."
+    Write-Status "Python nao encontrado. Instalando..."
     $installed = $false
     if ($hasWinget) {
         $installed = Install-WithWinget "Python.Python.3.12" "Python 3.12"
@@ -154,18 +223,18 @@ if (-not (Test-Command "python")) {
     }
 } else {
     $pythonVersion = python --version
-    Write-Status "Python já instalado: $pythonVersion" "SUCCESS"
+    Write-Status "Python ja instalado: $pythonVersion" "SUCCESS"
     # Verificar versão mínima
     $version = [Version]($pythonVersion -replace "Python ", "")
     if ($version -lt [Version]"3.10.0") {
-        Write-Status "Python $version é muito antigo. Mínimo: 3.10" "ERROR"
+        Write-Status "Python $version e muito antigo. Minimo: 3.10" "ERROR"
         exit 1
     }
 }
 
 # Instalar pip (geralmente vem com Python)
 if (-not (Test-Command "pip")) {
-    Write-Status "pip não encontrado. Instalando..."
+    Write-Status "pip nao encontrado. Instalando..."
     try {
         python -m ensurepip --upgrade
         Write-Status "pip instalado com sucesso" "SUCCESS"
@@ -174,12 +243,12 @@ if (-not (Test-Command "pip")) {
         exit 1
     }
 } else {
-    Write-Status "pip já instalado: $(pip --version)" "SUCCESS"
+    Write-Status "pip ja instalado: $(pip --version)" "SUCCESS"
 }
 
 # Instalar Restic
 if (-not (Test-Command "restic")) {
-    Write-Status "Restic não encontrado. Instalando..."
+    Write-Status "Restic nao encontrado. Instalando..."
     $installed = $false
     if ($hasWinget) {
         $installed = Install-WithWinget "restic.restic" "Restic"
@@ -192,14 +261,52 @@ if (-not (Test-Command "restic")) {
         exit 1
     }
 } else {
-    Write-Status "Restic já instalado: $(restic version)" "SUCCESS"
+    Write-Status "Restic ja instalado: $(restic version)" "SUCCESS"
 }
 
-# Atualizar PATH se necessário
-$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+# Atualizar PATH se necessario
+$machinePath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
+$userPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+$env:PATH = $machinePath + ";" + $userPath
 
-# Verificar instalações finais
-Write-Status "=== VERIFICAÇÃO FINAL ==="
+# Garantir que GnuWin32 esteja no PATH permanentemente
+$makePath = "C:\Program Files (x86)\GnuWin32\bin"
+if (Test-Path $makePath) {
+    # Atualizar PATH da sessão atual
+    if ($env:PATH -notlike "*$makePath*") {
+        $env:PATH += ";$makePath"
+        Write-Status "PATH da sessao atualizado com GnuWin32" "SUCCESS"
+    }
+    
+    # Atualizar PATH do usuário permanentemente
+    $currentUserPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    if ($currentUserPath -notlike "*$makePath*") {
+        $newUserPath = if ($currentUserPath) { $currentUserPath + ";$makePath" } else { $makePath }
+        [System.Environment]::SetEnvironmentVariable("PATH", $newUserPath, "User")
+        Write-Status "PATH do usuario atualizado permanentemente com GnuWin32" "SUCCESS"
+    }
+}
+
+# Garantir que Restic esteja no PATH permanentemente
+$resticPath = "C:\Users\$env:USERNAME\OneDrive - A7 Technology Business and Service Ltda\Documentos\Restic - Azure\bin"
+if (Test-Path $resticPath) {
+    # Atualizar PATH da sessão atual
+    if ($env:PATH -notlike "*$resticPath*") {
+        $env:PATH += ";$resticPath"
+        Write-Status "PATH da sessao atualizado com Restic" "SUCCESS"
+    }
+    
+    # Atualizar PATH do usuário permanentemente
+    $currentUserPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    if ($currentUserPath -notlike "*$resticPath*") {
+        $newUserPath = if ($currentUserPath) { $currentUserPath + ";$resticPath" } else { $resticPath }
+        [System.Environment]::SetEnvironmentVariable("PATH", $newUserPath, "User")
+        Write-Status "PATH do usuario atualizado permanentemente com Restic" "SUCCESS"
+    }
+}
+
+# Verificar instalacoes finais
+Write-Status "=== VERIFICACAO FINAL ==="
 $tools = @(
     @{Name="Git"; Command="git --version"},
     @{Name="Make"; Command="make --version"},
@@ -220,26 +327,27 @@ foreach ($tool in $tools) {
 }
 
 if (-not $allOk) {
-    Write-Status "Algumas ferramentas falharam na verificação" "ERROR"
-    Write-Status "Pode ser necessário reiniciar o terminal ou adicionar ao PATH manualmente" "WARNING"
+    Write-Status "Algumas ferramentas falharam na verificacao" "ERROR"
+    Write-Status "Pode ser necessario reiniciar o terminal ou adicionar ao PATH manualmente" "WARNING"
     exit 1
 }
 
 # Chamar setup do Git Bash
-Write-Status "Chamando setup específico do Git Bash..."
+Write-Status "Chamando setup especifico do Git Bash..."
 try {
     $setupArgs = if ($AssumeYes) { "--assume-yes" } else { "" }
-    bash -lc "cd '$PWD' && ./scripts/setup_windows.sh $setupArgs"
-    Write-Status "Setup concluído com sucesso!" "SUCCESS"
+    $currentDir = $PWD.Path
+    bash -lc "cd '$currentDir'; ./scripts/setup_windows.sh $setupArgs"
+    Write-Status "Setup concluido com sucesso!" "SUCCESS"
 } catch {
     Write-Status "Falha no setup do Git Bash: $($_.Exception.Message)" "ERROR"
     exit 1
 }
 
-Write-Status "=== BOOTSTRAP CONCLUÍDO ==="
-Write-Status "Todas as dependências foram instaladas com sucesso!" "SUCCESS"
-Write-Status "Próximos passos:" "INFO"
-Write-Status "1. Reinicie o terminal se necessário" "INFO"
+Write-Status "=== BOOTSTRAP CONCLUIDO ===" "SUCCESS"
+Write-Status "Todas as dependencias foram instaladas com sucesso!" "SUCCESS"
+Write-Status "Proximos passos:" "INFO"
+Write-Status "1. Reinicie o terminal se necessario" "INFO"
 Write-Status "2. Configure o arquivo .env" "INFO"
 Write-Status "3. Execute: make init" "INFO"
 Write-Status "4. Execute: make backup" "INFO"

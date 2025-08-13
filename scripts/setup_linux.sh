@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Setup script para Linux - FASE 2
-# Detecta distribuição e instala dependências necessárias para o Safestic
+# Detecta distribuicao e instala dependencias necessarias para o Safestic
 # Uso: ./scripts/setup_linux.sh [--assume-yes]
 
 set -euo pipefail
@@ -56,7 +56,7 @@ detect_distro() {
         DISTRO="unknown"
     fi
     
-    log_info "Distribuição detectada: $DISTRO $VERSION"
+    log_info "Distribuicao detectada: $DISTRO $VERSION"
 }
 
 check_command() {
@@ -99,7 +99,7 @@ install_packages() {
             fi
             ;;
         *)
-            log_error "Distribuição não suportada: $DISTRO"
+            log_error "Distribuicao nao suportada: $DISTRO"
             exit 1
             ;;
     esac
@@ -115,7 +115,7 @@ install_packages() {
 
 install_restic() {
     if check_command restic; then
-        log_success "Restic já instalado: $(restic version)"
+        log_success "Restic ja instalado: $(restic version)"
         return 0
     fi
     
@@ -159,7 +159,7 @@ install_restic() {
     esac
     
     # Se não estiver disponível no repositório, instalar manualmente
-    log_warning "Restic não encontrado nos repositórios. Instalando manualmente..."
+    log_warning "Restic nao encontrado nos repositorios. Instalando manualmente..."
     
     # Detectar arquitetura
     ARCH=$(uname -m)
@@ -167,7 +167,7 @@ install_restic() {
         x86_64) RESTIC_ARCH="amd64" ;;
         aarch64) RESTIC_ARCH="arm64" ;;
         armv7l) RESTIC_ARCH="arm" ;;
-        *) log_error "Arquitetura não suportada: $ARCH"; exit 1 ;;
+        *) log_error "Arquitetura nao suportada: $ARCH"; exit 1 ;;
     esac
     
     # Baixar e instalar Restic
@@ -217,7 +217,7 @@ case $DISTRO in
 esac
 
 # Verificar se já estão instalados
-log_info "Verificando dependências..."
+log_info "Verificando dependencias..."
 
 MISSING_PACKAGES=""
 TOOLS_TO_CHECK=("git" "make" "python3")
@@ -252,7 +252,7 @@ if [ -n "$MISSING_PACKAGES" ]; then
     log_warning "Pacotes faltando:$MISSING_PACKAGES"
     install_packages "$PACKAGES"
 else
-    log_success "Todas as dependências básicas já estão instaladas"
+    log_success "Todas as dependencias basicas ja estao instaladas"
 fi
 
 # Verificar versão do Python
@@ -269,19 +269,19 @@ if check_command "$PYTHON_CMD"; then
     if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 10 ]; then
         log_success "Python $PYTHON_VERSION encontrado"
     else
-        log_error "Python 3.10+ necessário. Encontrado: $PYTHON_VERSION"
+        log_error "Python 3.10+ necessario. Encontrado: $PYTHON_VERSION"
         exit 1
     fi
 else
-    log_error "Python não encontrado após instalação"
+    log_error "Python nao encontrado apos instalacao"
     exit 1
 fi
 
 # Instalar Restic
 install_restic
 
-# Instalar dependências Python do projeto
-log_info "Instalando dependências Python do projeto..."
+# Instalar dependencias Python do projeto
+log_info "Instalando dependencias Python do projeto..."
 
 # Usar pip3 se disponível, senão pip
 PIP_CMD="pip3"
@@ -290,27 +290,27 @@ if ! check_command pip3; then
 fi
 
 if [ -f "pyproject.toml" ]; then
-    log_info "Detectado pyproject.toml. Instalando dependências..."
+    log_info "Detectado pyproject.toml. Instalando dependencias..."
     if $PIP_CMD install -e .; then
-        log_success "Dependências do pyproject.toml instaladas"
+        log_success "Dependencias do pyproject.toml instaladas"
     else
-        log_error "Falha ao instalar dependências do pyproject.toml"
+        log_error "Falha ao instalar dependencias do pyproject.toml"
         exit 1
     fi
 elif [ -f "requirements.txt" ]; then
-    log_info "Detectado requirements.txt. Instalando dependências..."
+    log_info "Detectado requirements.txt. Instalando dependencias..."
     if $PIP_CMD install --user -r requirements.txt; then
-        log_success "Dependências do requirements.txt instaladas"
+        log_success "Dependencias do requirements.txt instaladas"
     else
-        log_error "Falha ao instalar dependências do requirements.txt"
+        log_error "Falha ao instalar dependencias do requirements.txt"
         exit 1
     fi
 else
-    log_warning "Nenhum arquivo de dependências encontrado (pyproject.toml ou requirements.txt)"
+    log_warning "Nenhum arquivo de dependencias encontrado (pyproject.toml ou requirements.txt)"
 fi
 
-# Verificação final
-log_info "=== VERIFICAÇÃO FINAL ==="
+# Verificacao final
+log_info "=== VERIFICACAO FINAL ==="
 
 TOOLS=("git --version" "make --version" "$PYTHON_CMD --version" "$PIP_CMD --version" "restic version")
 ALL_OK=true
@@ -327,14 +327,14 @@ for tool_cmd in "${TOOLS[@]}"; do
 done
 
 if [ "$ALL_OK" = false ]; then
-    log_error "Algumas ferramentas falharam na verificação"
-    log_warning "Pode ser necessário reiniciar o terminal ou verificar o PATH"
+    log_error "Algumas ferramentas falharam na verificacao"
+    log_warning "Pode ser necessario reiniciar o terminal ou verificar o PATH"
     exit 1
 fi
 
-log_success "=== SETUP CONCLUÍDO COM SUCESSO ==="
-log_info "Todas as dependências foram instaladas e verificadas!"
-log_info "Próximos passos:"
+log_success "=== SETUP CONCLUIDO COM SUCESSO ==="
+log_info "Todas as dependencias foram instaladas e verificadas!"
+log_info "Proximos passos:"
 log_info "1. Configure o arquivo .env baseado no .env.example"
 log_info "2. Execute: make init"
 log_info "3. Execute: make backup"

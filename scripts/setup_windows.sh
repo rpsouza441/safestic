@@ -86,16 +86,16 @@ install_with_choco() {
 }
 
 log_info "=== SETUP SAFESTIC PARA WINDOWS (GIT BASH) ==="
-log_info "Verificando e instalando dependências..."
+log_info "Verificando e instalando dependencias..."
 
-# Verificar se winget está disponível
+# Verificar se winget esta disponivel
 HAS_WINGET=false
 if powershell.exe -Command "Get-Command winget -ErrorAction SilentlyContinue" >/dev/null 2>&1; then
     HAS_WINGET=true
     log_success "winget detectado"
 fi
 
-# Verificar se chocolatey está disponível
+# Verificar se chocolatey esta disponivel
 HAS_CHOCO=false
 if powershell.exe -Command "Get-Command choco -ErrorAction SilentlyContinue" >/dev/null 2>&1; then
     HAS_CHOCO=true
@@ -108,11 +108,11 @@ if [ "$HAS_WINGET" = false ] && [ "$HAS_CHOCO" = false ]; then
     exit 1
 fi
 
-# Verificar e instalar Git (se necessário)
+# Verificar e instalar Git (se necessario)
 if check_command git; then
-    log_success "Git já instalado: $(git --version)"
+    log_success "Git ja instalado: $(git --version)"
 else
-    log_warning "Git não encontrado. Instalando..."
+    log_warning "Git nao encontrado. Instalando..."
     INSTALLED=false
     
     if [ "$HAS_WINGET" = true ]; then
@@ -135,9 +135,9 @@ fi
 
 # Verificar e instalar Make
 if check_command make; then
-    log_success "Make já instalado: $(make --version | head -n1)"
+    log_success "Make ja instalado: $(make --version | head -n1)"
 else
-    log_warning "Make não encontrado. Instalando..."
+    log_warning "Make nao encontrado. Instalando..."
     INSTALLED=false
     
     if [ "$HAS_WINGET" = true ]; then
@@ -161,18 +161,18 @@ fi
 # Verificar e instalar Python 3.10+
 if check_command python; then
     PYTHON_VERSION=$(python --version 2>&1 | cut -d' ' -f2)
-    log_success "Python já instalado: Python $PYTHON_VERSION"
+    log_success "Python ja instalado: Python $PYTHON_VERSION"
     
-    # Verificar se a versão é >= 3.10
+    # Verificar se a versao e >= 3.10
     MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
     MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
     
     if [ "$MAJOR" -lt 3 ] || ([ "$MAJOR" -eq 3 ] && [ "$MINOR" -lt 10 ]); then
-        log_error "Python $PYTHON_VERSION é muito antigo. Versão mínima: 3.10"
+        log_error "Python $PYTHON_VERSION e muito antigo. Versao minima: 3.10"
         exit 1
     fi
 else
-    log_warning "Python não encontrado. Instalando..."
+    log_warning "Python nao encontrado. Instalando..."
     INSTALLED=false
     
     if [ "$HAS_WINGET" = true ]; then
@@ -195,9 +195,9 @@ fi
 
 # Verificar e instalar pip
 if check_command pip; then
-    log_success "pip já instalado: $(pip --version)"
+    log_success "pip ja instalado: $(pip --version)"
 else
-    log_warning "pip não encontrado. Instalando..."
+    log_warning "pip nao encontrado. Instalando..."
     if python -m ensurepip --upgrade; then
         log_success "pip instalado com sucesso"
     else
@@ -208,9 +208,9 @@ fi
 
 # Verificar e instalar Restic
 if check_command restic; then
-    log_success "Restic já instalado: $(restic version)"
+    log_success "Restic ja instalado: $(restic version)"
 else
-    log_warning "Restic não encontrado. Instalando..."
+    log_warning "Restic nao encontrado. Instalando..."
     INSTALLED=false
     
     if [ "$HAS_WINGET" = true ]; then
@@ -231,31 +231,31 @@ else
     fi
 fi
 
-# Instalar dependências Python do projeto
-log_info "Instalando dependências Python do projeto..."
+# Instalar dependencias Python do projeto
+log_info "Instalando dependencias Python do projeto..."
 
 if [ -f "pyproject.toml" ]; then
-    log_info "Detectado pyproject.toml. Instalando dependências..."
+    log_info "Detectado pyproject.toml. Instalando dependencias..."
     if pip install -e .; then
-        log_success "Dependências do pyproject.toml instaladas"
+        log_success "Dependencias do pyproject.toml instaladas"
     else
-        log_error "Falha ao instalar dependências do pyproject.toml"
+        log_error "Falha ao instalar dependencias do pyproject.toml"
         exit 1
     fi
 elif [ -f "requirements.txt" ]; then
-    log_info "Detectado requirements.txt. Instalando dependências..."
+    log_info "Detectado requirements.txt. Instalando dependencias..."
     if pip install -r requirements.txt; then
-        log_success "Dependências do requirements.txt instaladas"
+        log_success "Dependencias do requirements.txt instaladas"
     else
-        log_error "Falha ao instalar dependências do requirements.txt"
+        log_error "Falha ao instalar dependencias do requirements.txt"
         exit 1
     fi
 else
-    log_warning "Nenhum arquivo de dependências encontrado (pyproject.toml ou requirements.txt)"
+    log_warning "Nenhum arquivo de dependencias encontrado (pyproject.toml ou requirements.txt)"
 fi
 
-# Verificação final
-log_info "=== VERIFICAÇÃO FINAL ==="
+# Verificacao final
+log_info "=== VERIFICACAO FINAL ==="
 
 TOOLS=("git --version" "make --version" "python --version" "pip --version" "restic version")
 ALL_OK=true
@@ -272,14 +272,14 @@ for tool_cmd in "${TOOLS[@]}"; do
 done
 
 if [ "$ALL_OK" = false ]; then
-    log_error "Algumas ferramentas falharam na verificação"
-    log_warning "Pode ser necessário reiniciar o terminal ou adicionar ao PATH manualmente"
+    log_error "Algumas ferramentas falharam na verificacao"
+    log_warning "Pode ser necessario reiniciar o terminal ou adicionar ao PATH manualmente"
     exit 1
 fi
 
-log_success "=== SETUP CONCLUÍDO COM SUCESSO ==="
-log_info "Todas as dependências foram instaladas e verificadas!"
-log_info "Próximos passos:"
+log_success "=== SETUP CONCLUIDO COM SUCESSO ==="
+log_info "Todas as dependencias foram instaladas e verificadas!"
+log_info "Proximos passos:"
 log_info "1. Configure o arquivo .env baseado no .env.example"
 log_info "2. Execute: make init"
 log_info "3. Execute: make backup"
