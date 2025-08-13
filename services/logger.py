@@ -1,96 +1,342 @@
-"""Utility helpers for timestamped logging in scripts.
+"""Sistema de logging estruturado para o projeto safestic.
 
-This module centralises logging-related helpers so that every script in the
-project can easily create timestamped log files and record detailed
-information about the commands being executed.  The goal is to make debugging
-easier by exposing the full stdout/stderr of external processes and any
-exceptions raised during execution.
+Este módulo fornece funcionalidades para logging estruturado em formato JSON,
+com suporte a níveis de log, contexto adicional e redação automática de segredos.
+Também inclui funções para execução de comandos com logging detalhado.
 """
 
 from __future__ import annotations
 
 import datetime
+import json
+import logging
+import os
+import platform
+import re
+import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import TextIO, Sequence
+from typing import Any, Dict, List, Optional, Sequence, TextIO, Union, cast
+
+from pythonjsonlogger import jsonlogger
+
+from .credentials import get_credential
+
+# Padrões para redação de segredos
+SECRET_PATTERNS = [
+    # Senhas
+    r'(RESTIC_PASSWORD=)[^\s]+',
+    r'(password=)[^\s]+',
+    r'(senha=)[^\s]+',
+    # AWS
+    r'(AWS_ACCESS_KEY_ID=)[^\s]+',
+    r'(AWS_SECRET_ACCESS_KEY=)[^\s]+',
+    # Azure
+    r'(AZURE_ACCOUNT_NAME=)[^\s]+',
+    r'(AZURE_ACCOUNT_KEY=)[^\s]+',
+    # GCP
+    r'(GOOGLE_APPLICATION_CREDENTIALS=)[^\s]+',
+    # Tokens
+    r'(token=)[^\s]+',
+    r'(api_key=)[^\s]+',
+]
+
+
+def redact_secrets(text: str) -> str:
+    """Redige segredos em texto.
+    
+    Parameters
+    ----------
+    text : str
+        Texto a ser processado
+        
+    Returns
+    -------
+    str
+        Texto com segredos redigidos
+    """
+    for pattern in SECRET_PATTERNS:
+        text = re.sub(pattern, r'\1REDACTED', text)
+    return text
+
+
+class SafesticJsonFormatter(jsonlogger.JsonFormatter):
+    """Formatador JSON personalizado com campos adicionais e redação de segredos."""
+    
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.hostname = socket.gethostname()
+        self.platform = platform.system()
+    
+    def add_fields(self, log_record: Dict[str, Any], record: logging.LogRecord, message_dict: Dict[str, Any]) -> None:
+        """Adiciona campos padrão e redige segredos."""
+        super().add_fields(log_record, record, message_dict)
+        
+        # Adicionar campos padrão
+        log_record["timestamp"] = datetime.datetime.now().isoformat()
+        log_record["hostname"] = self.hostname
+        log_record["platform"] = self.platform
+        
+        # Redigir segredos em todos os campos de texto
+        for key, value in log_record.items():
+            if isinstance(value, str):
+                log_record[key] = redact_secrets(value)
+
+
+def setup_logger(name: str, log_level: str = "INFO", log_file: Optional[str] = None) -> logging.Logger:
+    """Configura um logger estruturado.
+    
+    Parameters
+    ----------
+    name : str
+        Nome do logger
+    log_level : str
+        Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    log_file : Optional[str]
+        Caminho para arquivo de log
+        
+    Returns
+    -------
+    logging.Logger
+        Logger configurado
+    """
+    logger = logging.getLogger(name)
+    
+    # Converter nível de log para constante do logging
+    level = getattr(logging, log_level.upper(), logging.INFO)
+    logger.setLevel(level)
+    
+    # Remover handlers existentes
+    for handler in logger.handlers[:]:  
+        logger.removeHandler(handler)
+    
+    # Criar formatador JSON
+    formatter = SafesticJsonFormatter(
+        '%(timestamp)s %(level)s %(name)s %(message)s',
+        rename_fields={'levelname': 'level', 'module': 'source'}
+    )
+    
+    # Adicionar handler para console
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # Adicionar handler para arquivo se especificado
+    if log_file:
+        # Garantir que o diretório exista
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    
+    return logger
 
 
 def create_log_file(prefix: str, log_dir: str) -> str:
-    """Return a new log file path inside ``log_dir`` using ``prefix``.
-
+    """Cria um arquivo de log com timestamp.
+    
     Parameters
     ----------
     prefix: str
-        Short identifier used in the log file name, e.g. ``"backup"``.
+        Identificador curto usado no nome do arquivo, ex: "backup".
     log_dir: str
-        Directory where the log file will be created.
+        Diretório onde o arquivo de log será criado.
 
     Returns
     -------
     str
-        Full path to the newly created log file. The directory is created
-        automatically if it does not exist.
+        Caminho completo para o arquivo de log. O diretório é criado
+        automaticamente se não existir.
     """
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     now = datetime.datetime.now()
     return now.strftime(f"{log_dir}/{prefix}_%Y%m%d_%H%M%S.log")
 
 
-def log(msg: str, log_file: TextIO) -> None:
-    """Print ``msg`` and append it to ``log_file`` with a timestamp."""
-    timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    line = f"{timestamp} {msg}"
-    print(line)
-    log_file.write(line + "\n")
+def log(msg: str, log_file: TextIO, level: str = "INFO", extra: Optional[Dict[str, Any]] = None) -> None:
+    """Registra uma mensagem no console e no arquivo de log com timestamp.
+    
+    Parameters
+    ----------
+    msg : str
+        Mensagem a ser registrada
+    log_file : TextIO
+        Arquivo de log aberto para escrita
+    level : str
+        Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    extra : Optional[Dict[str, Any]]
+        Informações adicionais para incluir no log
+    """
+    timestamp = datetime.datetime.now().isoformat()
+    
+    # Redigir segredos na mensagem
+    msg = redact_secrets(msg)
+    
+    # Criar entrada de log estruturada
+    log_entry = {
+        "timestamp": timestamp,
+        "level": level,
+        "message": msg,
+        "hostname": socket.gethostname(),
+    }
+    
+    # Adicionar informações extras se fornecidas
+    if extra:
+        for key, value in extra.items():
+            if isinstance(value, str):
+                log_entry[key] = redact_secrets(value)
+            else:
+                log_entry[key] = value
+    
+    # Converter para JSON
+    log_json = json.dumps(log_entry)
+    
+    # Imprimir no console
+    print(log_json)
+    
+    # Escrever no arquivo de log
+    log_file.write(log_json + "\n")
+    log_file.flush()
 
 
 def run_cmd(
     cmd: Sequence[str],
     log_file: TextIO,
-    env: dict[str, str] | None = None,
-    success_msg: str | None = None,
-    error_msg: str | None = None,
-) -> tuple[bool, subprocess.CompletedProcess[str] | None]:
-    """Execute ``cmd`` capturing stdout and stderr.
-
-    All output is written both to ``log_file`` and to the console so the user
-    can follow the progress in real time.  The function returns a tuple where
-    the first element indicates success and the second is the underlying
-    ``CompletedProcess`` instance (``None`` when the command could not be
-    spawned).
+    env: Optional[Dict[str, str]] = None,
+    timeout: Optional[int] = None,
+    check: bool = False,
+) -> int:
+    """Executa um comando e registra saída e erros.
+    
+    Parameters
+    ----------
+    cmd : Sequence[str]
+        Comando a ser executado como lista de strings
+    log_file : TextIO
+        Arquivo de log aberto para escrita
+    env : Optional[Dict[str, str]]
+        Variáveis de ambiente para o comando
+    timeout : Optional[int]
+        Tempo limite em segundos
+    check : bool
+        Se deve lançar exceção em caso de erro
+        
+    Returns
+    -------
+    int
+        Código de retorno do comando
+        
+    Raises
+    ------
+    subprocess.CalledProcessError
+        Se check=True e o comando retornar código diferente de zero
+    subprocess.TimeoutExpired
+        Se o comando exceder o timeout
     """
-
-    log(f"Comando: {' '.join(cmd)}", log_file)
+    # Redigir segredos no comando para logging
+    safe_cmd = [redact_secrets(str(arg)) for arg in cmd]
+    
+    # Registrar início da execução
+    start_time = time.time()
+    log(
+        f"Executando: {' '.join(safe_cmd)}", 
+        log_file, 
+        level="INFO",
+        extra={"command": safe_cmd, "action": "command_start"}
+    )
+    
     try:
+        # Executar comando
         result = subprocess.run(
             cmd,
             env=env,
-            text=True,
             capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=check,
         )
-    except Exception as exc:  # pragma: no cover - runtime issues
+        
+        # Calcular tempo de execução
+        execution_time = time.time() - start_time
+        
+        # Redigir segredos na saída
+        safe_stdout = redact_secrets(result.stdout)
+        safe_stderr = redact_secrets(result.stderr)
+        
+        # Registrar resultado
+        if result.returncode == 0:
+            log(
+                f"Comando concluído com sucesso em {execution_time:.2f}s", 
+                log_file, 
+                level="INFO",
+                extra={
+                    "command": safe_cmd,
+                    "returncode": result.returncode,
+                    "execution_time": execution_time,
+                    "action": "command_success"
+                }
+            )
+            if safe_stdout:
+                log(f"Saída: {safe_stdout}", log_file, level="DEBUG", extra={"stdout": safe_stdout})
+        else:
+            log(
+                f"Comando falhou com código {result.returncode} em {execution_time:.2f}s", 
+                log_file, 
+                level="ERROR",
+                extra={
+                    "command": safe_cmd,
+                    "returncode": result.returncode,
+                    "execution_time": execution_time,
+                    "action": "command_error"
+                }
+            )
+            if safe_stderr:
+                log(f"ERRO: {safe_stderr}", log_file, level="ERROR", extra={"stderr": safe_stderr})
+            if safe_stdout:
+                log(f"Saída: {safe_stdout}", log_file, level="DEBUG", extra={"stdout": safe_stdout})
+        
+        return result.returncode
+    
+    except subprocess.TimeoutExpired as e:
+        # Calcular tempo de execução
+        execution_time = time.time() - start_time
+        
+        # Registrar timeout
         log(
-            f"{error_msg or 'Falha ao executar comando'}: {exc}",
-            log_file,
+            f"Comando excedeu o timeout de {timeout}s após {execution_time:.2f}s", 
+            log_file, 
+            level="ERROR",
+            extra={
+                "command": safe_cmd,
+                "timeout": timeout,
+                "execution_time": execution_time,
+                "action": "command_timeout"
+            }
         )
-        return False, None
-
-    if result.stdout:
-        print(result.stdout, end="")
-        log_file.write(result.stdout)
-    if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
-        log_file.write(result.stderr)
-
-    if result.returncode == 0:
-        if success_msg:
-            log(success_msg, log_file)
-        return True, result
-
-    log(
-        f"{error_msg or 'Comando falhou'} (código {result.returncode})",
-        log_file,
-    )
-    return False, result
+        
+        # Re-lançar exceção
+        raise
+    
+    except Exception as e:
+        # Calcular tempo de execução
+        execution_time = time.time() - start_time
+        
+        # Registrar erro
+        log(
+            f"Erro ao executar comando: {str(e)}", 
+            log_file, 
+            level="ERROR",
+            extra={
+                "command": safe_cmd,
+                "error": str(e),
+                "execution_time": execution_time,
+                "action": "command_exception"
+            }
+        )
+        
+        # Re-lançar exceção
+        raise
 

@@ -1,0 +1,19 @@
+python-dotenv>=0.19.0
+keyring>=23.0.0
+pydantic>=1.9.0
+cryptography>=36.0.0
+python-json-logger>=2.0.0
+typing-extensions>=4.0.0
+
+# Gerenciadores de segredos em nuvem (opcionais)
+boto3>=1.20.0  # AWS Secrets Manager
+azure-keyvault-secrets>=4.3.0  # Azure Key Vault
+google-cloud-secret-manager>=2.8.0  # GCP Secret Manager
+
+# Desenvolvimento e testes
+pytest>=7.0.0
+pytest-cov>=3.0.0
+pytest-mock>=3.7.0
+mypy>=0.910
+ruff>=0.0.230
+sops>=3.7.0  # Criptografia de arquivos .env
