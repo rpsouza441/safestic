@@ -2,36 +2,65 @@
 
 from __future__ import annotations
 
-import json
 import sys
+from datetime import datetime
+import logging
 
 from services.script import ResticScript
+from services.restic_client import ResticClient, ResticError
 
 
 def list_snapshots() -> None:
-    """Fetch and print all snapshots from the repository."""
+    """Fetch and print all snapshots from the repository.
+    
+    Utiliza o ResticClient para obter a lista de snapshots com retry automático e tratamento de erros.
+    """
 
     with ResticScript("list_snapshots") as ctx:
-        success, result = ctx.run_cmd(
-            ["restic", "-r", ctx.repository, "snapshots", "--json"],
-            error_msg="Falha ao listar snapshots",
+        # Configurar logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler()],
         )
-        if not success or result is None:
-            sys.exit(1)
-        try:
-            snapshots = json.loads(result.stdout)
-        except json.JSONDecodeError as exc:
-            ctx.log(f"Erro ao decodificar JSON: {exc}")
-            sys.exit(1)
-
+        
         ctx.log(f"Listando snapshots do repositório: {ctx.repository}\n")
-        print("ID | Data | Hostname | Caminhos")
-        for snap in snapshots:
-            short_id = snap.get("short_id", "")
-            time = snap.get("time", "")
-            hostname = snap.get("hostname", "")
-            paths = ", ".join(snap.get("paths", []))
-            print(f"{short_id} | {time} | {hostname} | {paths}")
+
+        try:
+            # Criar cliente Restic com retry
+            client = ResticClient(max_attempts=3)
+            
+            # Obter lista de snapshots
+            snapshots = client.list_snapshots()
+            
+            if not snapshots:
+                ctx.log("Nenhum snapshot encontrado no repositório.")
+                sys.exit(0)
+
+            print("{:<12} {:<20} {:<15} {}".format("ID", "Data", "Host", "Caminhos"))
+            print("-" * 80)
+
+            for snap in snapshots:
+                snapshot_time = datetime.fromisoformat(
+                    snap["time"].replace("Z", "+00:00")
+                )
+                formatted_time = snapshot_time.strftime("%Y-%m-%d %H:%M:%S")
+                paths = ", ".join(snap["paths"])
+                print(
+                    "{:<12} {:<20} {:<15} {}".format(
+                        snap["short_id"],
+                        formatted_time,
+                        snap["hostname"],
+                        paths,
+                    )
+                )
+
+        except ResticError as exc:
+            ctx.log(f"[ERRO] {exc}")
+            sys.exit(1)
+        except Exception as exc:
+            ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

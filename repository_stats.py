@@ -2,44 +2,51 @@
 
 from __future__ import annotations
 
-import json
+import logging
 import sys
 
 from services.script import ResticScript
+from services.restic_client import ResticClient, ResticError
 
 
 def show_repository_stats() -> None:
-    """Print repository size information."""
-
+    """Print repository size information.
+    
+    Utiliza o ResticClient para obter estatísticas com retry automático e tratamento de erros.
+    """
     with ResticScript("repository_stats") as ctx:
+        # Configurar logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler()],
+        )
+        
         ctx.log(f"Obtendo estatísticas gerais do repositório: {ctx.repository}\n")
 
-        success, result = ctx.run_cmd(
-            [
-                "restic",
-                "-r",
-                ctx.repository,
-                "stats",
-                "--mode",
-                "raw-data",
-                "--json",
-            ],
-            error_msg="Falha ao obter estatísticas",
-        )
-        if not success or result is None:
-            sys.exit(1)
-
         try:
-            stats = json.loads(result.stdout)
-        except json.JSONDecodeError as exc:
-            ctx.log(f"Erro ao decodificar JSON: {exc}")
+            # Criar cliente Restic com retry
+            client = ResticClient(max_attempts=3)
+            
+            # Obter estatísticas do repositório
+            stats = client.get_repository_stats()
+            
+            if stats:
+                size_bytes = stats.get("total_size", 0)
+                size_gib = size_bytes / (1024 ** 3)
+                print(
+                    f"Tamanho total armazenado no repositório (dados únicos): {size_gib:.3f} GiB",
+                )
+            else:
+                ctx.log("Não foi possível obter estatísticas do repositório.")
+                sys.exit(1)
+                
+        except ResticError as exc:
+            ctx.log(f"[ERRO] {exc}")
             sys.exit(1)
-
-        size_bytes = stats.get("total_size", 0)
-        size_gib = size_bytes / (1024 ** 3)
-        print(
-            f"Tamanho total armazenado no repositório (dados únicos): {size_gib:.3f} GiB",
-        )
+        except Exception as exc:
+            ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -1,11 +1,25 @@
+import logging
 import os
 import sys
 
 from services.script import ResticScript
+from services.restic_client import ResticClient, ResticError
 
 
-def main() -> None:
+def check_restic_access() -> None:
+    """Verifica se o Restic está instalado e se o repositório está acessível.
+    
+    Utiliza o ResticClient para verificar acesso ao repositório com retry automático e tratamento de erros.
+    """
     with ResticScript("check_restic_access") as ctx:
+        # Configurar logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler()],
+        )
+        
+        ctx.log("=== Verificando acesso ao repositório Restic ===")
         restic_password = os.getenv("RESTIC_PASSWORD")
 
         print("🔍 Verificando variáveis essenciais do .env")
@@ -39,35 +53,40 @@ def main() -> None:
             print("\n[FATAL] Variáveis obrigatórias estão ausentes. Abortando.")
             sys.exit(1)
 
-        ctx.log("\nVerificando se 'restic' está disponível no PATH...")
-        success, _ = ctx.run_cmd(
-            ["restic", "version"],
-            error_msg="Restic não encontrado ou com erro",
-        )
-        if not success:
-            sys.exit(1)
-        ctx.log("Restic está instalado e acessível.")
-        print("Restic está instalado e acessível.")
-
-        ctx.log("\nTestando acesso ao repositório...")
-        success, _ = ctx.run_cmd(
-            ["restic", "-r", ctx.repository, "snapshots"],
-            error_msg="Não foi possível acessar o repositório",
-        )
-        if success:
-            ctx.log("Acesso ao repositório bem-sucedido.")
-            print("Acesso ao repositório bem-sucedido.")
-        else:
-            print("Não foi possível acessar o repositório.")
-            ctx.log("Tentando inicializar...")
-            success, _ = ctx.run_cmd(
-                ["restic", "-r", ctx.repository, "init"],
-                error_msg="Falha ao inicializar o repositório",
-                success_msg="Repositório foi inicializado com sucesso!",
-            )
-            if not success:
+        try:
+            # Criar cliente Restic com retry
+            client = ResticClient(max_attempts=3)
+            
+            # Verificar se o Restic está disponível
+            ctx.log("\nVerificando se 'restic' está disponível no PATH...")
+            if not client.check_restic_installed():
+                ctx.log("Restic não encontrado ou com erro")
                 sys.exit(1)
+            ctx.log("Restic está instalado e acessível.")
+            print("Restic está instalado e acessível.")
+            
+            # Testar acesso ao repositório
+            ctx.log("\nTestando acesso ao repositório...")
+            if client.check_repository_access():
+                ctx.log("Acesso ao repositório bem-sucedido.")
+                print("Acesso ao repositório bem-sucedido.")
+            else:
+                print("Não foi possível acessar o repositório.")
+                ctx.log("Tentando inicializar...")
+                if client.init_repository():
+                    ctx.log("Repositório foi inicializado com sucesso!")
+                    print("Repositório foi inicializado com sucesso!")
+                else:
+                    ctx.log("Falha ao inicializar o repositório")
+                    sys.exit(1)
+                    
+        except ResticError as exc:
+            ctx.log(f"[ERRO] {exc}")
+            sys.exit(1)
+        except Exception as exc:
+            ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    check_restic_access()

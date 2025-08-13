@@ -4,64 +4,67 @@ from __future__ import annotations
 
 import json
 import sys
+import logging
 
 from services.script import ResticScript
+from services.restic_client import ResticClient, ResticError
 
 
 def list_snapshots_with_size() -> None:
-    """Print snapshot information including estimated restore size."""
-
+    """Print snapshot information including estimated restore size.
+    
+    Utiliza o ResticClient para obter snapshots e seus tamanhos com retry automático e tratamento de erros.
+    """
     with ResticScript("list_snapshots_with_size") as ctx:
-        success, result = ctx.run_cmd(
-            ["restic", "-r", ctx.repository, "snapshots", "--json"],
-            error_msg="Falha ao buscar snapshots",
+        # Configurar logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler()],
         )
-        if not success or result is None:
-            sys.exit(1)
+        
         try:
-            snapshots = json.loads(result.stdout)
-        except json.JSONDecodeError as exc:
-            ctx.log(f"Erro ao decodificar JSON: {exc}")
-            sys.exit(1)
+            # Criar cliente Restic com retry
+            client = ResticClient(repository=ctx.repository, max_attempts=3)
+            
+            # Obter lista de snapshots
+            snapshots = client.list_snapshots()
+            
+            if not snapshots:
+                ctx.log("Nenhum snapshot encontrado no repositório.")
+                return
 
-        ctx.log(f"Listando snapshots do repositório: {ctx.repository}\n")
+            ctx.log(f"Listando snapshots do repositório: {ctx.repository}\n")
 
-        for snap in snapshots:
-            short_id = snap["short_id"]
-            time = snap["time"]
-            hostname = snap["hostname"]
-            paths = ", ".join(snap["paths"])
+            for snap in snapshots:
+                short_id = snap["short_id"]
+                time = snap["time"]
+                hostname = snap["hostname"]
+                paths = ", ".join(snap["paths"])
 
-            success, stats_res = ctx.run_cmd(
-                [
-                    "restic",
-                    "-r",
-                    ctx.repository,
-                    "stats",
-                    short_id,
-                    "--mode",
-                    "restore-size",
-                    "--json",
-                ],
-                error_msg="Erro ao calcular tamanho",
-            )
-
-            if success and stats_res is not None:
                 try:
-                    stats = json.loads(stats_res.stdout)
-                    total_bytes = stats.get("total_size", 0)
-                    total_gib = total_bytes / (1024 ** 3)
-                    print(
-                        f"{short_id} | {time} | {hostname} | {paths} | {total_gib:.3f} GiB",
-                    )
-                except json.JSONDecodeError:
+                    stats = client.get_snapshot_size(short_id)
+                    if stats and "total_size" in stats:
+                        total_bytes = stats.get("total_size", 0)
+                        total_gib = total_bytes / (1024 ** 3)
+                        print(
+                            f"{short_id} | {time} | {hostname} | {paths} | {total_gib:.3f} GiB",
+                        )
+                    else:
+                        print(
+                            f"{short_id} | {time} | {hostname} | {paths} | (erro ao calcular tamanho)",
+                        )
+                except ResticError:
                     print(
                         f"{short_id} | {time} | {hostname} | {paths} | (erro ao calcular tamanho)",
                     )
-            else:
-                print(
-                    f"{short_id} | {time} | {hostname} | {paths} | (erro ao calcular tamanho)",
-                )
+
+        except ResticError as exc:
+            ctx.log(f"[ERRO] {exc}")
+            sys.exit(1)
+        except Exception as exc:
+            ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
