@@ -54,7 +54,11 @@ cd safestic
 
 # Configure o ambiente
 cp .env.example .env
-# Edite o arquivo .env com suas configuracoes
+# Edite o arquivo .env com suas configuracoes basicas
+
+# Configure as credenciais (OBRIGATORIO)
+make setup-credentials
+# OU edite manualmente o .env com RESTIC_PASSWORD
 
 # Execute a configuracao inicial
 make first-run
@@ -71,7 +75,11 @@ cd safestic
 
 # Configure o ambiente
 cp .env.example .env
-# Edite o arquivo .env com suas configuracoes
+# Edite o arquivo .env com suas configuracoes basicas
+
+# Configure as credenciais (OBRIGATORIO)
+make setup-credentials
+# OU edite manualmente o .env com RESTIC_PASSWORD
 
 # Execute a configuracao inicial
 make first-run
@@ -99,89 +107,38 @@ Para instrucoes detalhadas de instalacao e configuracao, consulte:
 
 ## ⚙️ Configuracao do `.env`
 
-Use o arquivo de exemplo:
+O arquivo `.env` contem todas as configuracoes necessarias para o SafeStic:
 
 ```bash
+# Copie o arquivo de exemplo
 cp .env.example .env
+
+# Configure as credenciais (recomendado)
+make setup-credentials
+
+# OU edite manualmente o .env
+notepad .env  # Windows
+nano .env     # Linux
 ```
 
-Edite as variaveis conforme seu provedor:
+### Configuracoes Essenciais
 
-## Configuracao
+| Variavel | Descricao | Exemplo |
+|----------|-----------|----------|
+| `STORAGE_PROVIDER` | Provedor de armazenamento | `local`, `aws`, `azure`, `gcp` |
+| `STORAGE_BUCKET` | Destino do backup | `/backup` ou `meu-bucket` |
+| `RESTIC_PASSWORD` | **Senha obrigatória** para criptografia | `MinhaSenh@Muito$egura123!` |
+| `CREDENTIAL_SOURCE` | Fonte das credenciais | `env`, `keyring`, `aws_secrets` |
+| `BACKUP_SOURCE_DIRS` | Diretorios para backup | `/home/user,/etc` |
+| `RESTORE_TARGET_DIR` | Diretorio de restauracao | `./restore` |
 
-O arquivo `.env` contem todas as configuracoes necessarias. Principais variaveis:
+⚠️ **IMPORTANTE**: 
+- O `RESTIC_PASSWORD` é **obrigatório** - sem ele, seus backups são irrecuperáveis!
+- Use `make setup-credentials` para configuração segura e interativa
+- Consulte o arquivo `.env.example` para todas as opções disponíveis
+- Veja `SETUP_SAFESTIC.md` para guia detalhado de configuração
 
-### Configuracoes Basicas
-- `STORAGE_PROVIDER`: Provedor de armazenamento (local, aws, azure, gcp)
-- `STORAGE_BUCKET`: Caminho ou bucket de armazenamento
-- `RESTIC_PASSWORD`: **Senha obrigatória** para criptografia dos backups (guarde com segurança!)
-- `CREDENTIAL_SOURCE`: Fonte das credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops)
-- `BACKUP_SOURCE_DIRS`: Diretorios para backup (separados por virgula)
-- `LOG_DIR`: Diretorio para logs
-- `LOG_LEVEL`: Nivel de log (DEBUG, INFO, WARNING, ERROR)
-
-### Configuracoes de Retencao
-- `RETENTION_ENABLED`: Habilitar politica de retencao (true/false)
-- `KEEP_HOURLY`: Manter backups por hora
-- `KEEP_DAILY`: Manter backups diarios
-- `KEEP_WEEKLY`: Manter backups semanais
-- `KEEP_MONTHLY`: Manter backups mensais
-
-### Configuracoes de Nuvem
-- **AWS**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`
-- **Azure**: `AZURE_ACCOUNT_NAME`, `AZURE_ACCOUNT_KEY`
-- **GCP**: `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_PROJECT_ID`
-
-Veja `.env.example` para todas as opcoes disponiveis e `SETUP_SAFESTIC.md` para guia detalhado.
-
-```dotenv
-# Provedor: aws | azure | gcp | local
-STORAGE_PROVIDER=aws
-STORAGE_BUCKET=restic-backup-meuservidor
-
-# Fonte de credenciais: env | keyring | aws_secrets | azure_keyvault | gcp_secrets | sops
-CREDENTIAL_SOURCE=env
-
-# Senha do repositório (obrigatória - guarde com segurança!)
-# Descomente apenas se CREDENTIAL_SOURCE=env
-RESTIC_PASSWORD=MinhaSenh@Muito$egura123!
-# Para outras fontes (keyring, aws_secrets, etc.), mantenha comentado
-
-# Diretorios
-BACKUP_SOURCE_DIRS=/etc,/home/user
-RESTIC_EXCLUDES=*.log
-RESTIC_TAGS=diario,servidor
-RESTORE_TARGET_DIR=/tmp/restore
-LOG_DIR=logs
-
-# Retencao
-RETENTION_ENABLED=true
-KEEP_DAILY=7
-KEEP_WEEKLY=4
-KEEP_MONTHLY=6
-
-# Configuracoes de log
-LOG_LEVEL=INFO
-
-# Autenticacao AWS (descomente se CREDENTIAL_SOURCE=env)
-# AWS_ACCESS_KEY_ID=AKIA...
-# AWS_SECRET_ACCESS_KEY=...
-# AWS_DEFAULT_REGION=us-east-1
-
-# Autenticacao Azure (descomente se CREDENTIAL_SOURCE=env)
-# AZURE_ACCOUNT_NAME=minhaconta
-# AZURE_ACCOUNT_KEY=...
-
-# Autenticacao GCP (descomente se CREDENTIAL_SOURCE=env)
-# GOOGLE_PROJECT_ID=meu-projeto
-# GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
-
-# Configurações para gerenciadores de segredos em nuvem
-# AWS_REGION=us-east-1  # Para aws_secrets
-# AZURE_KEYVAULT_URL=https://meu-keyvault.vault.azure.net/  # Para azure_keyvault
-# GCP_PROJECT_ID=meu-projeto  # Para gcp_secrets
-# SOPS_FILE=.env.enc  # Para sops
-```
+---
 
 ## 🔑 Gerenciamento Seguro de Credenciais
 
@@ -410,6 +367,21 @@ GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
 
 ## Uso
 
+### ⚠️ Antes de Começar
+
+**IMPORTANTE**: Certifique-se de que as credenciais estão configuradas antes de usar os comandos de backup:
+
+```bash
+# Verificar se as credenciais estão configuradas
+make check
+
+# Se não estiverem, configure-as:
+make setup-credentials
+
+# Ou verifique apenas o RESTIC_PASSWORD:
+python scripts/check_credentials.py --restic-only
+```
+
 ### Comandos Principais
 
 ```bash
@@ -615,33 +587,53 @@ Isso verifica:
 
 ```
 safestic/
-├── scripts/                    # Scripts Python e Shell
-│   ├── backup.py              # Script de backup
-│   ├── restore.py             # Script de restauracao
-│   ├── list.py                # Listagem de snapshots
-│   ├── prune.py               # Limpeza de snapshots
-│   ├── check.py               # Verificacao de integridade
-│   ├── validate_config.py     # Validacao de configuracao
-│   ├── health_check.py        # Verificacao de saude
-│   ├── forget_snapshots.py    # Esquecimento de snapshots
-│   ├── mount_repo.py          # Montagem do repositorio
-│   ├── unmount_repo.py        # Desmontagem do repositorio
-│   ├── rebuild_index.py       # Reconstrucao de indice
-│   ├── repair_repo.py         # Reparo do repositorio
+├── services/                   # Módulos Python principais
+│   ├── __init__.py            # Inicialização do pacote
+│   ├── credentials.py         # Gerenciamento de credenciais
+│   ├── logger.py              # Sistema de logging estruturado
+│   ├── restic.py              # Configurações do Restic
+│   ├── restic_client.py       # Cliente Restic síncrono
+│   ├── restic_client_async.py # Cliente Restic assíncrono
+│   └── script.py              # Utilitários para scripts
+├── scripts/                   # Scripts de automação
+│   ├── backup_task.ps1        # Tarefa de backup (Windows)
+│   ├── backup_task.sh         # Tarefa de backup (Linux)
 │   ├── bootstrap_windows.ps1  # Bootstrap Windows
-│   ├── setup_windows.sh       # Setup Windows (Git Bash)
+│   ├── check_credentials.py   # Verificação de credenciais
+│   ├── forget_snapshots.py    # Esquecimento de snapshots
+│   ├── health_check.py        # Verificação de saúde
+│   ├── mount_repo.py          # Montagem do repositório
+│   ├── rebuild_index.py       # Reconstrução de índice
+│   ├── repair_repo.py         # Reparo do repositório
+│   ├── schedule.ps1           # Agendamento Windows
+│   ├── schedule.sh            # Agendamento Linux
+│   ├── setup_credentials.py   # Configuração de credenciais
 │   ├── setup_linux.sh         # Setup Linux
-│   ├── schedule_windows.ps1   # Agendamento Windows
-│   ├── schedule_linux.sh      # Agendamento Linux
-│   └── validate-setup.sh      # Validacao do setup
-├── logs/                      # Arquivos de log
-├── .env.example              # Exemplo de configuracao
-├── .env                      # Suas configuracoes (criar)
+│   ├── setup_windows.sh       # Setup Windows
+│   ├── unmount_repo.py        # Desmontagem do repositório
+│   ├── validate_config.py     # Validação de configuração
+│   └── validate_setup.py      # Validação do setup
+├── examples/                  # Exemplos de uso
+│   ├── async_backup.py        # Exemplo de backup assíncrono
+│   └── secure_credentials.py  # Exemplo de credenciais seguras
+├── tests/                     # Testes automatizados
+│   ├── __init__.py            # Inicialização dos testes
+│   ├── conftest.py            # Configuração do pytest
+│   ├── test_logger.py         # Testes do sistema de logging
+│   ├── test_restic.py         # Testes das configurações Restic
+│   └── test_restic_client.py  # Testes do cliente Restic
+├── restore/                   # Diretório de restauração
+├── .env.example              # Exemplo de configuração
+├── .env                      # Suas configurações (criar)
+├── .gitignore                # Arquivos ignorados pelo Git
+├── BOOTSTRAP_GUIDE.md        # Guia de bootstrap
+├── COMANDOS.md               # Documentação de comandos
+├── CREDENTIAL_SETUP_GUIDE.md # Guia de configuração de credenciais
 ├── Makefile                  # Comandos make
-├── requirements.txt          # Dependencias Python
-├── pyproject.toml           # Configuracao do projeto Python
+├── pyproject.toml           # Configuração do projeto Python
 ├── README.md                # Este arquivo
-└── SETUP_SAFESTIC.md        # Guia completo de instalacao
+├── requirements.txt          # Dependências Python
+└── SETUP_SAFESTIC.md        # Guia completo de instalação
 ```
 
 ---
