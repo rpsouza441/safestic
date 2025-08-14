@@ -350,6 +350,62 @@ RESTORE_TARGET_DIR=./meu_restore
 # - RESTIC_REPOSITORY (gerado automaticamente baseado nos anteriores)
 ```
 
+### 🎯 Como Configurar Destinos de Backup
+
+O `STORAGE_BUCKET` define **onde** os backups serão salvos, dependendo do provedor:
+
+#### 📁 **LOCAL** - Armazenamento no Computador
+```env
+STORAGE_PROVIDER=local
+STORAGE_BUCKET=/home/usuario/meus-backups     # Linux
+STORAGE_BUCKET=C:\Backups\SafeStic          # Windows
+```
+**O que acontece**: O diretório será criado automaticamente se não existir.
+
+#### ☁️ **AWS S3** - Amazon Web Services
+```env
+STORAGE_PROVIDER=aws
+STORAGE_BUCKET=meu-bucket-backup-empresa
+
+# Credenciais (se CREDENTIAL_SOURCE=env)
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=us-east-1
+```
+**O que acontece**: Gera automaticamente `s3:s3.amazonaws.com/meu-bucket-backup-empresa`  
+**⚠️ Importante**: O bucket S3 deve existir previamente.
+
+#### 🔵 **AZURE** - Microsoft Azure Blob Storage
+```env
+STORAGE_PROVIDER=azure
+STORAGE_BUCKET=backups-container
+
+# Credenciais (se CREDENTIAL_SOURCE=env)
+AZURE_ACCOUNT_NAME=minhacontastorage
+AZURE_ACCOUNT_KEY=chave_da_conta...
+```
+**O que acontece**: Gera automaticamente `azure:minhacontastorage:backups-container:restic`  
+**⚠️ Importante**: O container deve existir na conta de storage.
+
+#### 🟡 **GCP** - Google Cloud Storage
+```env
+STORAGE_PROVIDER=gcp
+STORAGE_BUCKET=meu-bucket-gcp-backups
+
+# Credenciais (se CREDENTIAL_SOURCE=env)
+GOOGLE_PROJECT_ID=meu-projeto-123
+GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
+```
+**O que acontece**: Gera automaticamente `gs:meu-bucket-gcp-backups`  
+**⚠️ Importante**: O bucket deve existir no projeto GCP.
+
+#### 🔧 **Como o Sistema Funciona**
+1. **Você configura**: `STORAGE_PROVIDER` + `STORAGE_BUCKET`
+2. **O sistema gera**: `RESTIC_REPOSITORY` automaticamente
+3. **O Restic usa**: A URL gerada para salvar os backups
+
+**💡 Resumo**: Não existe `BACKUP_TARGET_DIR` porque o destino é sempre determinado pela combinação `STORAGE_PROVIDER` + `STORAGE_BUCKET` + lógica interna do Restic!
+
 ---
 
 ## Uso
