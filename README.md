@@ -189,7 +189,13 @@ O `RESTIC_PASSWORD` é **obrigatório** para criptografar seus backups. O Safest
 
 ### 🔐 Configuracao de Credenciais
 
-O Safestic oferece multiplas opcoes para configurar credenciais de forma segura:
+O Safestic oferece multiplas opcoes para configurar credenciais de forma segura. O sistema utiliza a variavel `CREDENTIAL_SOURCE` no arquivo `.env` para determinar onde buscar as credenciais.
+
+#### Como Funciona o Sistema de Credenciais
+
+1. **Fonte Primaria**: O sistema busca credenciais na fonte definida por `CREDENTIAL_SOURCE`
+2. **Fallback**: Se nao encontrar na fonte primaria, busca no arquivo `.env` como fallback
+3. **Prioridade**: keyring > aws_secrets > azure_keyvault > gcp_secrets > sops > env
 
 #### Configuracao Interativa (Recomendado)
 
@@ -238,11 +244,16 @@ python -c "import keyring; keyring.set_password('safestic', 'RESTIC_PASSWORD', '
 
 # Configurar no .env
 CREDENTIAL_SOURCE=keyring
-# RESTIC_PASSWORD não precisa estar no .env
+# RESTIC_PASSWORD não precisa estar no .env quando usando keyring
 
 # Usar credenciais do keyring
 make backup
 ```
+
+**⚠️ Importante sobre Keyring**: 
+- Quando `CREDENTIAL_SOURCE=keyring`, o sistema busca `RESTIC_PASSWORD` no keyring do sistema
+- Se nao encontrar no keyring, faz fallback para o arquivo `.env`
+- Credenciais de nuvem (AWS, Azure, GCP) ainda podem estar no `.env` mesmo usando keyring para `RESTIC_PASSWORD`
 
 ### 3. Gerenciadores de Segredos em Nuvem
 
@@ -322,6 +333,21 @@ CREDENTIAL_SOURCE=gcp_secrets
 GCP_PROJECT_ID=meu-projeto
 GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
 # RESTIC_PASSWORD no Secret Manager
+```
+
+### 📁 Configuração de Diretorios
+
+```env
+# Diretorios de origem para backup (obrigatorio)
+BACKUP_SOURCE_DIRS=/etc,/home/user,/var/log
+
+# Diretorio de destino para restauracao (obrigatorio)
+RESTORE_TARGET_DIR=./meu_restore
+
+# Nota: BACKUP_TARGET_DIR nao existe - o destino do backup e definido por:
+# - STORAGE_PROVIDER (local, aws, azure, gcp)
+# - STORAGE_BUCKET (nome do bucket/container/diretorio)
+# - RESTIC_REPOSITORY (gerado automaticamente baseado nos anteriores)
 ```
 
 ---

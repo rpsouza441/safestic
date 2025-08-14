@@ -33,16 +33,26 @@ def check_restic_password() -> Tuple[bool, str]:
     Returns:
         Tuple[bool, str]: (configurado, mensagem)
     """
-    # Tentar obter do keyring primeiro
+    # Obter CREDENTIAL_SOURCE do .env
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
+    
+    # Tentar obter da fonte configurada
     if get_credential:
         try:
-            password = get_credential('restic', 'password', source='keyring')
+            password = get_credential('RESTIC_PASSWORD', credential_source)
             if password:
-                return True, "RESTIC_PASSWORD configurado no keyring do sistema"
+                if credential_source == 'keyring':
+                    return True, "RESTIC_PASSWORD configurado no keyring do sistema"
+                elif credential_source in ['aws_secrets', 'azure_keyvault', 'gcp_secrets']:
+                    return True, f"RESTIC_PASSWORD configurado no {credential_source}"
+                elif credential_source == 'sops':
+                    return True, "RESTIC_PASSWORD configurado no arquivo SOPS"
+                else:
+                    return True, "RESTIC_PASSWORD configurado no arquivo .env"
         except Exception:
             pass
     
-    # Tentar obter do ambiente
+    # Fallback para ambiente (sempre verifica .env como fallback)
     password = os.getenv('RESTIC_PASSWORD')
     if password and password.strip():
         return True, "RESTIC_PASSWORD configurado no arquivo .env"
