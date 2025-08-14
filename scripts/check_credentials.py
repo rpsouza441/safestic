@@ -110,6 +110,8 @@ def check_cloud_credentials() -> Tuple[bool, List[str]]:
             
     elif provider == 'local':
         messages.append("Provedor local - credenciais de nuvem nao necessarias")
+        # Para provedor local, consideramos as credenciais como configuradas
+        # pois não precisamos de credenciais de nuvem
     else:
         messages.append(f"Provedor desconhecido: {provider}")
         all_configured = False
@@ -131,25 +133,29 @@ def check_all_credentials(verbose: bool = True) -> bool:
     # Verificar RESTIC_PASSWORD
     password_ok, password_msg = check_restic_password()
     if verbose:
-        status = "✅" if password_ok else "❌"
+        status = "[OK]" if password_ok else "[ERRO]"
         print(f"{status} {password_msg}")
     
     if not password_ok:
         all_ok = False
         if verbose:
-            print("   💡 Configure com: make setup-restic-password")
+            print("   DICA: Configure com: make setup-restic-password")
     
     # Verificar credenciais de nuvem
     cloud_ok, cloud_messages = check_cloud_credentials()
     if verbose:
         for msg in cloud_messages:
-            status = "✅" if "configurado" in msg and "nao configurado" not in msg else "❌"
+            # Para provedor local, mostrar como OK
+            if "Provedor local" in msg:
+                status = "[OK]"
+            else:
+                status = "[OK]" if "configurado" in msg and "nao configurado" not in msg else "[ERRO]"
             print(f"{status} {msg}")
     
     if not cloud_ok:
         all_ok = False
         if verbose:
-            print("   💡 Configure com: make setup-credentials")
+            print("   DICA: Configure com: make setup-credentials")
     
     return all_ok
 
@@ -177,15 +183,15 @@ def main():
     if args.restic_only:
         password_ok, password_msg = check_restic_password()
         if not args.quiet:
-            status = "✅" if password_ok else "❌"
+            status = "[OK]" if password_ok else "[ERRO]"
             print(f"{status} {password_msg}")
             if not password_ok:
-                print("   💡 Configure com: make setup-restic-password")
+                print("   DICA: Configure com: make setup-restic-password")
         sys.exit(0 if password_ok else 1)
     else:
         all_ok = check_all_credentials(verbose=not args.quiet)
         if not args.quiet and not all_ok:
-            print("\n❌ Algumas credenciais nao estao configuradas.")
+            print("\n[ERRO] Algumas credenciais nao estao configuradas.")
             print("   Execute 'make setup-credentials' para configurar.")
         sys.exit(0 if all_ok else 1)
 
