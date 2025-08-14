@@ -1,4 +1,4 @@
-﻿# 🛡️ Guia de Configuracao do Safestic
+# 🛡️ Guia de Configuracao do Safestic
 
 **Safestic** e uma solucao completa de backup automatizado baseada no Restic, com suporte multiplataforma para Windows e Linux.
 
@@ -198,6 +198,171 @@ AZURE_ACCOUNT_KEY=minha_chave
 STORAGE_PROVIDER=gcp
 STORAGE_BUCKET=meu-bucket-gcp
 GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
+```
+
+### 4. 🔐 Configuração Segura de Senhas (RESTIC_PASSWORD)
+
+O `RESTIC_PASSWORD` é **obrigatório** e criptografa todos os seus backups. **NUNCA perca esta senha** - sem ela, seus backups serão irrecuperáveis!
+
+#### Configuração Interativa (Recomendado)
+```bash
+# Configuração completa
+make setup-credentials
+
+# Apenas RESTIC_PASSWORD
+make setup-restic-password
+```
+
+#### Opção 1: Arquivo .env (Básico)
+```env
+# No arquivo .env
+RESTIC_PASSWORD=MinhaSenh@Muito$egura123!
+```
+
+⚠️ **Atenção**: Mantenha o arquivo `.env` seguro e nunca o commite em repositórios Git!
+
+#### Verificação Automática
+
+O Safestic verifica automaticamente se as credenciais estão configuradas:
+
+- **Comandos críticos** (backup, restore, init) falham se `RESTIC_PASSWORD` não estiver configurado
+- **Comandos de setup** alertam sobre credenciais faltantes mas continuam
+- **Comando first-run** verifica todas as credenciais antes de prosseguir
+
+Se as credenciais não estiverem configuradas, você verá mensagens como:
+```
+ERRO: RESTIC_PASSWORD não configurado!
+Execute: make setup-restic-password
+```
+
+#### Opção 2: Keyring do Sistema (Recomendado)
+
+Armazena a senha no gerenciador de credenciais do sistema operacional:
+
+```bash
+# Configurar senha no keyring
+python -c "import keyring; keyring.set_password('safestic', 'RESTIC_PASSWORD', 'MinhaSenh@Muito$egura123!')"
+
+# Configurar no .env para usar keyring
+CREDENTIAL_SOURCE=keyring
+# RESTIC_PASSWORD não precisa estar no .env
+```
+
+#### Opção 3: Gerenciadores de Segredos em Nuvem
+
+##### AWS Secrets Manager
+```bash
+# 1. Criar secret no AWS
+aws secretsmanager create-secret \
+    --name "safestic/RESTIC_PASSWORD" \
+    --secret-string "MinhaSenh@Muito$egura123!" \
+    --region us-east-1
+
+# 2. Configurar no .env
+CREDENTIAL_SOURCE=aws_secrets
+AWS_REGION=us-east-1
+# Credenciais AWS já configuradas
+```
+
+##### Azure Key Vault
+```bash
+# 1. Criar secret no Azure
+az keyvault secret set \
+    --vault-name "meu-keyvault" \
+    --name "RESTIC-PASSWORD" \
+    --value "MinhaSenh@Muito$egura123!"
+
+# 2. Configurar no .env
+CREDENTIAL_SOURCE=azure_keyvault
+AZURE_KEYVAULT_URL=https://meu-keyvault.vault.azure.net/
+# Autenticação Azure já configurada
+```
+
+##### Google Cloud Secret Manager
+```bash
+# 1. Criar secret no GCP
+echo -n "MinhaSenh@Muito$egura123!" | \
+    gcloud secrets create RESTIC_PASSWORD --data-file=-
+
+# 2. Configurar no .env
+CREDENTIAL_SOURCE=gcp_secrets
+GCP_PROJECT_ID=meu-projeto-gcp
+# Credenciais GCP já configuradas
+```
+
+#### Opção 4: SOPS (Arquivo Criptografado)
+
+Para criptografar todo o arquivo `.env`:
+
+```bash
+# 1. Instalar SOPS
+# https://github.com/mozilla/sops/releases
+
+# 2. Configurar chave de criptografia (GPG, AWS KMS, etc.)
+# Exemplo com GPG:
+gpg --generate-key
+
+# 3. Criptografar .env
+sops -e .env > .env.enc
+
+# 4. Configurar para usar SOPS
+CREDENTIAL_SOURCE=sops
+SOPS_FILE=.env.enc
+```
+
+#### 🔒 Configuração de Credenciais por Provedor
+
+##### Para AWS S3:
+```env
+# Opção 1: Arquivo .env
+STORAGE_PROVIDER=aws
+STORAGE_BUCKET=meu-bucket-backup
+RESTIC_PASSWORD=MinhaSenh@Muito$egura123!
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=us-east-1
+
+# Opção 2: Credenciais no AWS Secrets Manager
+STORAGE_PROVIDER=aws
+STORAGE_BUCKET=meu-bucket-backup
+CREDENTIAL_SOURCE=aws_secrets
+AWS_REGION=us-east-1
+# RESTIC_PASSWORD, AWS_ACCESS_KEY_ID e AWS_SECRET_ACCESS_KEY no Secrets Manager
+```
+
+##### Para Azure Blob:
+```env
+# Opção 1: Arquivo .env
+STORAGE_PROVIDER=azure
+STORAGE_BUCKET=meu-container
+RESTIC_PASSWORD=MinhaSenh@Muito$egura123!
+AZURE_ACCOUNT_NAME=minhaconta
+AZURE_ACCOUNT_KEY=...
+
+# Opção 2: Credenciais no Azure Key Vault
+STORAGE_PROVIDER=azure
+STORAGE_BUCKET=meu-container
+CREDENTIAL_SOURCE=azure_keyvault
+AZURE_KEYVAULT_URL=https://meu-keyvault.vault.azure.net/
+# RESTIC_PASSWORD, AZURE_ACCOUNT_NAME e AZURE_ACCOUNT_KEY no Key Vault
+```
+
+##### Para Google Cloud Storage:
+```env
+# Opção 1: Arquivo .env
+STORAGE_PROVIDER=gcp
+STORAGE_BUCKET=meu-bucket-gcp
+RESTIC_PASSWORD=MinhaSenh@Muito$egura123!
+GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
+GOOGLE_PROJECT_ID=meu-projeto
+
+# Opção 2: Credenciais no GCP Secret Manager
+STORAGE_PROVIDER=gcp
+STORAGE_BUCKET=meu-bucket-gcp
+CREDENTIAL_SOURCE=gcp_secrets
+GCP_PROJECT_ID=meu-projeto
+GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
+# RESTIC_PASSWORD no Secret Manager
 ```
 
 ## 🎯 Primeiros Passos

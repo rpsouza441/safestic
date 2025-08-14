@@ -23,11 +23,14 @@ endif
 ## Executa o backup com base nas variaveis do .env
 backup:
 	@echo "Executando backup com Restic..."
+	@echo "Verificando credenciais..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) restic_backup.py
 
 ## Lista todos os snapshots no repositorio
 list:
 	@echo "Listando snapshots disponiveis..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) list_snapshots.py
 
 ## Lista todos os snapshots com tamanho estimado
@@ -46,6 +49,7 @@ endif
 ## Restaura o snapshot mais recente (default = latest)
 restore:
 	@echo "Restaurando o ultimo snapshot..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) restore_snapshot.py
 
 ## Restaura snapshot especifico (ex: make restore-id ID=abc123)
@@ -54,6 +58,7 @@ ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make restore-id ID=abc123)
 endif
 	@echo "Restaurando snapshot ID=$(ID)..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) restore_snapshot.py $(ID)
 
 ## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE="/etc/hosts")
@@ -75,6 +80,8 @@ manual-prune:
 ## Verifica se Restic esta instalado, variaveis estao corretas e repositorio esta acessivel
 check:
 	@echo "Executando verificacao da configuracao Restic..."
+	@echo "Verificando credenciais..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Algumas credenciais nao estao configuradas" && echo "Execute: make setup-credentials" && echo "")
 	$(PYTHON_CMD) check_restic_access.py
 
 ## Exibe o total de dados unicos armazenados no repositorio
@@ -85,6 +92,8 @@ repo-size:
 ## Inicializa repositorio Restic (apenas se nao existir)
 init:
 	@echo "Inicializando repositorio Restic..."
+	@echo "Verificando credenciais..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; from services.restic import load_restic_config; config = load_restic_config(); client = ResticClient(); exec('try:\n    client.check_repository_access()\n    print(\"Repositorio ja existe\")\nexcept:\n    client.init_repository()\n    print(\"Repositorio inicializado\")')"
 
 ## Simula backup sem executar (dry-run)
@@ -100,6 +109,7 @@ stats:
 ## Aplica politica de retencao (prune)
 prune:
 	@echo "Aplicando politica de retencao..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) scripts/forget_snapshots.py
 
 ## Executa todos os checks de validacao
@@ -222,6 +232,8 @@ else
 		exit 1; \
 	fi
 endif
+	@echo "Verificando credenciais apos setup..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais com: make setup-credentials" && echo "")
 
 bootstrap:
 	@echo "Executando bootstrap completo..."
@@ -235,16 +247,20 @@ else
 	@echo "Bootstrap nao implementado para Linux. Use: make setup"
 	@exit 1
 endif
+	@echo "Verificando credenciais apos bootstrap..."
+	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais com: make setup-credentials" && echo "")
 
 first-run:
 	@echo "Executando primeira configuracao..."
 	@echo "1. Verificando arquivo .env..."
 	@powershell -Command "if (-not (Test-Path '.env')) { Write-Host 'Copiando .env.example para .env...'; Copy-Item '.env.example' '.env'; Write-Host 'ATENCAO: Configure o arquivo .env antes de continuar!' } else { Write-Host '.env ja existe' }"
-	@echo "2. Validando configuracao..."
+	@echo "2. Verificando credenciais..."
+	@$(PYTHON_CMD) scripts/check_credentials.py || (echo "" && echo "ERRO: Credenciais nao configuradas!" && echo "Execute: make setup-credentials" && echo "" && exit 1)
+	@echo "3. Validando configuracao..."
 	$(PYTHON_CMD) scripts/validate_config.py
-	@echo "3. Inicializando repositorio (se necessario)..."
+	@echo "4. Inicializando repositorio (se necessario)..."
 	@$(MAKE) init || echo "Repositorio ja existe ou erro na inicializacao"
-	@echo "4. Executando verificacao..."
+	@echo "5. Executando verificacao..."
 	@$(MAKE) check
 	@echo "Primeira configuracao concluida!"
 
@@ -295,29 +311,52 @@ validate-setup:
 	@echo "Validando configuracao completa do setup..."
 	$(PYTHON_CMD) scripts/validate_setup.py
 
+# Configuracao de credenciais
+setup-credentials:
+	@echo " Configuracao interativa de credenciais..."
+	$(PYTHON_CMD) scripts/setup_credentials.py
+
+setup-restic-password:
+	@echo " Configuracao do RESTIC_PASSWORD..."
+	$(PYTHON_CMD) scripts/setup_credentials.py --restic-only
+
+setup-credentials-env:
+	@echo " Configuracao de credenciais no arquivo .env..."
+	$(PYTHON_CMD) scripts/setup_credentials.py --source env
+
+setup-credentials-keyring:
+	@echo " Configuracao de credenciais no keyring do sistema..."
+	$(PYTHON_CMD) scripts/setup_credentials.py --source keyring
+
 ## Mostra ajuda com todos os comandos disponiveis
 help:
 	@echo "SafeStic - Sistema de Backup com Restic"
 	@echo ""
-	@echo "BACKUP:"
+	@echo " CONFIGURACAO DE CREDENCIAIS:"
+	@echo "  setup-credentials        - Configuracao interativa completa de credenciais"
+	@echo "  setup-restic-password    - Configurar apenas RESTIC_PASSWORD"
+	@echo "  setup-credentials-env    - Configurar credenciais no arquivo .env"
+	@echo "  setup-credentials-keyring - Configurar credenciais no keyring do sistema"
+	@echo ""
+	@echo " BACKUP:"
 	@echo "  backup          - Executa backup completo"
 	@echo "  dry-run         - Simula backup sem executar"
 	@echo "  test-backup     - Testa backup com dados de exemplo"
 	@echo ""
-	@echo "LISTAGEM E CONSULTA:"
+	@echo " LISTAGEM E CONSULTA:"
 	@echo "  list            - Lista snapshots disponiveis"
 	@echo "  list-size       - Lista snapshots com tamanhos"
 	@echo "  list-files      - Lista arquivos no ultimo snapshot"
 	@echo "  stats           - Mostra estatisticas do repositorio"
 	@echo "  repo-size       - Mostra tamanho do repositorio"
 	@echo ""
-	@echo "RESTAURACAO:"
+	@echo " RESTAURACAO:"
 	@echo "  restore         - Restaura ultimo snapshot"
 	@echo "  restore-id      - Restaura snapshot especifico (ID=snapshot_id)"
 	@echo "  restore-file    - Restaura arquivo especifico (FILE=caminho/arquivo)"
 	@echo "  test-restore    - Testa restauracao com dados de exemplo"
 	@echo ""
-	@echo "MANUTENCAO:"
+	@echo " MANUTENCAO:"
 	@echo "  prune           - Remove snapshots antigos (automatico)"
 	@echo "  manual-prune    - Remove snapshots antigos manualmente"
 	@echo "  forget          - Esquece snapshots baseado na politica"
@@ -326,7 +365,7 @@ help:
 	@echo "  repair          - Repara repositorio (CUIDADO!)"
 	@echo "  clean           - Limpa logs e arquivos temporarios"
 	@echo ""
-	@echo "CONFIGURACAO:"
+	@echo "  CONFIGURACAO:"
 	@echo "  setup           - Instala dependencias do sistema"
 	@echo "  bootstrap       - Bootstrap completo (Windows)"
 	@echo "  first-run       - Primeira configuracao do projeto"
@@ -335,14 +374,20 @@ help:
 	@echo "  validate-setup  - Valida setup completo"
 	@echo "  health          - Verifica saude do sistema"
 	@echo ""
-	@echo "AGENDAMENTO:"
+	@echo " AGENDAMENTO:"
 	@echo "  schedule-install - Instala agendamento automatico"
 	@echo "  schedule-remove  - Remove agendamento automatico"
 	@echo "  schedule-status  - Status do agendamento"
 	@echo ""
-	@echo "AVANCADO:"
+	@echo "  AVANCADO:"
 	@echo "  mount           - Monta repositorio como filesystem"
 	@echo "  unmount         - Desmonta repositorio"
 	@echo ""
-	@echo "AJUDA:"
+	@echo " EXEMPLOS DE USO:"
+	@echo "  make setup-credentials     # Configuracao interativa completa"
+	@echo "  make setup-restic-password # Configurar apenas a senha do Restic"
+	@echo "  make first-run            # Primeira configuracao do projeto"
+	@echo "  make backup               # Fazer backup"
+	@echo ""
+	@echo " AJUDA:"
 	@echo "  help            - Mostra esta ajuda"

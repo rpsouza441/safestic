@@ -1,4 +1,4 @@
-﻿# 📖 Guia de Comandos do Safestic
+# 📖 Guia de Comandos do Safestic
 
 Este documento descreve todos os comandos disponiveis no sistema Safestic atraves do `make`.
 
@@ -14,6 +14,67 @@ Para ver a lista completa de comandos:
 
 ```bash
 make help
+```
+
+## 🔑 Configuração de Senhas (RESTIC_PASSWORD)
+
+O `RESTIC_PASSWORD` é **obrigatório** para criptografar seus backups. O Safestic oferece várias formas seguras de configurá-lo:
+
+### 1. Arquivo .env (Padrão)
+```bash
+# No arquivo .env
+RESTIC_PASSWORD=sua_senha_muito_segura_aqui
+```
+
+### 2. Keyring do Sistema (Recomendado)
+```bash
+# Configurar no keyring
+python -c "import keyring; keyring.set_password('safestic', 'RESTIC_PASSWORD', 'sua_senha_segura')"
+
+# Usar keyring
+CREDENTIAL_SOURCE=keyring make backup
+```
+
+### 3. Gerenciadores de Nuvem
+
+#### AWS Secrets Manager
+```bash
+# Configurar no .env
+CREDENTIAL_SOURCE=aws_secrets
+AWS_REGION=us-east-1
+
+# Criar secret no AWS
+aws secretsmanager create-secret --name "safestic/RESTIC_PASSWORD" --secret-string "sua_senha_segura"
+```
+
+#### Azure Key Vault
+```bash
+# Configurar no .env
+CREDENTIAL_SOURCE=azure_keyvault
+AZURE_KEYVAULT_URL=https://seu-keyvault.vault.azure.net/
+
+# Criar secret no Azure
+az keyvault secret set --vault-name "seu-keyvault" --name "RESTIC-PASSWORD" --value "sua_senha_segura"
+```
+
+#### Google Cloud Secret Manager
+```bash
+# Configurar no .env
+CREDENTIAL_SOURCE=gcp_secrets
+GCP_PROJECT_ID=seu-projeto-gcp
+
+# Criar secret no GCP
+echo -n "sua_senha_segura" | gcloud secrets create RESTIC_PASSWORD --data-file=-
+```
+
+### 4. SOPS (Arquivo Criptografado)
+```bash
+# Criptografar .env com SOPS
+sops -e .env > .env.enc
+
+# Configurar para usar SOPS
+CREDENTIAL_SOURCE=sops
+SOPS_FILE=.env.enc
 ```
 
 ## 📂 Comandos de Backup
@@ -246,6 +307,77 @@ Limpa arquivos temporarios e logs antigos (mais de 30 dias).
 **Exemplo:**
 ```bash
 make clean
+```
+
+## 🔐 Configuracao de Credenciais
+
+O Safestic oferece comandos especializados para configurar credenciais de forma segura:
+
+### `make setup-credentials`
+Configuracao interativa completa de credenciais (RESTIC_PASSWORD + credenciais de nuvem).
+
+**Exemplo:**
+```bash
+make setup-credentials
+```
+
+### `make setup-restic-password`
+Configura apenas o RESTIC_PASSWORD de forma interativa.
+
+**Exemplo:**
+```bash
+make setup-restic-password
+```
+
+### `make setup-credentials-keyring`
+Configura credenciais usando o keyring do sistema (mais seguro).
+
+**Exemplo:**
+```bash
+make setup-credentials-keyring
+```
+
+### `make setup-credentials-env`
+Configura credenciais no arquivo .env (menos seguro, mas pratico).
+
+**Exemplo:**
+```bash
+make setup-credentials-env
+```
+
+## 🔍 Verificacao Automatica de Credenciais
+
+O Safestic verifica automaticamente se as credenciais necessarias estao configuradas antes de executar operacoes criticas:
+
+### Comandos que Requerem RESTIC_PASSWORD
+Estes comandos verificam se `RESTIC_PASSWORD` esta configurado e falham com erro se nao estiver:
+- `make backup` - Executa backup
+- `make list` - Lista snapshots
+- `make restore` - Restaura snapshots
+- `make restore-id` - Restaura snapshot especifico
+- `make init` - Inicializa repositorio
+- `make prune` - Aplica politica de retencao
+
+**Mensagem de erro tipica:**
+```
+ERRO: RESTIC_PASSWORD nao configurado!
+Execute: make setup-restic-password
+```
+
+### Comandos que Verificam Todas as Credenciais
+Estes comandos verificam `RESTIC_PASSWORD` e credenciais especificas do provedor:
+- `make first-run` - Primeira configuracao (falha se credenciais nao configuradas)
+
+### Comandos que Alertam sobre Credenciais
+Estes comandos verificam credenciais mas apenas alertam (nao falham):
+- `make setup` - Setup do ambiente
+- `make bootstrap` - Bootstrap completo
+- `make check` - Verificacao de configuracao
+
+**Mensagem de aviso tipica:**
+```
+AVISO: Algumas credenciais nao estao configuradas
+Execute: make setup-credentials
 ```
 
 ## ⚙️ Comandos de Configuracao
