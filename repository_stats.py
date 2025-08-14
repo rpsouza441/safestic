@@ -1,4 +1,4 @@
-"""Show overall size information about the Restic repository."""
+﻿"""Show overall size information about the Restic repository."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from services.restic_client import ResticClient, ResticError
 def show_repository_stats() -> None:
     """Print repository size information.
     
-    Utiliza o ResticClient para obter estatísticas com retry automático e tratamento de erros.
+    Utiliza o ResticClient para obter estatisticas com retry automatico e tratamento de erros.
     """
     with ResticScript("repository_stats") as ctx:
         # Configurar logging
@@ -22,23 +22,23 @@ def show_repository_stats() -> None:
             handlers=[logging.StreamHandler()],
         )
         
-        ctx.log(f"Obtendo estatísticas gerais do repositório: {ctx.repository}\n")
+        ctx.log(f"Obtendo estatisticas gerais do repositorio: {ctx.repository}\n")
 
         try:
             # Criar cliente Restic com retry
             client = ResticClient(max_attempts=3)
             
-            # Obter estatísticas do repositório
+            # Obter estatisticas do repositorio
             stats = client.get_repository_stats()
             
             if stats:
                 size_bytes = stats.get("total_size", 0)
                 size_gib = size_bytes / (1024 ** 3)
                 print(
-                    f"Tamanho total armazenado no repositório (dados únicos): {size_gib:.3f} GiB",
+                    f"Tamanho total armazenado no repositorio (dados unicos): {size_gib:.3f} GiB",
                 )
             else:
-                ctx.log("Não foi possível obter estatísticas do repositório.")
+                ctx.log("Nao foi possivel obter estatisticas do repositorio.")
                 sys.exit(1)
                 
         except ResticError as exc:
@@ -51,4 +51,5 @@ def show_repository_stats() -> None:
 
 if __name__ == "__main__":
     show_repository_stats()
+
 

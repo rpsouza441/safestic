@@ -1,7 +1,7 @@
-"""Cliente assíncrono para operações do Restic.
+﻿"""Cliente assincrono para operacoes do Restic.
 
-Este módulo fornece uma versão assíncrona do ResticClient para operações
-que envolvem I/O intensivo, permitindo execução em paralelo quando seguro.
+Este modulo fornece uma versao assincrona do ResticClient para operacoes
+que envolvem I/O intensivo, permitindo execucao em paralelo quando seguro.
 """
 
 from __future__ import annotations
@@ -27,10 +27,10 @@ from .restic_client import (
     redact_secrets
 )
 
-# Configuração de logger
+# Configuracao de logger
 logger = logging.getLogger(__name__)
 
-# Tipos para anotações
+# Tipos para anotacoes
 T = TypeVar('T')
 AsyncCallable = Callable[..., T]
 
@@ -41,23 +41,23 @@ def with_async_retry(
     backoff_factor: float = 2.0,
     retriable_errors: Tuple[type[Exception], ...] = (ResticNetworkError,),
 ) -> Callable[[AsyncCallable], AsyncCallable]:
-    """Decorador para funções assíncronas com retry automático.
+    """Decorador para funcoes assincronas com retry automatico.
     
     Parameters
     ----------
     max_attempts : int
-        Número máximo de tentativas
+        Numero maximo de tentativas
     retry_delay : float
         Tempo de espera inicial entre tentativas (segundos)
     backoff_factor : float
-        Fator de multiplicação do tempo de espera a cada tentativa
+        Fator de multiplicacao do tempo de espera a cada tentativa
     retriable_errors : Tuple[type[Exception], ...]
-        Tipos de exceções que devem ser retentadas
+        Tipos de excecoes que devem ser retentadas
         
     Returns
     -------
     Callable
-        Função decorada com retry
+        Funcao decorada com retry
     """
     def decorator(func: AsyncCallable) -> AsyncCallable:
         @wraps(func)
@@ -80,12 +80,12 @@ def with_async_retry(
                     else:
                         logger.error(
                             f"Todas as {max_attempts} tentativas falharam. "
-                            f"Último erro: {str(e)}"
+                            f"ultimo erro: {str(e)}"
                         )
                         raise
                 except Exception as e:
-                    # Não retentar para outros tipos de exceção
-                    logger.error(f"Erro não-retentável: {str(e)}")
+                    # Nao retentar para outros tipos de excecao
+                    logger.error(f"Erro nao-retentavel: {str(e)}")
                     raise
             
             # Nunca deve chegar aqui, mas para satisfazer o type checker
@@ -98,19 +98,19 @@ def with_async_retry(
 
 
 class ResticClientAsync:
-    """Cliente assíncrono para operações do Restic.
+    """Cliente assincrono para operacoes do Restic.
     
-    Esta classe fornece métodos assíncronos para executar operações do Restic,
-    permitindo execução em paralelo quando seguro.
+    Esta classe fornece metodos assincronos para executar operacoes do Restic,
+    permitindo execucao em paralelo quando seguro.
     
     Parameters
     ----------
     repository : str
-        URL do repositório Restic
+        URL do repositorio Restic
     password : str
-        Senha do repositório
+        Senha do repositorio
     env : Optional[Dict[str, str]]
-        Variáveis de ambiente adicionais
+        Variaveis de ambiente adicionais
     """
     
     def __init__(
@@ -122,12 +122,12 @@ class ResticClientAsync:
         self.repository = repository
         self.password = password
         
-        # Preparar variáveis de ambiente
+        # Preparar variaveis de ambiente
         self.env = os.environ.copy()
         self.env["RESTIC_REPOSITORY"] = repository
         self.env["RESTIC_PASSWORD"] = password
         
-        # Adicionar variáveis de ambiente extras
+        # Adicionar variaveis de ambiente extras
         if env:
             self.env.update(env)
     
@@ -137,7 +137,7 @@ class ResticClientAsync:
         timeout: Optional[int] = None,
         capture_json: bool = False,
     ) -> Tuple[int, str, str]:
-        """Executa um comando Restic de forma assíncrona.
+        """Executa um comando Restic de forma assincrona.
         
         Parameters
         ----------
@@ -146,21 +146,21 @@ class ResticClientAsync:
         timeout : Optional[int]
             Tempo limite em segundos
         capture_json : bool
-            Se deve capturar e analisar a saída como JSON
+            Se deve capturar e analisar a saida como JSON
             
         Returns
         -------
         Tuple[int, str, str]
-            Código de retorno, stdout e stderr
+            Codigo de retorno, stdout e stderr
             
         Raises
         ------
         ResticError
             Se ocorrer um erro ao executar o comando
         """
-        # Verificar se o Restic está instalado
+        # Verificar se o Restic esta instalado
         if not shutil.which("restic"):
-            raise ResticError("Restic não está instalado ou não está no PATH")
+            raise ResticError("Restic nao esta instalado ou nao esta no PATH")
         
         # Construir comando completo
         cmd = ["restic"] + list(args)
@@ -181,7 +181,7 @@ class ResticClientAsync:
                 text=True,
             )
             
-            # Aguardar conclusão com timeout
+            # Aguardar conclusao com timeout
             try:
                 if timeout:
                     stdout, stderr = await asyncio.wait_for(
@@ -197,60 +197,60 @@ class ResticClientAsync:
                     pass
                 raise ResticError(f"Comando excedeu o timeout de {timeout}s")
             
-            # Obter código de retorno
+            # Obter codigo de retorno
             returncode = process.returncode
             
-            # Redigir segredos na saída
+            # Redigir segredos na saida
             safe_stdout = redact_secrets(stdout)
             safe_stderr = redact_secrets(stderr)
             
-            # Analisar saída
+            # Analisar saida
             if returncode != 0:
                 # Identificar tipo de erro
                 if "network" in safe_stderr.lower() or "connection" in safe_stderr.lower():
                     raise ResticNetworkError(f"Erro de rede: {safe_stderr}")
                 elif "repository" in safe_stderr.lower():
-                    raise ResticRepositoryError(f"Erro no repositório: {safe_stderr}")
+                    raise ResticRepositoryError(f"Erro no repositorio: {safe_stderr}")
                 elif "password" in safe_stderr.lower() or "authentication" in safe_stderr.lower():
-                    raise ResticAuthenticationError(f"Erro de autenticação: {safe_stderr}")
+                    raise ResticAuthenticationError(f"Erro de autenticacao: {safe_stderr}")
                 else:
-                    raise ResticError(f"Comando falhou com código {returncode}: {safe_stderr}")
+                    raise ResticError(f"Comando falhou com codigo {returncode}: {safe_stderr}")
             
             # Capturar JSON se solicitado
             if capture_json and safe_stdout:
                 try:
                     json.loads(safe_stdout)
                 except json.JSONDecodeError:
-                    logger.warning("Falha ao analisar saída como JSON")
+                    logger.warning("Falha ao analisar saida como JSON")
             
             return returncode, safe_stdout, safe_stderr
             
         except ResticError:
-            # Re-lançar exceções específicas
+            # Re-lancar excecoes especificas
             raise
         except Exception as e:
-            # Converter outras exceções
+            # Converter outras excecoes
             raise ResticError(f"Erro ao executar comando: {str(e)}")
     
     @with_async_retry()
     async def check_repository(self) -> bool:
-        """Verifica se o repositório está acessível e íntegro.
+        """Verifica se o repositorio esta acessivel e integro.
         
         Returns
         -------
         bool
-            True se o repositório está acessível e íntegro
+            True se o repositorio esta acessivel e integro
             
         Raises
         ------
         ResticError
-            Se ocorrer um erro ao verificar o repositório
+            Se ocorrer um erro ao verificar o repositorio
         """
         try:
             _, stdout, _ = await self._run_command(["check", "--read-data=false"])
             return "no errors were found" in stdout.lower()
         except ResticError as e:
-            logger.error(f"Erro ao verificar repositório: {str(e)}")
+            logger.error(f"Erro ao verificar repositorio: {str(e)}")
             raise
     
     @with_async_retry()
@@ -265,9 +265,9 @@ class ResticClientAsync:
         Parameters
         ----------
         paths : List[str]
-            Caminhos a serem incluídos no backup
+            Caminhos a serem incluidos no backup
         exclude_patterns : Optional[List[str]]
-            Padrões a serem excluídos do backup
+            Padroes a serem excluidos do backup
         tags : Optional[List[str]]
             Tags a serem associadas ao snapshot
             
@@ -284,7 +284,7 @@ class ResticClientAsync:
         # Validar caminhos
         for path in paths:
             if not Path(path).exists():
-                raise ResticError(f"Caminho não encontrado: {path}")
+                raise ResticError(f"Caminho nao encontrado: {path}")
         
         # Construir comando
         cmd = ["backup"]
@@ -294,7 +294,7 @@ class ResticClientAsync:
             for tag in tags:
                 cmd.extend(["--tag", tag])
         
-        # Adicionar exclusões
+        # Adicionar exclusoes
         if exclude_patterns:
             for pattern in exclude_patterns:
                 cmd.extend(["--exclude", pattern])
@@ -311,14 +311,14 @@ class ResticClientAsync:
             if match:
                 return match.group(1)
             else:
-                raise ResticError("Não foi possível extrair ID do snapshot")
+                raise ResticError("Nao foi possivel extrair ID do snapshot")
         except ResticError as e:
             logger.error(f"Erro ao realizar backup: {str(e)}")
             raise
     
     @with_async_retry()
     async def list_snapshots(self, tag: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Lista snapshots no repositório.
+        """Lista snapshots no repositorio.
         
         Parameters
         ----------
@@ -346,14 +346,14 @@ class ResticClientAsync:
             # Executar comando
             _, stdout, _ = await self._run_command(cmd, capture_json=True)
             
-            # Analisar saída JSON
+            # Analisar saida JSON
             snapshots = json.loads(stdout)
             return snapshots
         except ResticError as e:
             logger.error(f"Erro ao listar snapshots: {str(e)}")
             raise
         except json.JSONDecodeError as e:
-            raise ResticError(f"Erro ao analisar saída JSON: {str(e)}")
+            raise ResticError(f"Erro ao analisar saida JSON: {str(e)}")
     
     @with_async_retry()
     async def list_files(self, snapshot_id: str = "latest") -> List[Dict[str, Any]]:
@@ -381,14 +381,14 @@ class ResticClientAsync:
                 capture_json=True,
             )
             
-            # Analisar saída JSON
+            # Analisar saida JSON
             files = json.loads(stdout)
             return files
         except ResticError as e:
             logger.error(f"Erro ao listar arquivos: {str(e)}")
             raise
         except json.JSONDecodeError as e:
-            raise ResticError(f"Erro ao analisar saída JSON: {str(e)}")
+            raise ResticError(f"Erro ao analisar saida JSON: {str(e)}")
     
     @with_async_retry()
     async def restore_snapshot(
@@ -404,14 +404,14 @@ class ResticClientAsync:
         snapshot_id : str
             ID do snapshot ou "latest"
         target_dir : Optional[str]
-            Diretório de destino para restauração
+            Diretorio de destino para restauracao
         include_patterns : Optional[List[str]]
-            Padrões a serem incluídos na restauração
+            Padroes a serem incluidos na restauracao
             
         Returns
         -------
         bool
-            True se a restauração foi bem-sucedida
+            True se a restauracao foi bem-sucedida
             
         Raises
         ------
@@ -421,14 +421,14 @@ class ResticClientAsync:
         # Construir comando
         cmd = ["restore", snapshot_id]
         
-        # Adicionar diretório de destino
+        # Adicionar diretorio de destino
         if target_dir:
             cmd.extend(["--target", target_dir])
             
-            # Criar diretório de destino se não existir
+            # Criar diretorio de destino se nao existir
             Path(target_dir).mkdir(parents=True, exist_ok=True)
         
-        # Adicionar padrões de inclusão
+        # Adicionar padroes de inclusao
         if include_patterns:
             for pattern in include_patterns:
                 cmd.extend(["--include", pattern])
@@ -448,7 +448,7 @@ class ResticClientAsync:
         snapshot_id: str = "latest",
         target_dir: Optional[str] = None,
     ) -> bool:
-        """Restaura um arquivo específico.
+        """Restaura um arquivo especifico.
         
         Parameters
         ----------
@@ -457,12 +457,12 @@ class ResticClientAsync:
         snapshot_id : str
             ID do snapshot ou "latest"
         target_dir : Optional[str]
-            Diretório de destino para restauração
+            Diretorio de destino para restauracao
             
         Returns
         -------
         bool
-            True se a restauração foi bem-sucedida
+            True se a restauracao foi bem-sucedida
             
         Raises
         ------
@@ -485,37 +485,37 @@ class ResticClientAsync:
         keep_yearly: Optional[int] = None,
         keep_tags: Optional[List[str]] = None,
     ) -> bool:
-        """Aplica política de retenção ao repositório.
+        """Aplica politica de retencao ao repositorio.
         
         Parameters
         ----------
         keep_last : Optional[int]
-            Número de snapshots recentes a manter
+            Numero de snapshots recentes a manter
         keep_daily : Optional[int]
-            Número de snapshots diários a manter
+            Numero de snapshots diarios a manter
         keep_weekly : Optional[int]
-            Número de snapshots semanais a manter
+            Numero de snapshots semanais a manter
         keep_monthly : Optional[int]
-            Número de snapshots mensais a manter
+            Numero de snapshots mensais a manter
         keep_yearly : Optional[int]
-            Número de snapshots anuais a manter
+            Numero de snapshots anuais a manter
         keep_tags : Optional[List[str]]
             Tags de snapshots a manter
             
         Returns
         -------
         bool
-            True se a política foi aplicada com sucesso
+            True se a politica foi aplicada com sucesso
             
         Raises
         ------
         ResticError
-            Se ocorrer um erro ao aplicar política de retenção
+            Se ocorrer um erro ao aplicar politica de retencao
         """
         # Construir comando
         cmd = ["forget", "--prune"]
         
-        # Adicionar políticas de retenção
+        # Adicionar politicas de retencao
         if keep_last is not None:
             cmd.extend(["--keep-last", str(keep_last)])
         if keep_daily is not None:
@@ -537,22 +537,22 @@ class ResticClientAsync:
             await self._run_command(cmd)
             return True
         except ResticError as e:
-            logger.error(f"Erro ao aplicar política de retenção: {str(e)}")
+            logger.error(f"Erro ao aplicar politica de retencao: {str(e)}")
             raise
     
     @with_async_retry()
     async def get_stats(self) -> Dict[str, Any]:
-        """Obtém estatísticas do repositório.
+        """Obtem estatisticas do repositorio.
         
         Returns
         -------
         Dict[str, Any]
-            Estatísticas do repositório
+            Estatisticas do repositorio
             
         Raises
         ------
         ResticError
-            Se ocorrer um erro ao obter estatísticas
+            Se ocorrer um erro ao obter estatisticas
         """
         try:
             # Executar comando
@@ -561,11 +561,11 @@ class ResticClientAsync:
                 capture_json=True,
             )
             
-            # Analisar saída JSON
+            # Analisar saida JSON
             stats = json.loads(stdout)
             return stats
         except ResticError as e:
-            logger.error(f"Erro ao obter estatísticas: {str(e)}")
+            logger.error(f"Erro ao obter estatisticas: {str(e)}")
             raise
         except json.JSONDecodeError as e:
-            raise ResticError(f"Erro ao analisar saída JSON: {str(e)}")
+            raise ResticError(f"Erro ao analisar saida JSON: {str(e)}")

@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Setup script para Windows (Git Bash) - FASE 2
-# Verifica e instala dependências necessárias para o Safestic
+# Verifica e instala dependencias necessarias para o Safestic
 # Uso: ./scripts/setup_windows.sh [--assume-yes]
 
 set -euo pipefail

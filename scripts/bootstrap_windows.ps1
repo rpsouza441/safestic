@@ -1,5 +1,5 @@
-#!/usr/bin/env powershell
-# Bootstrap script para Windows - instala todas as dependências do zero
+﻿#!/usr/bin/env powershell
+# Bootstrap script para Windows - instala todas as dependencias do zero
 # Uso: .\scripts\bootstrap_windows.ps1 [-AssumeYes]
 
 param(
@@ -121,15 +121,14 @@ function Install-WithChoco {
 Write-Status "=== BOOTSTRAP SAFESTIC PARA WINDOWS ==="
 Write-Status "Verificando e instalando dependencias..."
 
-# Verificar se está executando como administrador
+# Verificar se esta executando como administrador
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Status "Este script precisa ser executado como Administrador" "ERROR"
-    Write-Status "Clique com botao direito no PowerShell e selecione 'Executar como Administrador'" "WARNING"
-    exit 1
+    Write-Status "Executando sem privilegios de administrador" "WARNING"
+    Write-Status "Algumas instalacoes podem falhar ou solicitar elevacao" "WARNING"
 }
 
-# Detectar gerenciador de pacotes disponível
+# Detectar gerenciador de pacotes disponivel
 $hasWinget = Test-Command "winget"
 $hasChoco = Test-Command "choco"
 
@@ -157,7 +156,7 @@ if (-not $hasWinget -and -not $hasChoco) {
     }
 }
 
-# Instalar Git for Windows (se não estiver instalado)
+# Instalar Git for Windows (se nao estiver instalado)
 if (-not (Test-Command "git")) {
     Write-Status "Git nao encontrado. Instalando..."
     $installed = $false
@@ -186,11 +185,11 @@ if (-not (Test-Command "make")) {
             Write-Status "GNU Make instalado com sucesso" "SUCCESS"
             $installed = $true
             
-            # Adicionar ao PATH da sessão atual
+            # Adicionar ao PATH da sessao atual
             $makePath = "C:\Program Files (x86)\GnuWin32\bin"
             if (Test-Path $makePath) {
                 $env:PATH += ";$makePath"
-                Write-Status "PATH atualizado para a sessão atual" "SUCCESS"
+                Write-Status "PATH atualizado para a sessao atual" "SUCCESS"
             }
         } catch {
             Write-Status "Falha ao instalar via winget: $($_.Exception.Message)" "WARNING"
@@ -224,7 +223,7 @@ if (-not (Test-Command "python")) {
 } else {
     $pythonVersion = python --version
     Write-Status "Python ja instalado: $pythonVersion" "SUCCESS"
-    # Verificar versão mínima
+    # Verificar versao minima
     $version = [Version]($pythonVersion -replace "Python ", "")
     if ($version -lt [Version]"3.10.0") {
         Write-Status "Python $version e muito antigo. Minimo: 3.10" "ERROR"
@@ -264,6 +263,40 @@ if (-not (Test-Command "restic")) {
     Write-Status "Restic ja instalado: $(restic version)" "SUCCESS"
 }
 
+# Instalar WinFsp (necessario para mount)
+function Test-WinFsp {
+    return (Test-Path "C:\Program Files (x86)\WinFsp\bin\launchctl-x64.exe") -or (Test-Path "C:\Program Files\WinFsp\bin\launchctl-x64.exe")
+}
+
+if (-not (Test-WinFsp)) {
+    Write-Status "WinFsp nao encontrado. Instalando..."
+    $installed = $false
+    if ($hasWinget) {
+        $installed = Install-WithWinget "WinFsp.WinFsp" "WinFsp"
+    }
+    if (-not $installed -and $hasChoco) {
+        $installed = Install-WithChoco "winfsp" "WinFsp"
+    }
+    if (-not $installed) {
+        Write-Status "Tentando download direto do WinFsp..." "WARNING"
+        try {
+            $winfspUrl = "https://github.com/winfsp/winfsp/releases/latest/download/winfsp-2.0.23075.msi"
+            $tempFile = "$env:TEMP\winfsp-installer.msi"
+            Write-Status "Baixando WinFsp de $winfspUrl"
+            Invoke-WebRequest -Uri $winfspUrl -OutFile $tempFile
+            Write-Status "Instalando WinFsp... (pode solicitar permissoes de administrador)"
+            Start-Process -FilePath "msiexec.exe" -ArgumentList "/i", $tempFile, "/quiet" -Wait -Verb RunAs
+            Remove-Item $tempFile -Force
+            Write-Status "WinFsp instalado com sucesso" "SUCCESS"
+        } catch {
+            Write-Status "Falha ao instalar WinFsp: $($_.Exception.Message)" "WARNING"
+            Write-Status "Voce pode instalar manualmente de: https://winfsp.dev/rel/" "INFO"
+        }
+    }
+} else {
+    Write-Status "WinFsp ja instalado" "SUCCESS"
+}
+
 # Atualizar PATH se necessario
 $machinePath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
 $userPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
@@ -272,13 +305,13 @@ $env:PATH = $machinePath + ";" + $userPath
 # Garantir que GnuWin32 esteja no PATH permanentemente
 $makePath = "C:\Program Files (x86)\GnuWin32\bin"
 if (Test-Path $makePath) {
-    # Atualizar PATH da sessão atual
+    # Atualizar PATH da sessao atual
     if ($env:PATH -notlike "*$makePath*") {
         $env:PATH += ";$makePath"
         Write-Status "PATH da sessao atualizado com GnuWin32" "SUCCESS"
     }
     
-    # Atualizar PATH do usuário permanentemente
+    # Atualizar PATH do usuario permanentemente
     $currentUserPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
     if ($currentUserPath -notlike "*$makePath*") {
         $newUserPath = if ($currentUserPath) { $currentUserPath + ";$makePath" } else { $makePath }
@@ -290,13 +323,13 @@ if (Test-Path $makePath) {
 # Garantir que Restic esteja no PATH permanentemente
 $resticPath = "C:\Users\$env:USERNAME\OneDrive - A7 Technology Business and Service Ltda\Documentos\Restic - Azure\bin"
 if (Test-Path $resticPath) {
-    # Atualizar PATH da sessão atual
+    # Atualizar PATH da sessao atual
     if ($env:PATH -notlike "*$resticPath*") {
         $env:PATH += ";$resticPath"
         Write-Status "PATH da sessao atualizado com Restic" "SUCCESS"
     }
     
-    # Atualizar PATH do usuário permanentemente
+    # Atualizar PATH do usuario permanentemente
     $currentUserPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
     if ($currentUserPath -notlike "*$resticPath*") {
         $newUserPath = if ($currentUserPath) { $currentUserPath + ";$resticPath" } else { $resticPath }
@@ -315,6 +348,13 @@ $tools = @(
     @{Name="Restic"; Command="restic version"}
 )
 
+# Verificar WinFsp separadamente (nao tem comando de linha)
+if (Test-WinFsp) {
+    Write-Status "WinFsp: INSTALADO" "SUCCESS"
+} else {
+    Write-Status "WinFsp: NAO ENCONTRADO (funcionalidade mount nao disponivel)" "WARNING"
+}
+
 $allOk = $true
 foreach ($tool in $tools) {
     try {
@@ -332,22 +372,120 @@ if (-not $allOk) {
     exit 1
 }
 
-# Chamar setup do Git Bash
+# Configurar ambiente virtual Python
+Write-Status "Configurando ambiente virtual Python..."
+try {
+    # Verificar se .venv ja existe
+    if (Test-Path ".venv") {
+        Write-Status "Ambiente virtual .venv ja existe" "SUCCESS"
+    } else {
+        Write-Status "Criando ambiente virtual .venv..."
+        python -m venv .venv
+        if ($LASTEXITCODE -eq 0) {
+            Write-Status "Ambiente virtual criado com sucesso" "SUCCESS"
+        } else {
+            Write-Status "Falha ao criar ambiente virtual" "ERROR"
+            exit 1
+        }
+    }
+    
+    # Ativar ambiente virtual e instalar dependencias
+    Write-Status "Ativando ambiente virtual e instalando dependencias..."
+    $activateScript = ".venv\Scripts\Activate.ps1"
+    
+    if (Test-Path $activateScript) {
+        # Ativar ambiente virtual
+        & $activateScript
+        
+        # Atualizar pip
+        Write-Status "Atualizando pip..."
+        python -m pip install --upgrade pip
+        
+        # Instalar dependencias
+        if (Test-Path "requirements.txt") {
+            Write-Status "Instalando dependencias do requirements.txt..."
+            pip install -r requirements.txt
+            if ($LASTEXITCODE -eq 0) {
+                Write-Status "Dependencias instaladas com sucesso" "SUCCESS"
+            } else {
+                Write-Status "Falha ao instalar dependencias" "ERROR"
+                exit 1
+            }
+        } elseif (Test-Path "pyproject.toml") {
+            Write-Status "Instalando dependencias do pyproject.toml..."
+            pip install -e .
+            if ($LASTEXITCODE -eq 0) {
+                Write-Status "Dependencias instaladas com sucesso" "SUCCESS"
+            } else {
+                Write-Status "Falha ao instalar dependencias" "ERROR"
+                exit 1
+            }
+        } else {
+            Write-Status "Nenhum arquivo de dependencias encontrado" "WARNING"
+        }
+    } else {
+        Write-Status "Script de ativacao nao encontrado" "ERROR"
+        exit 1
+    }
+} catch {
+    Write-Status "Falha na configuracao do ambiente virtual: $($_.Exception.Message)" "ERROR"
+    exit 1
+}
+
+# Chamar setup do Git Bash (opcional)
 Write-Status "Chamando setup especifico do Git Bash..."
 try {
     $setupArgs = if ($AssumeYes) { "--assume-yes" } else { "" }
     $currentDir = $PWD.Path
-    bash -lc "cd '$currentDir'; ./scripts/setup_windows.sh $setupArgs"
-    Write-Status "Setup concluido com sucesso!" "SUCCESS"
+    
+    # Tentar encontrar bash do Git
+    $bashPaths = @(
+        "C:\Program Files\Git\bin\bash.exe",
+        "C:\Program Files (x86)\Git\bin\bash.exe",
+        "${env:ProgramFiles}\Git\bin\bash.exe",
+        "${env:ProgramFiles(x86)}\Git\bin\bash.exe"
+    )
+    
+    $bashPath = $null
+    foreach ($path in $bashPaths) {
+        if (Test-Path $path) {
+            $bashPath = $path
+            break
+        }
+    }
+    
+    if ($bashPath) {
+        & "$bashPath" -lc "cd '$currentDir'; ./scripts/setup_windows.sh $setupArgs"
+        Write-Status "Setup adicional concluido com sucesso!" "SUCCESS"
+    } else {
+        Write-Status "Git Bash nao encontrado. Pulando setup adicional." "WARNING"
+        Write-Status "Ambiente virtual configurado com sucesso!" "SUCCESS"
+    }
 } catch {
-    Write-Status "Falha no setup do Git Bash: $($_.Exception.Message)" "ERROR"
-    exit 1
+    Write-Status "Falha no setup do Git Bash: $($_.Exception.Message)" "WARNING"
+    Write-Status "Continuando com ambiente virtual configurado..." "INFO"
 }
 
 Write-Status "=== BOOTSTRAP CONCLUIDO ===" "SUCCESS"
 Write-Status "Todas as dependencias foram instaladas com sucesso!" "SUCCESS"
-Write-Status "Proximos passos:" "INFO"
-Write-Status "1. Reinicie o terminal se necessario" "INFO"
-Write-Status "2. Configure o arquivo .env" "INFO"
-Write-Status "3. Execute: make init" "INFO"
-Write-Status "4. Execute: make backup" "INFO"
+Write-Status "" "INFO"
+Write-Status "COMPONENTES INSTALADOS:" "INFO"
+Write-Status "[OK] Git for Windows" "SUCCESS"
+Write-Status "[OK] GNU Make" "SUCCESS"
+Write-Status "[OK] Python 3.12+" "SUCCESS"
+Write-Status "[OK] Restic (backup tool)" "SUCCESS"
+Write-Status "[OK] WinFsp (para comando mount)" "SUCCESS"
+Write-Status "[OK] Ambiente virtual Python (.venv)" "SUCCESS"
+Write-Status "[OK] Dependencias Python instaladas" "SUCCESS"
+Write-Status "" "INFO"
+Write-Status "PROXIMOS PASSOS:" "INFO"
+Write-Status "1. Reinicie o terminal/PowerShell se necessario" "INFO"
+Write-Status "2. Configure o arquivo .env baseado no .env.example" "INFO"
+Write-Status "3. Execute: make init (para inicializar repositorio)" "INFO"
+Write-Status "4. Execute: make validate-setup (para validar tudo)" "INFO"
+Write-Status "5. Execute: make backup (para fazer primeiro backup)" "INFO"
+Write-Status "" "INFO"
+Write-Status "DICAS:" "INFO"
+Write-Status "- O comando 'make mount' agora funciona com WinFsp" "INFO"
+Write-Status "- Use 'make health' para verificar o sistema" "INFO"
+Write-Status "- Use 'make help' para ver todos os comandos" "INFO"

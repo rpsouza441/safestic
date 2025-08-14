@@ -1,4 +1,4 @@
-"""List snapshots and their approximate restore size from a Restic repository."""
+﻿"""List snapshots and their approximate restore size from a Restic repository."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from services.restic_client import ResticClient, ResticError
 def list_snapshots_with_size() -> None:
     """Print snapshot information including estimated restore size.
     
-    Utiliza o ResticClient para obter snapshots e seus tamanhos com retry automático e tratamento de erros.
+    Utiliza o ResticClient para obter snapshots e seus tamanhos com retry automatico e tratamento de erros.
     """
     with ResticScript("list_snapshots_with_size") as ctx:
         # Configurar logging
@@ -25,16 +25,16 @@ def list_snapshots_with_size() -> None:
         
         try:
             # Criar cliente Restic com retry
-            client = ResticClient(repository=ctx.repository, max_attempts=3)
+            client = ResticClient()
             
             # Obter lista de snapshots
             snapshots = client.list_snapshots()
             
             if not snapshots:
-                ctx.log("Nenhum snapshot encontrado no repositório.")
+                ctx.log("Nenhum snapshot encontrado no repositorio.")
                 return
 
-            ctx.log(f"Listando snapshots do repositório: {ctx.repository}\n")
+            ctx.log(f"Listando snapshots do repositorio: {ctx.repository}\n")
 
             for snap in snapshots:
                 short_id = snap["short_id"]
@@ -42,22 +42,19 @@ def list_snapshots_with_size() -> None:
                 hostname = snap["hostname"]
                 paths = ", ".join(snap["paths"])
 
-                try:
-                    stats = client.get_snapshot_size(short_id)
-                    if stats and "total_size" in stats:
-                        total_bytes = stats.get("total_size", 0)
-                        total_gib = total_bytes / (1024 ** 3)
-                        print(
-                            f"{short_id} | {time} | {hostname} | {paths} | {total_gib:.3f} GiB",
-                        )
-                    else:
-                        print(
-                            f"{short_id} | {time} | {hostname} | {paths} | (erro ao calcular tamanho)",
-                        )
-                except ResticError:
-                    print(
-                        f"{short_id} | {time} | {hostname} | {paths} | (erro ao calcular tamanho)",
-                    )
+                # Para snapshots individuais, nao ha comando direto para obter tamanho
+                # Vamos mostrar apenas as informacoes basicas
+                print(f"{short_id:<12} {time:<20} {hostname:<15} {paths}")
+
+            # Mostrar estatisticas gerais do repositorio
+            try:
+                repo_stats = client.get_repository_stats()
+                if repo_stats and "total_size" in repo_stats:
+                    total_repo_bytes = repo_stats.get("total_size", 0)
+                    total_repo_gib = total_repo_bytes / (1024 ** 3)
+                    ctx.log(f"\nTamanho total do repositorio: {total_repo_gib:.3f} GiB")
+            except ResticError as e:
+                ctx.log(f"Erro ao obter estatisticas do repositorio: {e}")
 
         except ResticError as exc:
             ctx.log(f"[ERRO] {exc}")
@@ -69,3 +66,4 @@ def list_snapshots_with_size() -> None:
 
 if __name__ == "__main__":
     list_snapshots_with_size()
+

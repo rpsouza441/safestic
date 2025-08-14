@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Setup script para Linux - FASE 2
 # Detecta distribuicao e instala dependencias necessarias para o Safestic
 # Uso: ./scripts/setup_linux.sh [--assume-yes]
@@ -158,7 +158,7 @@ install_restic() {
             ;;
     esac
     
-    # Se não estiver disponível no repositório, instalar manualmente
+    # Se nao estiver disponivel no repositorio, instalar manualmente
     log_warning "Restic nao encontrado nos repositorios. Instalando manualmente..."
     
     # Detectar arquitetura
@@ -190,14 +190,14 @@ install_restic() {
 
 
 log_info "=== SETUP SAFESTIC PARA LINUX ==="
-log_info "Detectando distribuição..."
+log_info "Detectando distribuicao..."
 
 detect_distro
 
-# Lista de pacotes básicos necessários
+# Lista de pacotes basicos necessarios
 BASIC_PACKAGES="git make python3 python3-pip curl bzip2"
 
-# Ajustar nomes de pacotes por distribuição
+# Ajustar nomes de pacotes por distribuicao
 case $DISTRO in
     ubuntu|debian)
         PACKAGES="$BASIC_PACKAGES python3-venv"
@@ -216,7 +216,7 @@ case $DISTRO in
         ;;
 esac
 
-# Verificar se já estão instalados
+# Verificar se ja estao instalados
 log_info "Verificando dependencias..."
 
 MISSING_PACKAGES=""
@@ -255,7 +255,7 @@ else
     log_success "Todas as dependencias basicas ja estao instaladas"
 fi
 
-# Verificar versão do Python
+# Verificar versao do Python
 PYTHON_CMD="python3"
 if [ "$DISTRO" = "arch" ] || [ "$DISTRO" = "manjaro" ]; then
     PYTHON_CMD="python"
@@ -283,7 +283,7 @@ install_restic
 # Instalar dependencias Python do projeto
 log_info "Instalando dependencias Python do projeto..."
 
-# Usar pip3 se disponível, senão pip
+# Usar pip3 se disponivel, senao pip
 PIP_CMD="pip3"
 if ! check_command pip3; then
     PIP_CMD="pip"

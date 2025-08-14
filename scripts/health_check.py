@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Script de verificação de saúde do Safestic
-Verifica todos os componentes e configurações do sistema
+Script de verificacao de saude completa do sistema SafeStic
+Verifica todas as dependencias, configuracoes e funcionalidades
 """
 
 import os
@@ -9,405 +9,325 @@ import sys
 import subprocess
 import json
 from pathlib import Path
-from datetime import datetime, timedelta
-from dotenv import load_dotenv
+from typing import Dict, List, Tuple, Optional
 
-def print_header(title):
-    """Imprime cabeçalho formatado"""
-    print(f"\n{'='*60}")
-    print(f" {title}")
-    print(f"{'='*60}")
+# Adicionar o diretorio raiz ao path para importar services
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def print_section(title):
-    """Imprime seção formatada"""
-    print(f"\n📋 {title}")
-    print("-" * 40)
+from services.logger import setup_logger
+from services.restic import load_restic_config, load_restic_env
+from services.restic_client import ResticClient
 
-def check_status(condition, success_msg, error_msg):
-    """Verifica condição e imprime status"""
-    if condition:
-        print(f"✅ {success_msg}")
-        return True
-    else:
-        print(f"❌ {error_msg}")
-        return False
+logger = setup_logger(__name__)
 
-def check_warning(condition, success_msg, warning_msg):
-    """Verifica condição e imprime aviso"""
-    if condition:
-        print(f"✅ {success_msg}")
-        return True
-    else:
-        print(f"⚠️  {warning_msg}")
-        return False
-
-def load_config():
-    """Carrega configurações do .env"""
-    env_path = Path('.env')
-    if not env_path.exists():
-        return False, "Arquivo .env não encontrado"
+class HealthChecker:
+    """Verificador de saude do sistema SafeStic"""
     
-    try:
-        load_dotenv(env_path)
-        return True, "Configuração carregada"
-    except Exception as e:
-        return False, f"Erro ao carregar .env: {e}"
-
-def check_dependencies():
-    """Verifica dependências do sistema"""
-    print_section("Dependências do Sistema")
+    def __init__(self):
+        self.results = []
+        self.warnings = []
+        self.errors = []
     
-    dependencies = {
-        'python': ['python', '--version'],
-        'restic': ['restic', 'version'],
-        'make': ['make', '--version'] if os.name != 'nt' else ['make', '--version'],
-        'git': ['git', '--version']
-    }
+    def add_result(self, category: str, item: str, status: str, details: str = ""):
+        """Adiciona resultado de verificacao"""
+        result = {
+            "category": category,
+            "item": item,
+            "status": status,
+            "details": details
+        }
+        self.results.append(result)
+        
+        if status == "WARNING":
+            self.warnings.append(f"{category} - {item}: {details}")
+        elif status == "ERROR":
+            self.errors.append(f"{category} - {item}: {details}")
     
-    results = {}
-    
-    for name, cmd in dependencies.items():
+    def check_command(self, command: str, name: str) -> bool:
+        """Verifica se um comando esta disponivel"""
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                version = result.stdout.split('\n')[0]
-                print(f"✅ {name}: {version}")
-                results[name] = True
+            # Restic usa 'version' ao inves de '--version'
+            if command == "restic":
+                result = subprocess.run([command, "version"], 
+                                      capture_output=True, text=True, timeout=10)
             else:
-                print(f"❌ {name}: Erro na execução")
-                results[name] = False
-        except FileNotFoundError:
-            print(f"❌ {name}: Não encontrado")
-            results[name] = False
-        except subprocess.TimeoutExpired:
-            print(f"❌ {name}: Timeout")
-            results[name] = False
-        except Exception as e:
-            print(f"❌ {name}: {e}")
-            results[name] = False
-    
-    return results
-
-def check_configuration():
-    """Verifica configuração do Safestic"""
-    print_section("Configuração")
-    
-    # Verificar arquivo .env
-    config_ok, config_msg = load_config()
-    check_status(config_ok, config_msg, config_msg)
-    
-    if not config_ok:
-        return False
-    
-    # Verificar variáveis obrigatórias
-    required_vars = {
-        'STORAGE_PROVIDER': 'Provedor de armazenamento',
-        'STORAGE_BUCKET': 'Bucket/caminho de armazenamento',
-        'RESTIC_PASSWORD': 'Senha do repositório',
-        'BACKUP_SOURCE_DIRS': 'Diretórios para backup'
-    }
-    
-    config_score = 0
-    for var, desc in required_vars.items():
-        value = os.getenv(var)
-        if value and value.strip():
-            print(f"✅ {desc}: Configurado")
-            config_score += 1
-        else:
-            print(f"❌ {desc}: Não configurado ({var})")
-    
-    # Verificar configurações específicas do provedor
-    provider = os.getenv('STORAGE_PROVIDER', '').lower()
-    if provider == 'aws':
-        aws_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
-        for var in aws_vars:
-            value = os.getenv(var)
-            check_status(value and value.strip(), 
-                        f"AWS {var}: Configurado", 
-                        f"AWS {var}: Não configurado")
-    elif provider == 'azure':
-        azure_vars = ['AZURE_ACCOUNT_NAME', 'AZURE_ACCOUNT_KEY']
-        for var in azure_vars:
-            value = os.getenv(var)
-            check_status(value and value.strip(), 
-                        f"Azure {var}: Configurado", 
-                        f"Azure {var}: Não configurado")
-    elif provider == 'gcp':
-        gcp_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        check_status(gcp_creds and Path(gcp_creds).exists(), 
-                    "GCP: Credenciais configuradas", 
-                    "GCP: Credenciais não encontradas")
-    
-    return config_score == len(required_vars)
-
-def check_directories():
-    """Verifica diretórios de backup e logs"""
-    print_section("Diretórios")
-    
-    # Verificar diretórios de origem
-    source_dirs = os.getenv('BACKUP_SOURCE_DIRS', '').split(',')
-    source_ok = True
-    
-    for dir_path in source_dirs:
-        dir_path = dir_path.strip()
-        if dir_path:
-            exists = Path(dir_path).exists()
-            check_status(exists, f"Origem: {dir_path}", f"Origem não encontrada: {dir_path}")
-            if not exists:
-                source_ok = False
-    
-    # Verificar diretório de logs
-    log_dir = os.getenv('LOG_DIR', './logs')
-    log_exists = Path(log_dir).exists()
-    check_status(log_exists, f"Logs: {log_dir}", f"Diretório de logs não existe: {log_dir}")
-    
-    # Verificar diretório de restore
-    restore_dir = os.getenv('RESTORE_TARGET_DIR', './restore')
-    restore_parent = Path(restore_dir).parent
-    restore_ok = restore_parent.exists()
-    check_status(restore_ok, f"Restore (pai): {restore_parent}", f"Diretório pai do restore não existe: {restore_parent}")
-    
-    return source_ok and log_exists and restore_ok
-
-def check_repository_access():
-    """Verifica acesso ao repositório"""
-    print_section("Repositório")
-    
-    try:
-        # Construir ambiente
-        env = os.environ.copy()
-        provider = os.getenv('STORAGE_PROVIDER', '').lower()
-        bucket = os.getenv('STORAGE_BUCKET', '')
-        
-        if provider == 'local':
-            env['RESTIC_REPOSITORY'] = bucket
-        elif provider == 'aws':
-            env['RESTIC_REPOSITORY'] = f's3:{bucket}'
-        elif provider == 'azure':
-            account = os.getenv('AZURE_ACCOUNT_NAME')
-            env['RESTIC_REPOSITORY'] = f'azure:{account}:{bucket}'
-        elif provider == 'gcp':
-            env['RESTIC_REPOSITORY'] = f'gs:{bucket}'
-        
-        env['RESTIC_PASSWORD'] = os.getenv('RESTIC_PASSWORD', '')
-        
-        # Testar acesso
-        result = subprocess.run(
-            ['restic', 'cat', 'config'],
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode == 0:
-            print("✅ Repositório: Acessível")
-            
-            # Obter estatísticas básicas
-            stats_result = subprocess.run(
-                ['restic', 'stats', '--json'],
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            
-            if stats_result.returncode == 0:
-                try:
-                    stats = json.loads(stats_result.stdout)
-                    total_size = stats.get('total_size', 0)
-                    total_file_count = stats.get('total_file_count', 0)
-                    print(f"📊 Tamanho total: {total_size:,} bytes")
-                    print(f"📊 Total de arquivos: {total_file_count:,}")
-                except:
-                    pass
-            
-            return True
-        else:
-            print(f"❌ Repositório: Inacessível - {result.stderr}")
-            return False
-            
-    except subprocess.TimeoutExpired:
-        print("❌ Repositório: Timeout no acesso")
-        return False
-    except Exception as e:
-        print(f"❌ Repositório: Erro - {e}")
-        return False
-
-def check_recent_backups():
-    """Verifica backups recentes"""
-    print_section("Backups Recentes")
-    
-    try:
-        # Construir ambiente
-        env = os.environ.copy()
-        provider = os.getenv('STORAGE_PROVIDER', '').lower()
-        bucket = os.getenv('STORAGE_BUCKET', '')
-        
-        if provider == 'local':
-            env['RESTIC_REPOSITORY'] = bucket
-        elif provider == 'aws':
-            env['RESTIC_REPOSITORY'] = f's3:{bucket}'
-        elif provider == 'azure':
-            account = os.getenv('AZURE_ACCOUNT_NAME')
-            env['RESTIC_REPOSITORY'] = f'azure:{account}:{bucket}'
-        elif provider == 'gcp':
-            env['RESTIC_REPOSITORY'] = f'gs:{bucket}'
-        
-        env['RESTIC_PASSWORD'] = os.getenv('RESTIC_PASSWORD', '')
-        
-        # Listar snapshots recentes
-        result = subprocess.run(
-            ['restic', 'snapshots', '--json', '--last', '5'],
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode == 0:
-            try:
-                snapshots = json.loads(result.stdout)
-                if snapshots:
-                    print(f"✅ Encontrados {len(snapshots)} snapshots recentes")
-                    
-                    # Verificar backup mais recente
-                    latest = snapshots[0]
-                    backup_time = datetime.fromisoformat(latest['time'].replace('Z', '+00:00'))
-                    now = datetime.now(backup_time.tzinfo)
-                    age = now - backup_time
-                    
-                    print(f"📅 Último backup: {backup_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                    print(f"⏰ Idade: {age.days} dias, {age.seconds//3600} horas")
-                    
-                    # Verificar se backup é muito antigo
-                    if age > timedelta(days=7):
-                        print("⚠️  Último backup tem mais de 7 dias")
-                        return False
-                    elif age > timedelta(days=2):
-                        print("⚠️  Último backup tem mais de 2 dias")
-                        return True
-                    else:
-                        print("✅ Backup recente")
-                        return True
-                else:
-                    print("❌ Nenhum snapshot encontrado")
-                    return False
-            except Exception as e:
-                print(f"❌ Erro ao processar snapshots: {e}")
+                result = subprocess.run([command, "--version"], 
+                                      capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                version = result.stdout.strip().split('\n')[0]
+                self.add_result("Dependencias", name, "OK", version)
+                return True
+            else:
+                self.add_result("Dependencias", name, "ERROR", "Comando falhou")
                 return False
-        else:
-            print(f"❌ Erro ao listar snapshots: {result.stderr}")
+        except FileNotFoundError:
+            self.add_result("Dependencias", name, "ERROR", "Comando nao encontrado")
             return False
+        except subprocess.TimeoutExpired:
+            self.add_result("Dependencias", name, "ERROR", "Timeout na verificacao")
+            return False
+        except Exception as e:
+            self.add_result("Dependencias", name, "ERROR", str(e))
+            return False
+    
+    def check_python_packages(self):
+        """Verifica pacotes Python necessarios"""
+        required_packages = {
+            "pydantic": "pydantic",
+            "python-dotenv": "dotenv",
+            "colorama": "colorama",
+            "requests": "requests",
+            "psutil": "psutil",
+            "cryptography": "cryptography"
+        }
+        
+        for package_name, import_name in required_packages.items():
+            try:
+                __import__(import_name)
+                self.add_result("Python Packages", package_name, "OK", "Importado com sucesso")
+            except ImportError:
+                self.add_result("Python Packages", package_name, "ERROR", "Pacote nao encontrado")
+    
+    def check_files_and_directories(self):
+        """Verifica arquivos e diretorios essenciais"""
+        essential_files = [
+            ".env",
+            "requirements.txt",
+            "pyproject.toml",
+            "Makefile",
+            "services/__init__.py",
+            "services/restic.py",
+            "services/restic_client.py"
+        ]
+        
+        for file_path in essential_files:
+            if Path(file_path).exists():
+                self.add_result("Arquivos", file_path, "OK", "Arquivo existe")
+            else:
+                self.add_result("Arquivos", file_path, "ERROR", "Arquivo nao encontrado")
+        
+        # Verificar diretorios
+        essential_dirs = ["services", "scripts", "logs"]
+        for dir_path in essential_dirs:
+            if Path(dir_path).exists():
+                self.add_result("Diretorios", dir_path, "OK", "Diretorio existe")
+            else:
+                if dir_path == "logs":
+                    # Criar diretorio de logs se nao existir
+                    Path(dir_path).mkdir(exist_ok=True)
+                    self.add_result("Diretorios", dir_path, "OK", "Diretorio criado")
+                else:
+                    self.add_result("Diretorios", dir_path, "ERROR", "Diretorio nao encontrado")
+    
+    def check_restic_config(self):
+        """Verifica configuracao do Restic"""
+        try:
+            config = load_restic_config()
             
-    except subprocess.TimeoutExpired:
-        print("❌ Timeout ao verificar backups")
-        return False
-    except Exception as e:
-        print(f"❌ Erro ao verificar backups: {e}")
-        return False
-
-def check_log_files():
-    """Verifica arquivos de log"""
-    print_section("Arquivos de Log")
-    
-    log_dir = Path(os.getenv('LOG_DIR', './logs'))
-    
-    if not log_dir.exists():
-        print("❌ Diretório de logs não existe")
-        return False
-    
-    # Verificar logs recentes
-    log_files = list(log_dir.glob('*.log'))
-    
-    if not log_files:
-        print("⚠️  Nenhum arquivo de log encontrado")
-        return False
-    
-    print(f"✅ Encontrados {len(log_files)} arquivos de log")
-    
-    # Verificar log mais recente
-    latest_log = max(log_files, key=lambda f: f.stat().st_mtime)
-    mod_time = datetime.fromtimestamp(latest_log.stat().st_mtime)
-    age = datetime.now() - mod_time
-    
-    print(f"📄 Log mais recente: {latest_log.name}")
-    print(f"📅 Modificado: {mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"⏰ Idade: {age.days} dias, {age.seconds//3600} horas")
-    
-    # Verificar erros recentes
-    try:
-        with open(latest_log, 'r', encoding='utf-8') as f:
-            content = f.read()
-            error_count = content.lower().count('error')
-            warning_count = content.lower().count('warning')
+            # Verificar variaveis essenciais
+            if config.storage_bucket:
+                self.add_result("Configuracao", "STORAGE_BUCKET", "OK", config.storage_bucket)
+            else:
+                self.add_result("Configuracao", "STORAGE_BUCKET", "ERROR", "Nao configurado")
             
-            if error_count > 0:
-                print(f"⚠️  {error_count} erros encontrados no log")
-            if warning_count > 0:
-                print(f"⚠️  {warning_count} avisos encontrados no log")
+            if config.restic_password:
+                self.add_result("Configuracao", "RESTIC_PASSWORD", "OK", "Configurado")
+            else:
+                self.add_result("Configuracao", "RESTIC_PASSWORD", "ERROR", "Nao configurado")
             
-            if error_count == 0 and warning_count == 0:
-                print("✅ Nenhum erro ou aviso no log mais recente")
+            if config.backup_source_dirs:
+                self.add_result("Configuracao", "BACKUP_SOURCE_DIRS", "OK", 
+                              f"{len(config.backup_source_dirs)} diretorios")
                 
-    except Exception as e:
-        print(f"⚠️  Erro ao ler log: {e}")
+                # Verificar se diretorios de backup existem
+                for dir_path in config.backup_source_dirs:
+                    if Path(dir_path).exists():
+                        self.add_result("Diretorios de Backup", dir_path, "OK", "Diretorio existe")
+                    else:
+                        self.add_result("Diretorios de Backup", dir_path, "WARNING", "Diretorio nao encontrado")
+            else:
+                self.add_result("Configuracao", "BACKUP_SOURCE_DIRS", "ERROR", "Nao configurado")
+                
+        except Exception as e:
+            self.add_result("Configuracao", "Carregamento", "ERROR", str(e))
     
-    return True
-
-def generate_health_report():
-    """Gera relatório de saúde completo"""
-    print_header("RELATÓRIO DE SAÚDE - SAFESTIC")
-    print(f"📅 Data: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"💻 Sistema: {os.name}")
-    print(f"📁 Diretório: {Path.cwd()}")
+    def check_restic_repository(self):
+        """Verifica acesso ao repositorio Restic"""
+        try:
+            client = ResticClient()
+            client.check_repository_access()
+            self.add_result("Repositorio", "Acesso", "OK", "Repositorio acessivel")
+            
+            # Tentar listar snapshots
+            try:
+                result = subprocess.run(["restic", "-r", client.repository, "snapshots", "--json"], 
+                                      capture_output=True, text=True, timeout=30,
+                                      env=dict(os.environ, **client.env))
+                if result.returncode == 0:
+                    snapshots = json.loads(result.stdout) if result.stdout.strip() else []
+                    self.add_result("Repositorio", "Snapshots", "OK", f"{len(snapshots)} snapshots encontrados")
+                else:
+                    self.add_result("Repositorio", "Snapshots", "WARNING", "Erro ao listar snapshots")
+            except Exception as e:
+                self.add_result("Repositorio", "Snapshots", "WARNING", f"Erro: {e}")
+                
+        except Exception as e:
+            self.add_result("Repositorio", "Acesso", "ERROR", str(e))
     
-    # Executar verificações
-    checks = {
-        'Dependências': check_dependencies(),
-        'Configuração': check_configuration(),
-        'Diretórios': check_directories(),
-        'Repositório': check_repository_access(),
-        'Backups': check_recent_backups(),
-        'Logs': check_log_files()
-    }
-    
-    # Resumo final
-    print_section("Resumo Final")
-    
-    total_checks = 0
-    passed_checks = 0
-    
-    for check_name, result in checks.items():
-        if isinstance(result, dict):  # Dependências retorna dict
-            total_deps = len(result)
-            passed_deps = sum(1 for v in result.values() if v)
-            status = "✅" if passed_deps == total_deps else "⚠️" if passed_deps > 0 else "❌"
-            print(f"{status} {check_name}: {passed_deps}/{total_deps}")
-            total_checks += total_deps
-            passed_checks += passed_deps
+    def check_winfsp(self):
+        """Verifica se WinFsp esta instalado (Windows)"""
+        if os.name == 'nt':  # Windows
+            winfsp_paths = [
+                Path("C:/Program Files (x86)/WinFsp/bin/launchctl-x64.exe"),
+                Path("C:/Program Files/WinFsp/bin/launchctl-x64.exe")
+            ]
+            
+            winfsp_found = any(path.exists() for path in winfsp_paths)
+            
+            if winfsp_found:
+                self.add_result("Sistema", "WinFsp", "OK", "WinFsp instalado (mount disponivel)")
+            else:
+                self.add_result("Sistema", "WinFsp", "WARNING", 
+                              "WinFsp nao encontrado (mount nao disponivel)")
         else:
-            status = "✅" if result else "❌"
-            print(f"{status} {check_name}: {'OK' if result else 'FALHA'}")
-            total_checks += 1
-            if result:
-                passed_checks += 1
+            # Linux/macOS - verificar FUSE
+            if Path("/usr/bin/fusermount").exists() or Path("/bin/fusermount").exists():
+                self.add_result("Sistema", "FUSE", "OK", "FUSE disponivel (mount disponivel)")
+            else:
+                self.add_result("Sistema", "FUSE", "WARNING", 
+                              "FUSE nao encontrado (mount pode nao funcionar)")
     
-    print(f"\n📊 Score geral: {passed_checks}/{total_checks} ({passed_checks/total_checks*100:.1f}%)")
+    def check_virtual_environment(self):
+        """Verifica ambiente virtual Python"""
+        # Verificar multiplas formas de detectar ambiente virtual
+        in_venv = (
+            hasattr(sys, 'real_prefix') or 
+            (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) or
+            os.environ.get('VIRTUAL_ENV') is not None
+        )
+        
+        if in_venv:
+            venv_path = os.environ.get('VIRTUAL_ENV', 'ambiente virtual')
+            self.add_result("Python", "Ambiente Virtual", "OK", f"Executando em {venv_path}")
+        else:
+            self.add_result("Python", "Ambiente Virtual", "WARNING", 
+                          "Nao esta em ambiente virtual (recomendado usar .venv)")
     
-    if passed_checks == total_checks:
-        print("🎉 Sistema totalmente saudável!")
-        return 0
-    elif passed_checks >= total_checks * 0.8:
-        print("⚠️  Sistema majoritariamente saudável com alguns problemas")
-        return 1
-    else:
-        print("❌ Sistema com problemas significativos")
-        return 2
+    def run_health_check(self) -> Dict:
+        """Executa verificacao completa de saude"""
+        print(" SafeStic - Verificacao de Saude do Sistema")
+        print("=" * 50)
+        
+        # Verificar dependencias do sistema
+        print("\n Verificando dependencias do sistema...")
+        self.check_command("git", "Git")
+        self.check_command("make", "Make")
+        self.check_command("python", "Python")
+        self.check_command("pip", "pip")
+        self.check_command("restic", "Restic")
+        
+        # Verificar ambiente virtual
+        print("\n Verificando ambiente Python...")
+        self.check_virtual_environment()
+        self.check_python_packages()
+        
+        # Verificar arquivos e diretorios
+        print("\n Verificando arquivos e diretorios...")
+        self.check_files_and_directories()
+        
+        # Verificar configuracao
+        print("\n Verificando configuracao...")
+        self.check_restic_config()
+        
+        # Verificar repositorio
+        print("\n Verificando repositorio Restic...")
+        self.check_restic_repository()
+        
+        # Verificar sistema de arquivos
+        print("\n Verificando sistema de arquivos...")
+        self.check_winfsp()
+        
+        return self.generate_report()
+    
+    def generate_report(self) -> Dict:
+        """Gera relatorio final"""
+        print("\n" + "=" * 50)
+        print(" RELAToRIO DE SAuDE")
+        print("=" * 50)
+        
+        # Contar status
+        ok_count = sum(1 for r in self.results if r["status"] == "OK")
+        warning_count = len(self.warnings)
+        error_count = len(self.errors)
+        total_count = len(self.results)
+        
+        print(f"\n OK: {ok_count}")
+        print(f" Avisos: {warning_count}")
+        print(f" Erros: {error_count}")
+        print(f" Total: {total_count}")
+        
+        # Mostrar avisos
+        if self.warnings:
+            print("\n AVISOS:")
+            for warning in self.warnings:
+                print(f"  • {warning}")
+        
+        # Mostrar erros
+        if self.errors:
+            print("\n ERROS:")
+            for error in self.errors:
+                print(f"  • {error}")
+        
+        # Status geral
+        if error_count == 0:
+            if warning_count == 0:
+                print("\n SISTEMA SAUDaVEL - Tudo funcionando perfeitamente!")
+                health_status = "HEALTHY"
+            else:
+                print("\n SISTEMA OK - Alguns avisos, mas funcional")
+                health_status = "OK_WITH_WARNINGS"
+        else:
+            print("\n SISTEMA COM PROBLEMAS - Erros encontrados que precisam ser corrigidos")
+            health_status = "UNHEALTHY"
+        
+        return {
+            "status": health_status,
+            "summary": {
+                "ok": ok_count,
+                "warnings": warning_count,
+                "errors": error_count,
+                "total": total_count
+            },
+            "results": self.results,
+            "warnings": self.warnings,
+            "errors": self.errors
+        }
 
 def main():
-    """Função principal"""
-    return generate_health_report()
+    """Funcao principal"""
+    try:
+        checker = HealthChecker()
+        report = checker.run_health_check()
+        
+        # Salvar relatorio em arquivo
+        report_file = Path("logs/health_report.json")
+        report_file.parent.mkdir(exist_ok=True)
+        
+        with open(report_file, 'w', encoding='utf-8') as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+        
+        print(f"\n Relatorio salvo em: {report_file}")
+        
+        # Codigo de saida baseado no status
+        if report["status"] == "UNHEALTHY":
+            sys.exit(1)
+        else:
+            sys.exit(0)
+            
+    except Exception as e:
+        logger.error(f"Erro na verificacao de saude: {e}")
+        print(f" Erro na verificacao de saude: {e}")
+        sys.exit(1)
 
-if __name__ == '__main__':
-    sys.exit(main())
+if __name__ == "__main__":
+    main()

@@ -1,38 +1,38 @@
-# 🛡️ Guia de Configuração do Safestic
+﻿# 🛡️ Guia de Configuracao do Safestic
 
-**Safestic** é uma solução completa de backup automatizado baseada no Restic, com suporte multiplataforma para Windows e Linux.
+**Safestic** e uma solucao completa de backup automatizado baseada no Restic, com suporte multiplataforma para Windows e Linux.
 
-## 📋 Índice
+## 📋 indice
 
-- [Pré-requisitos](#-pré-requisitos)
-- [Instalação Rápida](#-instalação-rápida)
-- [Instalação Manual](#-instalação-manual)
-- [Configuração](#-configuração)
+- [Pre-requisitos](#-pre-requisitos)
+- [Instalacao Rapida](#-instalacao-rapida)
+- [Instalacao Manual](#-instalacao-manual)
+- [Configuracao](#-configuracao)
 - [Primeiros Passos](#-primeiros-passos)
-- [Agendamento Automático](#-agendamento-automático)
-- [Comandos Disponíveis](#-comandos-disponíveis)
-- [Variáveis de Ambiente](#-variáveis-de-ambiente)
+- [Agendamento Automatico](#-agendamento-automatico)
+- [Comandos Disponiveis](#-comandos-disponiveis)
+- [Variaveis de Ambiente](#-variaveis-de-ambiente)
 - [Troubleshooting](#-troubleshooting)
-- [Manutenção](#-manutenção)
+- [Manutencao](#-manutencao)
 
-## 🔧 Pré-requisitos
+## 🔧 Pre-requisitos
 
-### Requisitos Mínimos
+### Requisitos Minimos
 - **Python**: 3.10 ou superior
-- **Git**: Para clonagem do repositório
-- **Make**: Para execução dos comandos
-- **Restic**: Ferramenta de backup (será instalado automaticamente)
+- **Git**: Para clonagem do repositorio
+- **Make**: Para execucao dos comandos
+- **Restic**: Ferramenta de backup (sera instalado automaticamente)
 
 ### Sistemas Suportados
 - ✅ **Windows 10/11** (PowerShell 5.1+)
 - ✅ **Linux** (Ubuntu, Debian, Fedora, CentOS, Arch, openSUSE)
 - ✅ **macOS** (via scripts Linux)
 
-## 🚀 Instalação Rápida
+## 🚀 Instalacao Rapida
 
 ### Windows (Recomendado)
 
-1. **Clone o repositório:**
+1. **Clone o repositorio:**
    ```powershell
    git clone <url-do-repositorio> safestic
    cd safestic
@@ -43,7 +43,7 @@
    # Como Administrador (recomendado)
    powershell -ExecutionPolicy Bypass -File scripts\bootstrap_windows.ps1
    
-   # OU usando Make (se já tiver instalado)
+   # OU usando Make (se ja tiver instalado)
    make bootstrap
    ```
 
@@ -54,7 +54,7 @@
 
 ### Linux
 
-1. **Clone o repositório:**
+1. **Clone o repositorio:**
    ```bash
    git clone <url-do-repositorio> safestic
    cd safestic
@@ -62,7 +62,7 @@
 
 2. **Execute o setup:**
    ```bash
-   # Instala dependências automaticamente
+   # Instala dependencias automaticamente
    make setup
    
    # OU manualmente
@@ -74,13 +74,13 @@
    make first-run
    ```
 
-## 🔨 Instalação Manual
+## 🔨 Instalacao Manual
 
 ### Windows - Passo a Passo
 
-1. **Instalar dependências:**
+1. **Instalar dependencias:**
    ```powershell
-   # Instalar Git (se não tiver)
+   # Instalar Git (se nao tiver)
    winget install Git.Git
    
    # Instalar Python 3.10+
@@ -115,17 +115,17 @@
 # Atualizar sistema
 sudo apt update
 
-# Instalar dependências
+# Instalar dependencias
 sudo apt install -y git make python3 python3-pip python3-venv curl bzip2
 
 # Instalar Restic
 sudo apt install -y restic
-# OU download manual se não estiver disponível
+# OU download manual se nao estiver disponivel
 ```
 
 #### Fedora/CentOS/RHEL
 ```bash
-# Instalar dependências
+# Instalar dependencias
 sudo dnf install -y git make python3 python3-pip curl bzip2
 
 # Instalar Restic
@@ -134,26 +134,26 @@ sudo dnf install -y restic
 
 #### Arch/Manjaro
 ```bash
-# Instalar dependências
+# Instalar dependencias
 sudo pacman -S git make python python-pip curl bzip2 restic
 ```
 
-## ⚙️ Configuração
+## ⚙️ Configuracao
 
-### 1. Arquivo de Configuração (.env)
+### 1. Arquivo de Configuracao (.env)
 
 ```bash
 # Copiar arquivo de exemplo
 cp .env.example .env
 
-# Editar configurações
+# Editar configuracoes
 nano .env  # Linux
 notepad .env  # Windows
 ```
 
-### 2. Configurações Essenciais
+### 2. Configuracoes Essenciais
 
-**Configuração mínima necessária:**
+**Configuracao minima necessaria:**
 
 ```env
 # Provedor de armazenamento
@@ -163,18 +163,18 @@ STORAGE_PROVIDER=local  # ou aws, azure, gcp
 STORAGE_BUCKET=/caminho/para/backup  # Linux
 STORAGE_BUCKET=C:\Backups\Safestic   # Windows
 
-# Senha do repositório (IMPORTANTE: guarde com segurança!)
+# Senha do repositorio (IMPORTANTE: guarde com seguranca!)
 RESTIC_PASSWORD=sua_senha_super_segura_aqui
 
-# Diretórios para backup (separados por vírgula)
+# Diretorios para backup (separados por virgula)
 BACKUP_SOURCE_DIRS=/home/usuario/Documentos,/home/usuario/Projetos
 # Windows: BACKUP_SOURCE_DIRS=C:\Users\Usuario\Documents,C:\Users\Usuario\Desktop
 
-# Diretório de logs
+# Diretorio de logs
 LOG_DIR=./logs
 ```
 
-### 3. Configurações de Nuvem (Opcional)
+### 3. Configuracoes de Nuvem (Opcional)
 
 #### AWS S3
 ```env
@@ -202,21 +202,21 @@ GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
 
 ## 🎯 Primeiros Passos
 
-### 1. Validar Configuração
+### 1. Validar Configuracao
 ```bash
-# Verificar se tudo está configurado corretamente
+# Verificar se tudo esta configurado corretamente
 make validate
 
 # Verificar setup completo
 make validate-setup
 
-# Verificar saúde do sistema
+# Verificar saude do sistema
 make health
 ```
 
-### 2. Inicializar Repositório
+### 2. Inicializar Repositorio
 ```bash
-# Criar novo repositório de backup
+# Criar novo repositorio de backup
 make init
 ```
 
@@ -225,7 +225,7 @@ make init
 # Executar backup completo
 make backup
 
-# OU testar primeiro (simulação)
+# OU testar primeiro (simulacao)
 make dry-run
 ```
 
@@ -234,14 +234,14 @@ make dry-run
 # Listar snapshots criados
 make list
 
-# Ver estatísticas
+# Ver estatisticas
 make stats
 
 # Verificar integridade
 make check
 ```
 
-## 📅 Agendamento Automático
+## 📅 Agendamento Automatico
 
 ### Instalar Agendamento
 
@@ -259,7 +259,7 @@ make schedule-remove
 
 **Linux (systemd):**
 ```bash
-# Instalar serviços systemd
+# Instalar servicos systemd
 make schedule-install
 
 # Verificar status
@@ -269,15 +269,15 @@ make schedule-status
 make schedule-remove
 ```
 
-### Configuração Padrão do Agendamento
+### Configuracao Padrao do Agendamento
 
-- **Backup**: Diário às 02:00 (com delay aleatório de até 1h)
-- **Prune**: Semanal aos domingos às 03:00 (com delay aleatório de até 2h)
-- **Verificação**: Executada após cada backup/prune
+- **Backup**: Diario as 02:00 (com delay aleatorio de ate 1h)
+- **Prune**: Semanal aos domingos as 03:00 (com delay aleatorio de ate 2h)
+- **Verificacao**: Executada apos cada backup/prune
 
-## 📖 Comandos Disponíveis
+## 📖 Comandos Disponiveis
 
-### Operações de Backup
+### Operacoes de Backup
 ```bash
 make backup          # Backup completo
 make dry-run         # Simular backup
@@ -288,39 +288,39 @@ make test-backup     # Backup de teste
 ```bash
 make list            # Listar snapshots
 make list-size       # Listar com tamanhos
-make list-files      # Arquivos do último snapshot
-make stats           # Estatísticas detalhadas
-make repo-size       # Tamanho do repositório
+make list-files      # Arquivos do ultimo snapshot
+make stats           # Estatisticas detalhadas
+make repo-size       # Tamanho do repositorio
 ```
 
-### Restauração
+### Restauracao
 ```bash
-make restore                    # Restaurar último snapshot
-make restore-id ID=abc123       # Restaurar snapshot específico
-make restore-file FILE=arquivo  # Restaurar arquivo específico
-make test-restore               # Teste de restauração
+make restore                    # Restaurar ultimo snapshot
+make restore-id ID=abc123       # Restaurar snapshot especifico
+make restore-file FILE=arquivo  # Restaurar arquivo especifico
+make test-restore               # Teste de restauracao
 ```
 
-### Manutenção
+### Manutencao
 ```bash
-make prune           # Limpeza automática
+make prune           # Limpeza automatica
 make manual-prune    # Limpeza manual
 make forget          # Esquecer snapshots
 make check           # Verificar integridade
-make rebuild-index   # Reconstruir índice
-make repair          # Reparar repositório (cuidado!)
-make clean           # Limpar arquivos temporários
+make rebuild-index   # Reconstruir indice
+make repair          # Reparar repositorio (cuidado!)
+make clean           # Limpar arquivos temporarios
 ```
 
-### Configuração
+### Configuracao
 ```bash
-make setup           # Instalar dependências
+make setup           # Instalar dependencias
 make bootstrap       # Bootstrap completo (Windows)
-make first-run       # Primeira configuração
-make init            # Inicializar repositório
-make validate        # Validar configuração
+make first-run       # Primeira configuracao
+make init            # Inicializar repositorio
+make validate        # Validar configuracao
 make validate-setup  # Validar setup completo
-make health          # Verificar saúde
+make health          # Verificar saude
 ```
 
 ### Agendamento
@@ -330,65 +330,65 @@ make schedule-remove   # Remover agendamento
 make schedule-status   # Status do agendamento
 ```
 
-### Avançado
+### Avancado
 ```bash
-make mount           # Montar repositório como filesystem
-make unmount         # Desmontar repositório
+make mount           # Montar repositorio como filesystem
+make unmount         # Desmontar repositorio
 ```
 
-## 🔧 Variáveis de Ambiente
+## 🔧 Variaveis de Ambiente
 
-### Configurações de Armazenamento
+### Configuracoes de Armazenamento
 
-| Variável | Descrição | Exemplo |
+| Variavel | Descricao | Exemplo |
 |----------|-----------|----------|
 | `STORAGE_PROVIDER` | Provedor de armazenamento | `local`, `aws`, `azure`, `gcp` |
 | `STORAGE_BUCKET` | Caminho/bucket de destino | `/backup` ou `meu-bucket` |
-| `RESTIC_PASSWORD` | Senha do repositório | `senha_super_segura` |
+| `RESTIC_PASSWORD` | Senha do repositorio | `senha_super_segura` |
 
-### Configurações de Backup
+### Configuracoes de Backup
 
-| Variável | Descrição | Exemplo |
+| Variavel | Descricao | Exemplo |
 |----------|-----------|----------|
-| `BACKUP_SOURCE_DIRS` | Diretórios para backup | `/home/user/docs,/home/user/pics` |
-| `RESTIC_EXCLUDES` | Padrões de exclusão | `*.tmp,*.log,node_modules` |
-| `RESTORE_TARGET_DIR` | Diretório de restauração | `/restore` |
+| `BACKUP_SOURCE_DIRS` | Diretorios para backup | `/home/user/docs,/home/user/pics` |
+| `RESTIC_EXCLUDES` | Padroes de exclusao | `*.tmp,*.log,node_modules` |
+| `RESTORE_TARGET_DIR` | Diretorio de restauracao | `/restore` |
 | `RESTIC_TAGS` | Tags para snapshots | `auto,daily` |
 
-### Configurações de Log
+### Configuracoes de Log
 
-| Variável | Descrição | Exemplo |
+| Variavel | Descricao | Exemplo |
 |----------|-----------|----------|
-| `LOG_DIR` | Diretório de logs | `./logs` |
-| `LOG_LEVEL` | Nível de log | `INFO`, `DEBUG`, `ERROR` |
+| `LOG_DIR` | Diretorio de logs | `./logs` |
+| `LOG_LEVEL` | Nivel de log | `INFO`, `DEBUG`, `ERROR` |
 
-### Configurações de Retenção
+### Configuracoes de Retencao
 
-| Variável | Descrição | Padrão |
+| Variavel | Descricao | Padrao |
 |----------|-----------|--------|
-| `RETENTION_ENABLED` | Habilitar retenção | `true` |
+| `RETENTION_ENABLED` | Habilitar retencao | `true` |
 | `KEEP_HOURLY` | Manter por horas | `24` |
 | `KEEP_DAILY` | Manter por dias | `7` |
 | `KEEP_WEEKLY` | Manter por semanas | `4` |
 | `KEEP_MONTHLY` | Manter por meses | `12` |
 
-### Configurações de Nuvem
+### Configuracoes de Nuvem
 
 #### AWS
-| Variável | Descrição |
+| Variavel | Descricao |
 |----------|----------|
 | `AWS_ACCESS_KEY_ID` | Chave de acesso AWS |
 | `AWS_SECRET_ACCESS_KEY` | Chave secreta AWS |
-| `AWS_DEFAULT_REGION` | Região AWS |
+| `AWS_DEFAULT_REGION` | Regiao AWS |
 
 #### Azure
-| Variável | Descrição |
+| Variavel | Descricao |
 |----------|----------|
 | `AZURE_ACCOUNT_NAME` | Nome da conta Azure |
 | `AZURE_ACCOUNT_KEY` | Chave da conta Azure |
 
 #### Google Cloud
-| Variável | Descrição |
+| Variavel | Descricao |
 |----------|----------|
 | `GOOGLE_APPLICATION_CREDENTIALS` | Caminho para credenciais JSON |
 | `GOOGLE_PROJECT_ID` | ID do projeto GCP |
@@ -397,7 +397,7 @@ make unmount         # Desmontar repositório
 
 ### Problemas Comuns
 
-#### 1. "Make não encontrado" (Windows)
+#### 1. "Make nao encontrado" (Windows)
 ```powershell
 # Instalar Git for Windows (inclui Make)
 winget install Git.Git
@@ -405,10 +405,10 @@ winget install Git.Git
 # OU instalar MSYS2
 winget install MSYS2.MSYS2
 
-# Reiniciar terminal após instalação
+# Reiniciar terminal apos instalacao
 ```
 
-#### 2. "Python não encontrado"
+#### 2. "Python nao encontrado"
 ```bash
 # Linux
 sudo apt install python3 python3-pip  # Ubuntu/Debian
@@ -418,9 +418,9 @@ sudo dnf install python3 python3-pip  # Fedora
 winget install Python.Python.3.12
 ```
 
-#### 3. "Restic não encontrado"
+#### 3. "Restic nao encontrado"
 ```bash
-# Linux - instalação manual
+# Linux - instalacao manual
 wget https://github.com/restic/restic/releases/download/v0.16.4/restic_0.16.4_linux_amd64.bz2
 bunzip2 restic_0.16.4_linux_amd64.bz2
 sudo mv restic_0.16.4_linux_amd64 /usr/local/bin/restic
@@ -430,34 +430,34 @@ sudo chmod +x /usr/local/bin/restic
 winget install restic.restic
 ```
 
-#### 4. "Erro de permissão" (Linux)
+#### 4. "Erro de permissao" (Linux)
 ```bash
-# Adicionar usuário ao grupo necessário
+# Adicionar usuario ao grupo necessario
 sudo usermod -a -G backup $USER
 
-# OU executar com sudo se necessário
+# OU executar com sudo se necessario
 sudo make backup
 ```
 
-#### 5. "Repositório não encontrado"
+#### 5. "Repositorio nao encontrado"
 ```bash
-# Verificar configuração
+# Verificar configuracao
 make validate
 
-# Inicializar repositório
+# Inicializar repositorio
 make init
 
 # Verificar conectividade
 make check
 ```
 
-### Logs e Diagnóstico
+### Logs e Diagnostico
 
 ```bash
 # Ver logs recentes
 tail -f logs/safestic.log
 
-# Verificar saúde completa
+# Verificar saude completa
 make health
 
 # Validar setup
@@ -467,32 +467,32 @@ make validate-setup
 LOG_LEVEL=DEBUG make backup
 ```
 
-### Recuperação de Emergência
+### Recuperacao de Emergencia
 
 ```bash
-# Verificar integridade do repositório
+# Verificar integridade do repositorio
 make check
 
-# Reconstruir índice se corrompido
+# Reconstruir indice se corrompido
 make rebuild-index
 
-# Reparar repositório (último recurso)
+# Reparar repositorio (ultimo recurso)
 make repair
 ```
 
-## 🛠️ Manutenção
+## 🛠️ Manutencao
 
-### Manutenção Regular
+### Manutencao Regular
 
 ```bash
-# Verificação semanal
+# Verificacao semanal
 make check
 
 # Limpeza mensal
 make prune
 make clean
 
-# Verificação de saúde
+# Verificacao de saude
 make health
 ```
 
@@ -502,14 +502,14 @@ make health
 # Status do agendamento
 make schedule-status
 
-# Estatísticas do repositório
+# Estatisticas do repositorio
 make stats
 
-# Tamanho do repositório
+# Tamanho do repositorio
 make repo-size
 ```
 
-### Backup da Configuração
+### Backup da Configuracao
 
 ```bash
 # Fazer backup do arquivo .env
@@ -519,13 +519,13 @@ cp .env .env.backup
 tar -czf safestic-config-backup.tar.gz .env scripts/ logs/
 ```
 
-### Atualização
+### Atualizacao
 
 ```bash
-# Atualizar código
+# Atualizar codigo
 git pull origin main
 
-# Atualizar dependências Python
+# Atualizar dependencias Python
 pip install -r requirements.txt --upgrade
 
 # Verificar se tudo ainda funciona
@@ -534,35 +534,35 @@ make validate
 
 ## 📞 Suporte
 
-### Recursos Úteis
+### Recursos uteis
 
-- 📚 **Documentação do Restic**: https://restic.readthedocs.io/
+- 📚 **Documentacao do Restic**: https://restic.readthedocs.io/
 - 🐛 **Reportar Bugs**: [Issues do projeto]
-- 💬 **Discussões**: [Discussions do projeto]
+- 💬 **Discussoes**: [Discussions do projeto]
 - 📖 **Wiki**: [Wiki do projeto]
 
-### Informações do Sistema
+### Informacoes do Sistema
 
 ```bash
-# Coletar informações para suporte
-echo "=== INFORMAÇÕES DO SISTEMA ==="
+# Coletar informacoes para suporte
+echo "=== INFORMAcoES DO SISTEMA ==="
 uname -a  # Linux
 systeminfo  # Windows
 
-echo "=== VERSÕES ==="
+echo "=== VERSoES ==="
 python --version
 make --version
 restic version
 
-echo "=== CONFIGURAÇÃO ==="
+echo "=== CONFIGURAcaO ==="
 make validate
 make health
 ```
 
 ---
 
-**🎉 Parabéns!** Você configurou com sucesso o Safestic. Seus dados agora estão protegidos com backups automáticos e seguros.
+**🎉 Parabens!** Voce configurou com sucesso o Safestic. Seus dados agora estao protegidos com backups automaticos e seguros.
 
-> 💡 **Dica**: Execute `make help` a qualquer momento para ver todos os comandos disponíveis.
+> 💡 **Dica**: Execute `make help` a qualquer momento para ver todos os comandos disponiveis.
 
-> ⚠️ **Importante**: Mantenha sua senha do repositório (`RESTIC_PASSWORD`) em local seguro. Sem ela, não será possível recuperar seus backups!
+> ⚠️ **Importante**: Mantenha sua senha do repositorio (`RESTIC_PASSWORD`) em local seguro. Sem ela, nao sera possivel recuperar seus backups!

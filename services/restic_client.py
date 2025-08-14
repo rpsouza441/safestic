@@ -1,7 +1,7 @@
-"""Wrapper centralizado para operações do Restic com retry e tratamento de erros.
+﻿"""Wrapper centralizado para operacoes do Restic com retry e tratamento de erros.
 
-Este módulo fornece a classe ResticClient que encapsula todas as operações comuns
-do Restic (backup, restore, listagem, etc.) com suporte a retry automático,
+Este modulo fornece a classe ResticClient que encapsula todas as operacoes comuns
+do Restic (backup, restore, listagem, etc.) com suporte a retry automatico,
 backoff exponencial e tratamento estruturado de erros.
 """
 
@@ -20,13 +20,13 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 from .restic import load_restic_env
 
-# Tipo genérico para o resultado de funções com retry
+# Tipo generico para o resultado de funcoes com retry
 T = TypeVar("T")
 
 
 @dataclass
 class ResticError(Exception):
-    """Exceção base para erros relacionados ao Restic."""
+    """Excecao base para erros relacionados ao Restic."""
     message: str
     command: List[str]
     returncode: Optional[int] = None
@@ -34,31 +34,31 @@ class ResticError(Exception):
     stderr: Optional[str] = None
 
     def __str__(self) -> str:
-        return f"{self.message} (código: {self.returncode})"
+        return f"{self.message} (codigo: {self.returncode})"
 
 
 class ResticNetworkError(ResticError):
-    """Erro de rede ao acessar o repositório Restic."""
+    """Erro de rede ao acessar o repositorio Restic."""
     pass
 
 
 class ResticRepositoryError(ResticError):
-    """Erro relacionado ao repositório Restic (não encontrado, corrompido, etc.)."""
+    """Erro relacionado ao repositorio Restic (nao encontrado, corrompido, etc.)."""
     pass
 
 
 class ResticAuthenticationError(ResticError):
-    """Erro de autenticação (senha incorreta, credenciais inválidas, etc.)."""
+    """Erro de autenticacao (senha incorreta, credenciais invalidas, etc.)."""
     pass
 
 
 class ResticPermissionError(ResticError):
-    """Erro de permissão ao acessar arquivos ou o repositório."""
+    """Erro de permissao ao acessar arquivos ou o repositorio."""
     pass
 
 
 class ResticCommandError(ResticError):
-    """Erro genérico na execução de um comando Restic."""
+    """Erro generico na execucao de um comando Restic."""
     pass
 
 
@@ -69,25 +69,25 @@ def with_retry(
     backoff_factor: float = 2.0,
     jitter: float = 0.1,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Decorator para adicionar retry com backoff exponencial a uma função.
+    """Decorator para adicionar retry com backoff exponencial a uma funcao.
 
     Parameters
     ----------
     max_attempts : int, optional
-        Número máximo de tentativas, por padrão 3
+        Numero maximo de tentativas, por padrao 3
     initial_backoff : float, optional
-        Tempo inicial de espera em segundos, por padrão 1.0
+        Tempo inicial de espera em segundos, por padrao 1.0
     max_backoff : float, optional
-        Tempo máximo de espera em segundos, por padrão 30.0
+        Tempo maximo de espera em segundos, por padrao 30.0
     backoff_factor : float, optional
-        Fator multiplicativo para backoff exponencial, por padrão 2.0
+        Fator multiplicativo para backoff exponencial, por padrao 2.0
     jitter : float, optional
-        Fator de aleatoriedade para evitar thundering herd, por padrão 0.1
+        Fator de aleatoriedade para evitar thundering herd, por padrao 0.1
 
     Returns
     -------
     Callable
-        Função decorada com retry
+        Funcao decorada com retry
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
@@ -108,7 +108,7 @@ def with_retry(
                         max_backoff,
                         initial_backoff * (backoff_factor ** (attempt - 1)),
                     )
-                    # Adicionar jitter (variação aleatória)
+                    # Adicionar jitter (variacao aleatoria)
                     backoff = backoff * (1 + random.uniform(-jitter, jitter))
 
                     logging.warning(
@@ -122,7 +122,7 @@ def with_retry(
                     time.sleep(backoff)
                     attempt += 1
                 except Exception as exc:
-                    # Outros tipos de exceção não são retentados
+                    # Outros tipos de excecao nao sao retentados
                     raise exc
 
             # Se chegamos aqui, todas as tentativas falharam
@@ -145,9 +145,9 @@ def redact_secrets(text: str) -> str:
     Returns
     -------
     str
-        Texto com senhas e chaves substituídas por ***
+        Texto com senhas e chaves substituidas por ***
     """
-    # Padrões para redação de segredos
+    # Padroes para redacao de segredos
     patterns = [
         # Senha do Restic
         (r"(RESTIC_PASSWORD=)[^\s,]+", r"\1***"),
@@ -171,11 +171,11 @@ def redact_secrets(text: str) -> str:
 
 
 class ResticClient:
-    """Cliente para interação com o Restic com suporte a retry e tratamento de erros.
+    """Cliente para interacao com o Restic com suporte a retry e tratamento de erros.
 
-    Esta classe encapsula todas as operações comuns do Restic e fornece uma
-    interface Python amigável com tratamento adequado de erros, retry automático
-    para falhas transitórias e logging estruturado.
+    Esta classe encapsula todas as operacoes comuns do Restic e fornece uma
+    interface Python amigavel com tratamento adequado de erros, retry automatico
+    para falhas transitorias e logging estruturado.
     """
 
     def __init__(
@@ -190,19 +190,19 @@ class ResticClient:
         Parameters
         ----------
         log_file : Optional[str], optional
-            Caminho para o arquivo de log, por padrão None
+            Caminho para o arquivo de log, por padrao None
         max_attempts : int, optional
-            Número máximo de tentativas para operações com retry, por padrão 3
+            Numero maximo de tentativas para operacoes com retry, por padrao 3
         initial_backoff : float, optional
-            Tempo inicial de espera entre tentativas em segundos, por padrão 1.0
+            Tempo inicial de espera entre tentativas em segundos, por padrao 1.0
         max_backoff : float, optional
-            Tempo máximo de espera entre tentativas em segundos, por padrão 30.0
+            Tempo maximo de espera entre tentativas em segundos, por padrao 30.0
         """
         self.repository, self.env, self.provider = load_restic_env()
         self.log_file = log_file
         self.logger = logging.getLogger("restic_client")
 
-        # Configurações de retry
+        # Configuracoes de retry
         self.max_attempts = max_attempts
         self.initial_backoff = initial_backoff
         self.max_backoff = max_backoff
@@ -220,28 +220,28 @@ class ResticClient:
         cmd : Sequence[str]
             Comando a ser executado
         capture_json : bool, optional
-            Se True, tenta fazer parse do output como JSON, por padrão False
+            Se True, tenta fazer parse do output como JSON, por padrao False
         check : bool, optional
-            Se True, verifica o código de retorno e levanta exceção em caso de erro,
-            por padrão True
+            Se True, verifica o codigo de retorno e levanta excecao em caso de erro,
+            por padrao True
 
         Returns
         -------
         Tuple[bool, Optional[subprocess.CompletedProcess[str]], Optional[Any]]
-            Tupla contendo (sucesso, resultado do processo, dados JSON se aplicável)
+            Tupla contendo (sucesso, resultado do processo, dados JSON se aplicavel)
 
         Raises
         ------
         ResticNetworkError
-            Erro de rede ao acessar o repositório
+            Erro de rede ao acessar o repositorio
         ResticRepositoryError
-            Erro relacionado ao repositório
+            Erro relacionado ao repositorio
         ResticAuthenticationError
-            Erro de autenticação
+            Erro de autenticacao
         ResticPermissionError
-            Erro de permissão
+            Erro de permissao
         ResticCommandError
-            Outro erro na execução do comando
+            Outro erro na execucao do comando
         """
         redacted_cmd = [redact_secrets(arg) for arg in cmd]
         start_time = time.time()
@@ -258,14 +258,14 @@ class ResticClient:
 
             elapsed = time.time() - start_time
             self.logger.debug(
-                "Comando concluído em %.2f segundos (código: %d)",
+                "Comando concluido em %.2f segundos (codigo: %d)",
                 elapsed,
                 result.returncode,
             )
 
-            # Processar saída e erro
+            # Processar saida e erro
             if result.stdout:
-                self.logger.debug("Saída: %s", redact_secrets(result.stdout))
+                self.logger.debug("Saida: %s", redact_secrets(result.stdout))
 
             if result.stderr:
                 self.logger.debug("Erro: %s", redact_secrets(result.stderr))
@@ -295,25 +295,25 @@ class ResticClient:
     def _handle_command_error(
         self, cmd: Sequence[str], result: subprocess.CompletedProcess[str]
     ) -> None:
-        """Analisa o erro de um comando e levanta a exceção apropriada.
+        """Analisa o erro de um comando e levanta a excecao apropriada.
 
         Parameters
         ----------
         cmd : Sequence[str]
             Comando executado
         result : subprocess.CompletedProcess[str]
-            Resultado da execução do comando
+            Resultado da execucao do comando
 
         Raises
         ------
         ResticNetworkError
             Erro de rede
         ResticRepositoryError
-            Erro de repositório
+            Erro de repositorio
         ResticAuthenticationError
-            Erro de autenticação
+            Erro de autenticacao
         ResticPermissionError
-            Erro de permissão
+            Erro de permissao
         ResticCommandError
             Outro erro de comando
         """
@@ -326,7 +326,7 @@ class ResticClient:
             for msg in ["network", "connection", "timeout", "dial tcp"]
         ):
             raise ResticNetworkError(
-                message="Erro de rede ao acessar o repositório",
+                message="Erro de rede ao acessar o repositorio",
                 command=cmd,
                 returncode=result.returncode,
                 stdout=stdout,
@@ -337,7 +337,7 @@ class ResticClient:
             for msg in ["repository not found", "invalid repository", "corrupted"]
         ):
             raise ResticRepositoryError(
-                message="Erro no repositório Restic",
+                message="Erro no repositorio Restic",
                 command=cmd,
                 returncode=result.returncode,
                 stdout=stdout,
@@ -348,7 +348,7 @@ class ResticClient:
             for msg in ["authentication", "access denied", "wrong password"]
         ):
             raise ResticAuthenticationError(
-                message="Erro de autenticação",
+                message="Erro de autenticacao",
                 command=cmd,
                 returncode=result.returncode,
                 stdout=stdout,
@@ -359,7 +359,7 @@ class ResticClient:
             for msg in ["permission", "access is denied", "not permitted"]
         ):
             raise ResticPermissionError(
-                message="Erro de permissão",
+                message="Erro de permissao",
                 command=cmd,
                 returncode=result.returncode,
                 stdout=stdout,
@@ -367,7 +367,7 @@ class ResticClient:
             )
         else:
             raise ResticCommandError(
-                message=f"Comando Restic falhou com código {result.returncode}",
+                message=f"Comando Restic falhou com codigo {result.returncode}",
                 command=cmd,
                 returncode=result.returncode,
                 stdout=stdout,
@@ -376,19 +376,19 @@ class ResticClient:
 
     @with_retry()
     def check_repository_access(self) -> bool:
-        """Verifica se o repositório Restic está acessível.
+        """Verifica se o repositorio Restic esta acessivel.
 
         Returns
         -------
         bool
-            True se o repositório está acessível, False caso contrário
+            True se o repositorio esta acessivel, False caso contrario
 
         Raises
         ------
         ResticError
-            Se ocorrer um erro ao acessar o repositório
+            Se ocorrer um erro ao acessar o repositorio
         """
-        self.logger.info("Verificando acesso ao repositório: %s", self.repository)
+        self.logger.info("Verificando acesso ao repositorio: %s", self.repository)
         success, _, _ = self._run_command(
             ["restic", "-r", self.repository, "snapshots"],
             check=False,
@@ -396,19 +396,38 @@ class ResticClient:
         return success
 
     def init_repository(self) -> bool:
-        """Inicializa um novo repositório Restic se não existir.
+        """Inicializa um novo repositorio Restic se nao existir.
 
         Returns
         -------
         bool
-            True se o repositório foi inicializado com sucesso, False caso contrário
+            True se o repositorio foi inicializado com sucesso, False caso contrario
         """
-        self.logger.info("Inicializando repositório: %s", self.repository)
+        self.logger.info("Inicializando repositorio: %s", self.repository)
         success, _, _ = self._run_command(
             ["restic", "-r", self.repository, "init"],
             check=False,
         )
         return success
+
+    def check_restic_installed(self) -> bool:
+        """Verifica se o Restic esta instalado e acessivel.
+
+        Returns
+        -------
+        bool
+            True se o Restic esta instalado e acessivel, False caso contrario
+        """
+        self.logger.info("Verificando se o Restic esta instalado...")
+        try:
+            success, _, _ = self._run_command(
+                ["restic", "version"],
+                check=False,
+            )
+            return success
+        except Exception as exc:
+            self.logger.error("Erro ao verificar instalacao do Restic: %s", exc)
+            return False
 
     @with_retry()
     def backup(
@@ -422,11 +441,11 @@ class ResticClient:
         Parameters
         ----------
         paths : List[str]
-            Lista de caminhos a serem incluídos no backup
+            Lista de caminhos a serem incluidos no backup
         excludes : Optional[List[str]], optional
-            Lista de padrões a serem excluídos, por padrão None
+            Lista de padroes a serem excluidos, por padrao None
         tags : Optional[List[str]], optional
-            Lista de tags a serem aplicadas ao snapshot, por padrão None
+            Lista de tags a serem aplicadas ao snapshot, por padrao None
 
         Returns
         -------
@@ -444,7 +463,7 @@ class ResticClient:
         cmd = ["restic", "-r", self.repository, "backup"]
         cmd.extend(paths)
 
-        # Adicionar exclusões
+        # Adicionar exclusoes
         if excludes:
             for exclude in excludes:
                 if exclude.strip():
@@ -457,7 +476,7 @@ class ResticClient:
                     cmd.extend(["--tag", tag.strip()])
 
         self.logger.info(
-            "Iniciando backup de %d caminhos com %d exclusões e %d tags",
+            "Iniciando backup de %d caminhos com %d exclusoes e %d tags",
             len(paths),
             len(excludes or []),
             len(tags or []),
@@ -466,16 +485,16 @@ class ResticClient:
         success, result, _ = self._run_command(cmd)
 
         if success and result and result.stdout:
-            # Extrair ID do snapshot da saída
+            # Extrair ID do snapshot da saida
             match = re.search(r"snapshot ([a-f0-9]+) saved", result.stdout)
             if match:
                 snapshot_id = match.group(1)
-                self.logger.info("Backup concluído com sucesso, ID: %s", snapshot_id)
+                self.logger.info("Backup concluido com sucesso, ID: %s", snapshot_id)
                 return snapshot_id
 
-        # Se chegamos aqui, não conseguimos extrair o ID do snapshot
+        # Se chegamos aqui, nao conseguimos extrair o ID do snapshot
         raise ResticCommandError(
-            message="Não foi possível extrair o ID do snapshot da saída do comando",
+            message="Nao foi possivel extrair o ID do snapshot da saida do comando",
             command=cmd,
             returncode=result.returncode if result else None,
             stdout=result.stdout if result else None,
@@ -491,30 +510,30 @@ class ResticClient:
         keep_monthly: int = 6,
         prune: bool = True,
     ) -> bool:
-        """Aplica política de retenção aos snapshots.
+        """Aplica politica de retencao aos snapshots.
 
         Parameters
         ----------
         keep_hourly : int, optional
-            Número de snapshots horários a manter, por padrão 0
+            Numero de snapshots horarios a manter, por padrao 0
         keep_daily : int, optional
-            Número de snapshots diários a manter, por padrão 7
+            Numero de snapshots diarios a manter, por padrao 7
         keep_weekly : int, optional
-            Número de snapshots semanais a manter, por padrão 4
+            Numero de snapshots semanais a manter, por padrao 4
         keep_monthly : int, optional
-            Número de snapshots mensais a manter, por padrão 6
+            Numero de snapshots mensais a manter, por padrao 6
         prune : bool, optional
-            Se True, executa prune após forget, por padrão True
+            Se True, executa prune apos forget, por padrao True
 
         Returns
         -------
         bool
-            True se a política foi aplicada com sucesso
+            True se a politica foi aplicada com sucesso
 
         Raises
         ------
         ResticError
-            Se ocorrer um erro ao aplicar a política
+            Se ocorrer um erro ao aplicar a politica
         """
         cmd = [
             "restic",
@@ -535,7 +554,7 @@ class ResticClient:
             cmd.append("--prune")
 
         self.logger.info(
-            "Aplicando política de retenção (h:%d, d:%d, w:%d, m:%d, prune:%s)",
+            "Aplicando politica de retencao (h:%d, d:%d, w:%d, m:%d, prune:%s)",
             keep_hourly,
             keep_daily,
             keep_weekly,
@@ -548,19 +567,19 @@ class ResticClient:
 
     @with_retry()
     def list_snapshots(self) -> List[Dict[str, Any]]:
-        """Lista todos os snapshots no repositório.
+        """Lista todos os snapshots no repositorio.
 
         Returns
         -------
         List[Dict[str, Any]]
-            Lista de snapshots com suas informações
+            Lista de snapshots com suas informacoes
 
         Raises
         ------
         ResticError
             Se ocorrer um erro ao listar os snapshots
         """
-        self.logger.info("Listando snapshots do repositório")
+        self.logger.info("Listando snapshots do repositorio")
         _, _, json_data = self._run_command(
             ["restic", "-r", self.repository, "snapshots", "--json"],
             capture_json=True,
@@ -573,24 +592,24 @@ class ResticClient:
 
     @with_retry()
     def get_snapshot_info(self, snapshot_id: str = "latest") -> Dict[str, Any]:
-        """Obtém informações detalhadas sobre um snapshot específico.
+        """Obtem informacoes detalhadas sobre um snapshot especifico.
 
         Parameters
         ----------
         snapshot_id : str, optional
-            ID do snapshot ou "latest", por padrão "latest"
+            ID do snapshot ou "latest", por padrao "latest"
 
         Returns
         -------
         Dict[str, Any]
-            Informações do snapshot
+            Informacoes do snapshot
 
         Raises
         ------
         ResticError
-            Se ocorrer um erro ao obter as informações
+            Se ocorrer um erro ao obter as informacoes
         """
-        self.logger.info("Obtendo informações do snapshot: %s", snapshot_id)
+        self.logger.info("Obtendo informacoes do snapshot: %s", snapshot_id)
         _, _, json_data = self._run_command(
             ["restic", "-r", self.repository, "snapshots", snapshot_id, "--json"],
             capture_json=True,
@@ -598,7 +617,7 @@ class ResticClient:
 
         if not json_data or not isinstance(json_data, list) or not json_data:
             raise ResticCommandError(
-                message=f"Não foi possível obter informações do snapshot {snapshot_id}",
+                message=f"Nao foi possivel obter informacoes do snapshot {snapshot_id}",
                 command=["restic", "-r", self.repository, "snapshots", snapshot_id, "--json"],
             )
 
@@ -611,7 +630,7 @@ class ResticClient:
         Parameters
         ----------
         snapshot_id : str, optional
-            ID do snapshot ou "latest", por padrão "latest"
+            ID do snapshot ou "latest", por padrao "latest"
 
         Returns
         -------
@@ -629,7 +648,7 @@ class ResticClient:
         )
 
         if success and result and result.stdout:
-            # Processar a saída para extrair os caminhos dos arquivos
+            # Processar a saida para extrair os caminhos dos arquivos
             files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             return files
 
@@ -639,28 +658,28 @@ class ResticClient:
     def restore_snapshot(
         self, target_dir: str, snapshot_id: str = "latest", include_paths: Optional[List[str]] = None
     ) -> bool:
-        """Restaura um snapshot completo ou arquivos específicos.
+        """Restaura um snapshot completo ou arquivos especificos.
 
         Parameters
         ----------
         target_dir : str
-            Diretório de destino para a restauração
+            Diretorio de destino para a restauracao
         snapshot_id : str, optional
-            ID do snapshot ou "latest", por padrão "latest"
+            ID do snapshot ou "latest", por padrao "latest"
         include_paths : Optional[List[str]], optional
-            Lista de caminhos específicos a restaurar, por padrão None (restaura tudo)
+            Lista de caminhos especificos a restaurar, por padrao None (restaura tudo)
 
         Returns
         -------
         bool
-            True se a restauração foi bem-sucedida
+            True se a restauracao foi bem-sucedida
 
         Raises
         ------
         ResticError
-            Se ocorrer um erro durante a restauração
+            Se ocorrer um erro durante a restauracao
         """
-        # Garantir que o diretório de destino existe
+        # Garantir que o diretorio de destino existe
         Path(target_dir).mkdir(parents=True, exist_ok=True)
 
         cmd = [
@@ -673,7 +692,7 @@ class ResticClient:
             target_dir,
         ]
 
-        # Adicionar caminhos específicos se fornecidos
+        # Adicionar caminhos especificos se fornecidos
         if include_paths:
             for path in include_paths:
                 cmd.extend(["--include", path])
@@ -687,25 +706,25 @@ class ResticClient:
 
     @with_retry()
     def get_repository_stats(self, mode: str = "raw-data") -> Dict[str, Any]:
-        """Obtém estatísticas do repositório.
+        """Obtem estatisticas do repositorio.
 
         Parameters
         ----------
         mode : str, optional
-            Modo de cálculo ("raw-data", "restore-size", "blobs-per-file"),
-            por padrão "raw-data"
+            Modo de calculo ("raw-data", "restore-size", "blobs-per-file"),
+            por padrao "raw-data"
 
         Returns
         -------
         Dict[str, Any]
-            Estatísticas do repositório
+            Estatisticas do repositorio
 
         Raises
         ------
         ResticError
-            Se ocorrer um erro ao obter as estatísticas
+            Se ocorrer um erro ao obter as estatisticas
         """
-        self.logger.info("Obtendo estatísticas do repositório (modo: %s)", mode)
+        self.logger.info("Obtendo estatisticas do repositorio (modo: %s)", mode)
         _, _, json_data = self._run_command(
             [
                 "restic",
@@ -725,17 +744,17 @@ class ResticClient:
         return cast(Dict[str, Any], json_data)
 
     def create_timestamped_restore_dir(self, base_dir: str) -> str:
-        """Cria um diretório com timestamp para restauração.
+        """Cria um diretorio com timestamp para restauracao.
 
         Parameters
         ----------
         base_dir : str
-            Diretório base para criar o subdiretório com timestamp
+            Diretorio base para criar o subdiretorio com timestamp
 
         Returns
         -------
         str
-            Caminho completo do diretório criado
+            Caminho completo do diretorio criado
         """
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         restore_dir = Path(base_dir) / timestamp

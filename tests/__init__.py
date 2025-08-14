@@ -1,1 +1,1 @@
-# Pacote de testes para o projeto safestic
+﻿# Pacote de testes para o projeto safestic

@@ -1,7 +1,7 @@
-"""Funções para carregamento e validação da configuração do Restic.
+﻿"""Funcoes para carregamento e validacao da configuracao do Restic.
 
-Este módulo fornece funções para carregar variáveis de ambiente,
-construir a string de repositório do Restic e validar a configuração.
+Este modulo fornece funcoes para carregar variaveis de ambiente,
+construir a string de repositorio do Restic e validar a configuracao.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 from .credentials import get_credential
 
-# Configuração de logger
+# Configuracao de logger
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +31,7 @@ class StorageProvider(str, Enum):
 
 
 class ResticConfig(BaseModel):
-    """Modelo para validação da configuração do Restic."""
+    """Modelo para validacao da configuracao do Restic."""
     storage_provider: StorageProvider
     storage_bucket: str = Field(..., min_length=1)
     restic_password: str = Field(..., min_length=1)
@@ -49,21 +49,21 @@ class ResticConfig(BaseModel):
     
     @validator('backup_source_dirs')
     def validate_backup_dirs(cls, v):
-        """Valida se os diretórios de backup existem."""
+        """Valida se os diretorios de backup existem."""
         for dir_path in v:
             if not Path(dir_path).exists():
-                logger.warning(f"Diretório de backup não encontrado: {dir_path}")
+                logger.warning(f"Diretorio de backup nao encontrado: {dir_path}")
         return v
     
     @validator('restore_target_dir')
     def validate_restore_dir(cls, v):
-        """Valida se o diretório de restauração existe."""
+        """Valida se o diretorio de restauracao existe."""
         if v and not Path(v).exists():
-            logger.warning(f"Diretório de restauração não encontrado: {v}")
+            logger.warning(f"Diretorio de restauracao nao encontrado: {v}")
         return v
     
     def get_repository_url(self) -> str:
-        """Constrói a URL do repositório Restic."""
+        """Constroi a URL do repositorio Restic."""
         if self.storage_provider == StorageProvider.AWS:
             return f"s3:s3.amazonaws.com/{self.storage_bucket}"
         elif self.storage_provider == StorageProvider.AZURE:
@@ -73,33 +73,44 @@ class ResticConfig(BaseModel):
         elif self.storage_provider == StorageProvider.LOCAL:
             return str(Path(self.storage_bucket).absolute())
         else:
-            # Nunca deve chegar aqui devido à validação do Pydantic
-            raise ValueError(f"Provedor de armazenamento inválido: {self.storage_provider}")
+            # Nunca deve chegar aqui devido a validacao do Pydantic
+            raise ValueError(f"Provedor de armazenamento invalido: {self.storage_provider}")
+    
+    @property
+    def repository_url(self) -> str:
+        """Propriedade para compatibilidade - retorna a URL do repositorio."""
+        return self.get_repository_url()
+    
+    @property
+    def environment(self) -> dict[str, str]:
+        """Propriedade para compatibilidade - retorna as variaveis de ambiente."""
+        _, env, _ = load_restic_env()
+        return env
 
 
 def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str], str]:
-    """Carrega variáveis de ambiente e constrói a string de repositório do Restic.
+    """Carrega variaveis de ambiente e constroi a string de repositorio do Restic.
 
     Parameters
     ----------
     credential_source : str
-        Fonte para obtenção de credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops)
+        Fonte para obtencao de credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops)
 
     Returns
     -------
     tuple[str, dict[str, str], str]
-        Uma tupla contendo a URL do repositório, uma cópia das variáveis
+        Uma tupla contendo a URL do repositorio, uma copia das variaveis
         de ambiente e o nome do provedor.
 
     Raises
     ------
     ValueError
-        Se variáveis obrigatórias estiverem ausentes ou o provedor for inválido.
+        Se variaveis obrigatorias estiverem ausentes ou o provedor for invalido.
     """
-    # Carregar variáveis de ambiente
+    # Carregar variaveis de ambiente
     load_dotenv()
 
-    # Obter variáveis básicas
+    # Obter variaveis basicas
     provider = os.getenv("STORAGE_PROVIDER", "").lower()
     bucket = os.getenv("STORAGE_BUCKET", "")
     
@@ -110,17 +121,17 @@ def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str]
     try:
         provider_enum = StorageProvider(provider)
     except ValueError:
-        raise ValueError(f"STORAGE_PROVIDER inválido: {provider}. Use 'aws', 'azure', 'gcp' ou 'local'")
+        raise ValueError(f"STORAGE_PROVIDER invalido: {provider}. Use 'aws', 'azure', 'gcp' ou 'local'")
 
     # Validar bucket
     if not bucket:
-        raise ValueError("STORAGE_BUCKET não definido")
+        raise ValueError("STORAGE_BUCKET nao definido")
 
     # Validar senha
     if not password:
-        raise ValueError("RESTIC_PASSWORD não definido ou não encontrado")
+        raise ValueError("RESTIC_PASSWORD nao definido ou nao encontrado")
 
-    # Construir URL do repositório
+    # Construir URL do repositorio
     if provider_enum == StorageProvider.AWS:
         repository = f"s3:s3.amazonaws.com/{bucket}"
     elif provider_enum == StorageProvider.AZURE:
@@ -130,10 +141,10 @@ def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str]
     elif provider_enum == StorageProvider.LOCAL:
         repository = str(Path(bucket).absolute())
     else:
-        # Nunca deve chegar aqui devido à validação anterior
-        raise ValueError(f"Provedor de armazenamento inválido: {provider}")
+        # Nunca deve chegar aqui devido a validacao anterior
+        raise ValueError(f"Provedor de armazenamento invalido: {provider}")
 
-    # Preparar variáveis de ambiente
+    # Preparar variaveis de ambiente
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password
     
@@ -141,30 +152,30 @@ def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str]
 
 
 def load_restic_config(credential_source: str = "env") -> ResticConfig:
-    """Carrega e valida a configuração completa do Restic.
+    """Carrega e valida a configuracao completa do Restic.
     
     Parameters
     ----------
     credential_source : str
-        Fonte para obtenção de credenciais
+        Fonte para obtencao de credenciais
         
     Returns
     -------
     ResticConfig
-        Configuração validada do Restic
+        Configuracao validada do Restic
         
     Raises
     ------
     ValidationError
-        Se a configuração for inválida
+        Se a configuracao for invalida
     """
-    # Carregar variáveis de ambiente
+    # Carregar variaveis de ambiente
     load_dotenv()
     
     # Obter senha de forma segura
     password = get_credential("RESTIC_PASSWORD", credential_source)
     
-    # Preparar configuração
+    # Preparar configuracao
     config_dict = {
         "storage_provider": os.getenv("STORAGE_PROVIDER", "").lower(),
         "storage_bucket": os.getenv("STORAGE_BUCKET", ""),
@@ -182,10 +193,11 @@ def load_restic_config(credential_source: str = "env") -> ResticConfig:
         "credential_source": credential_source,
     }
     
-    # Validar configuração
+    # Validar configuracao
     try:
         return ResticConfig(**config_dict)
     except ValidationError as e:
-        logger.error(f"Erro de validação na configuração do Restic: {e}")
+        logger.error(f"Erro de validacao na configuracao do Restic: {e}")
         raise
+
 

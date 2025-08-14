@@ -1,2 +1,3 @@
-"""Utilities for Safestic scripts."""
+﻿"""Utilities for Safestic scripts."""
+
 

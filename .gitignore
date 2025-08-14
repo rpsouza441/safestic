@@ -1,4 +1,4 @@
-# Ignorar o arquivo de configuração com dados sensíveis
+﻿# Ignorar o arquivo de configuracao com dados sensiveis
 .env
 *.log
 /logs/
@@ -9,23 +9,97 @@ __pycache__/
 *.pyo
 *.pyd
 *.sqlite3
+*.egg-info/
+dist/
+build/
+
+# Ambientes virtuais Python
+venv/
+.venv/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+pyvenv.cfg
+
+# Pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyInstaller
+*.manifest
+*.spec
 
 # IDEs
 .vscode/
 .idea/
+*.code-workspace
 
 # Sistema operacional
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Backup temporários
+# Backup temporarios
 *~
 *.swp
 *.bak
+*.tmp
+*.temp
+
+# Arquivos de teste e temporarios
+/tmp/
+/temp/
+/test-data/
+/safestic-test/
+/restore-test/
+
+# Arquivos de saida dos comandos
+files.json
+files.txt
+archivos.json
+archivos.txt
+snapshots.json
+snapshots.txt
+health_report.json
+health_report.txt
+stats.json
+stats.txt
 
 # Ignorar arquivos de credenciais da nuvem (caso existam)
-*.json
+# *.json (comentado para permitir arquivos de configuracao necessarios)
 
+# Arquivos de montagem
+/mount/
+/mnt/
 
-# Garantir que o arquivo de exemplo seja versionado
+# Certificados e chaves
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Garantir que arquivos importantes sejam versionados
 !.env.example
+!package.json
+!requirements.txt
+!pyproject.toml
+
+# Diretorios de teste e temporarios especificos do projeto
+/temp/
+/tmp/
+/test-data/
+/safestic-test/
+/restore-test/
+/restore-temp/
+
+# Arquivos de relatorios e estatisticas
+health_*.json
+health_*.txt
+stats_*.json
+stats_*.txt
+report_*.json
+report_*.txt

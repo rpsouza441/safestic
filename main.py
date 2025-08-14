@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Exemplo de uso do ResticClient para operações de backup e restore.
+Exemplo de uso do ResticClient para operacoes de backup e restore.
 
 Este script demonstra como utilizar o wrapper ResticClient para realizar
-operações comuns do Restic como backup, listagem de snapshots e restauração.
+operacoes comuns do Restic como backup, listagem de snapshots e restauracao.
 """
 
 import logging
@@ -28,7 +28,7 @@ def setup_logging():
 
 
 def main():
-    """Função principal que demonstra o uso do ResticClient."""
+    """Funcao principal que demonstra o uso do ResticClient."""
     # Configurar logging
     os.makedirs("logs", exist_ok=True)
     setup_logging()
@@ -40,14 +40,14 @@ def main():
         # Criar cliente Restic com retry
         client = ResticClient(max_attempts=3)
         
-        # Verificar acesso ao repositório
-        logger.info("Verificando acesso ao repositório...")
+        # Verificar acesso ao repositorio
+        logger.info("Verificando acesso ao repositorio...")
         if not client.check_repository_access():
-            logger.info("Repositório não encontrado, tentando inicializar...")
+            logger.info("Repositorio nao encontrado, tentando inicializar...")
             if client.init_repository():
-                logger.info("Repositório inicializado com sucesso.")
+                logger.info("Repositorio inicializado com sucesso.")
             else:
-                logger.error("Falha ao inicializar o repositório.")
+                logger.error("Falha ao inicializar o repositorio.")
                 return 1
         
         # Realizar backup
@@ -57,11 +57,11 @@ def main():
         tags = os.getenv("RESTIC_TAGS", "").split(",") if os.getenv("RESTIC_TAGS") else []
         
         if not source_dirs:
-            logger.error("Nenhum diretório de origem definido para backup.")
+            logger.error("Nenhum diretorio de origem definido para backup.")
             return 1
         
-        logger.info(f"Diretórios de origem: {source_dirs}")
-        logger.info(f"Padrões de exclusão: {excludes}")
+        logger.info(f"Diretorios de origem: {source_dirs}")
+        logger.info(f"Padroes de exclusao: {excludes}")
         logger.info(f"Tags: {tags}")
         
         success = client.backup(
@@ -71,17 +71,17 @@ def main():
         )
         
         if success:
-            logger.info("Backup concluído com sucesso.")
+            logger.info("Backup concluido com sucesso.")
         else:
             logger.error("Falha ao realizar backup.")
             return 1
         
         # Listar snapshots
-        logger.info("Listando snapshots disponíveis...")
+        logger.info("Listando snapshots disponiveis...")
         snapshots = client.list_snapshots()
         
         if not snapshots:
-            logger.info("Nenhum snapshot encontrado no repositório.")
+            logger.info("Nenhum snapshot encontrado no repositorio.")
         else:
             logger.info(f"Encontrados {len(snapshots)} snapshots:")
             for snapshot in snapshots:
@@ -91,30 +91,30 @@ def main():
                 formatted_time = snapshot_time.strftime("%Y-%m-%d %H:%M:%S")
                 logger.info(f"ID: {snapshot['short_id']}, Data: {formatted_time}, Host: {snapshot['hostname']}")
         
-        # Restaurar último snapshot (apenas para demonstração)
+        # Restaurar ultimo snapshot (apenas para demonstracao)
         if snapshots:
             latest_snapshot = snapshots[-1]["short_id"]
             restore_target = os.getenv("RESTORE_TARGET_DIR", "restore")
             Path(restore_target).mkdir(parents=True, exist_ok=True)
             
-            logger.info(f"Restaurando último snapshot ({latest_snapshot}) para {restore_target}...")
-            # Comentado para evitar restauração acidental
+            logger.info(f"Restaurando ultimo snapshot ({latest_snapshot}) para {restore_target}...")
+            # Comentado para evitar restauracao acidental
             # success = client.restore_snapshot(
             #     target_dir=restore_target,
             #     snapshot_id=latest_snapshot
             # )
             # 
             # if success:
-            #     logger.info("Restauração concluída com sucesso.")
+            #     logger.info("Restauracao concluida com sucesso.")
             # else:
             #     logger.error("Falha ao restaurar snapshot.")
             #     return 1
             
-            logger.info("Restauração comentada para evitar execução acidental.")
-            logger.info("Para restaurar, descomente as linhas relevantes no código.")
+            logger.info("Restauracao comentada para evitar execucao acidental.")
+            logger.info("Para restaurar, descomente as linhas relevantes no codigo.")
         
-        # Aplicar política de retenção (apenas para demonstração)
-        logger.info("Aplicando política de retenção (simulação)...")
+        # Aplicar politica de retencao (apenas para demonstracao)
+        logger.info("Aplicando politica de retencao (simulacao)...")
         retention_enabled = os.getenv("RETENTION_ENABLED", "false").lower() == "true"
         
         if retention_enabled:
@@ -122,8 +122,8 @@ def main():
             keep_weekly = int(os.getenv("RETENTION_KEEP_WEEKLY", "4"))
             keep_monthly = int(os.getenv("RETENTION_KEEP_MONTHLY", "6"))
             
-            logger.info(f"Política de retenção: diário={keep_daily}, semanal={keep_weekly}, mensal={keep_monthly}")
-            # Comentado para evitar exclusão acidental de snapshots
+            logger.info(f"Politica de retencao: diario={keep_daily}, semanal={keep_weekly}, mensal={keep_monthly}")
+            # Comentado para evitar exclusao acidental de snapshots
             # success = client.apply_retention_policy(
             #     keep_daily=keep_daily,
             #     keep_weekly=keep_weekly,
@@ -131,17 +131,17 @@ def main():
             # )
             # 
             # if success:
-            #     logger.info("Política de retenção aplicada com sucesso.")
+            #     logger.info("Politica de retencao aplicada com sucesso.")
             # else:
-            #     logger.error("Falha ao aplicar política de retenção.")
+            #     logger.error("Falha ao aplicar politica de retencao.")
             #     return 1
             
-            logger.info("Aplicação de política comentada para evitar execução acidental.")
-            logger.info("Para aplicar, descomente as linhas relevantes no código.")
+            logger.info("Aplicacao de politica comentada para evitar execucao acidental.")
+            logger.info("Para aplicar, descomente as linhas relevantes no codigo.")
         else:
-            logger.info("Política de retenção desativada.")
+            logger.info("Politica de retencao desativada.")
         
-        logger.info("=== Exemplo concluído com sucesso ===")
+        logger.info("=== Exemplo concluido com sucesso ===")
         return 0
         
     except ResticError as exc:

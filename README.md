@@ -1,95 +1,95 @@
-# Safestic
+﻿# Safestic
 
-Safestic é uma ferramenta de backup automatizada que utiliza o Restic para criar backups seguros e eficientes de seus dados importantes.
+Safestic e uma ferramenta de backup automatizada que utiliza o Restic para criar backups seguros e eficientes de seus dados importantes.
 
-## Características
+## Caracteristicas
 
-- 🔒 **Seguro**: Criptografia AES-256 e autenticação
+- 🔒 **Seguro**: Criptografia AES-256 e autenticacao
 - 🌐 **Multi-cloud**: Suporte para AWS S3, Azure Blob, Google Cloud Storage e armazenamento local
-- 📦 **Deduplicação**: Armazena apenas dados únicos, economizando espaço
-- 🔄 **Incremental**: Backups rápidos após o primeiro backup completo
-- 📋 **Logging**: Logs detalhados de todas as operações
-- ⚙️ **Configurável**: Fácil configuração através de variáveis de ambiente
-- 🐍 **Python**: Scripts Python para máxima compatibilidade
-- 🛠️ **Makefile**: Interface simples através de comandos make
-- 🚀 **Setup Automatizado**: Scripts de instalação para Windows e Linux
-- 📅 **Agendamento**: Configuração automática de tarefas agendadas
-- 🔧 **Manutenção**: Ferramentas avançadas de reparo e otimização
-- 📊 **Monitoramento**: Verificação de saúde e relatórios detalhados
+- 📦 **Deduplicacao**: Armazena apenas dados unicos, economizando espaco
+- 🔄 **Incremental**: Backups rapidos apos o primeiro backup completo
+- 📋 **Logging**: Logs detalhados de todas as operacoes
+- ⚙️ **Configuravel**: Facil configuracao atraves de variaveis de ambiente
+- 🐍 **Python**: Scripts Python para maxima compatibilidade
+- 🛠️ **Makefile**: Interface simples atraves de comandos make
+- 🚀 **Setup Automatizado**: Scripts de instalacao para Windows e Linux
+- 📅 **Agendamento**: Configuracao automatica de tarefas agendadas
+- 🔧 **Manutencao**: Ferramentas avancadas de reparo e otimizacao
+- 📊 **Monitoramento**: Verificacao de saude e relatorios detalhados
 
 ---
 
 ## 🚀 Funcionalidades
 
 - Backup incremental, seguro e criptografado com Restic
-- Suporte a múltiplos diretórios de origem
-- Exclusões e tags configuráveis
-- Retenção automática de snapshots (ou manual)
+- Suporte a multiplos diretorios de origem
+- Exclusoes e tags configuraveis
+- Retencao automatica de snapshots (ou manual)
 - Scripts multiplataforma (Windows/Linux) com `.env`
 - Makefile para facilitar uso
-- Compatível com `cron`, `Agendador de Tarefas`, pipelines e WSL
-- Restauração de arquivos ou pastas específicas
-- Listagem de conteúdo do snapshot antes da restauração
+- Compativel com `cron`, `Agendador de Tarefas`, pipelines e WSL
+- Restauracao de arquivos ou pastas especificas
+- Listagem de conteudo do snapshot antes da restauracao
 - **Novidades:**
   - Gerenciamento seguro de credenciais (keyring, AWS Secrets Manager, Azure Key Vault, GCP Secret Manager, SOPS)
-  - Logging estruturado em formato JSON com níveis e contexto
-  - Validação robusta de entrada/saída com Pydantic
-  - Suporte a operações assíncronas para melhor desempenho
-  - Testes automatizados com pytest (unitários e integração)
+  - Logging estruturado em formato JSON com niveis e contexto
+  - Validacao robusta de entrada/saida com Pydantic
+  - Suporte a operacoes assincronas para melhor desempenho
+  - Testes automatizados com pytest (unitarios e integracao)
 
 ---
 
-## Instalação Rápida
+## Instalacao Rapida
 
-### 🚀 Instalação Automática
+### 🚀 Instalacao Automatica
 
 **Windows (PowerShell como Administrador):**
 ```powershell
-# Clone o repositório
+# Clone o repositorio
 git clone <repository-url>
 cd safestic
 
-# Execute o bootstrap (instala todas as dependências)
+# Execute o bootstrap (instala todas as dependencias)
 .\scripts\bootstrap_windows.ps1
 
 # Configure o ambiente
 cp .env.example .env
-# Edite o arquivo .env com suas configurações
+# Edite o arquivo .env com suas configuracoes
 
-# Execute a configuração inicial
+# Execute a configuracao inicial
 make first-run
 ```
 
 **Linux/macOS:**
 ```bash
-# Clone o repositório
+# Clone o repositorio
 git clone <repository-url>
 cd safestic
 
-# Execute o setup (instala dependências se necessário)
+# Execute o setup (instala dependencias se necessario)
 ./scripts/setup_linux.sh
 
 # Configure o ambiente
 cp .env.example .env
-# Edite o arquivo .env com suas configurações
+# Edite o arquivo .env com suas configuracoes
 
-# Execute a configuração inicial
+# Execute a configuracao inicial
 make first-run
 ```
 
 ### 📖 Guia Completo
 
-Para instruções detalhadas de instalação e configuração, consulte:
+Para instrucoes detalhadas de instalacao e configuracao, consulte:
 **[SETUP_SAFESTIC.md](SETUP_SAFESTIC.md)**
 
 ---
 
 ## 🪟 Como usar no Windows
 
-### Opção recomendada: Git Bash
+### Opcao recomendada: Git Bash
 
 1. Instale o Git for Windows: https://gitforwindows.org/
-2. Clique com botão direito na pasta do projeto > **Git Bash Here**
+2. Clique com botao direito na pasta do projeto > **Git Bash Here**
 3. Execute:
    ```bash
    make backup
@@ -97,7 +97,7 @@ Para instruções detalhadas de instalação e configuração, consulte:
 
 ---
 
-## ⚙️ Configuração do `.env`
+## ⚙️ Configuracao do `.env`
 
 Use o arquivo de exemplo:
 
@@ -105,33 +105,33 @@ Use o arquivo de exemplo:
 cp .env.example .env
 ```
 
-Edite as variáveis conforme seu provedor:
+Edite as variaveis conforme seu provedor:
 
-## Configuração
+## Configuracao
 
-O arquivo `.env` contém todas as configurações necessárias. Principais variáveis:
+O arquivo `.env` contem todas as configuracoes necessarias. Principais variaveis:
 
-### Configurações Básicas
+### Configuracoes Basicas
 - `STORAGE_PROVIDER`: Provedor de armazenamento (local, aws, azure, gcp)
 - `STORAGE_BUCKET`: Caminho ou bucket de armazenamento
 - `RESTIC_PASSWORD`: Senha para criptografia
-- `BACKUP_SOURCE_DIRS`: Diretórios para backup (separados por vírgula)
-- `LOG_DIR`: Diretório para logs
-- `LOG_LEVEL`: Nível de log (DEBUG, INFO, WARNING, ERROR)
+- `BACKUP_SOURCE_DIRS`: Diretorios para backup (separados por virgula)
+- `LOG_DIR`: Diretorio para logs
+- `LOG_LEVEL`: Nivel de log (DEBUG, INFO, WARNING, ERROR)
 
-### Configurações de Retenção
-- `RETENTION_ENABLED`: Habilitar política de retenção (true/false)
+### Configuracoes de Retencao
+- `RETENTION_ENABLED`: Habilitar politica de retencao (true/false)
 - `KEEP_HOURLY`: Manter backups por hora
-- `KEEP_DAILY`: Manter backups diários
+- `KEEP_DAILY`: Manter backups diarios
 - `KEEP_WEEKLY`: Manter backups semanais
 - `KEEP_MONTHLY`: Manter backups mensais
 
-### Configurações de Nuvem
+### Configuracoes de Nuvem
 - **AWS**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`
 - **Azure**: `AZURE_ACCOUNT_NAME`, `AZURE_ACCOUNT_KEY`
 - **GCP**: `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_PROJECT_ID`
 
-Veja `.env.example` para todas as opções disponíveis e `SETUP_SAFESTIC.md` para guia detalhado.
+Veja `.env.example` para todas as opcoes disponiveis e `SETUP_SAFESTIC.md` para guia detalhado.
 
 ```dotenv
 # Provedor: aws | azure | gcp | local
@@ -141,38 +141,38 @@ STORAGE_BUCKET=restic-backup-meuservidor
 # Fonte de credenciais: env | keyring | aws_secrets | azure_keyvault | gcp_secrets | sops
 CREDENTIAL_SOURCE=env
 
-# Diretórios
+# Diretorios
 BACKUP_SOURCE_DIRS=/etc,/home/user
 RESTIC_EXCLUDES=*.log
 RESTIC_TAGS=diario,servidor
 RESTORE_TARGET_DIR=/tmp/restore
 LOG_DIR=logs
 
-# Retenção
+# Retencao
 RETENTION_ENABLED=true
 KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=6
 
-# Configurações de log
+# Configuracoes de log
 LOG_LEVEL=INFO
 
-# Autenticação AWS
+# Autenticacao AWS
 # AWS_ACCESS_KEY_ID=...
 # AWS_SECRET_ACCESS_KEY=...
 
-# Autenticação Azure
+# Autenticacao Azure
 # AZURE_ACCOUNT_NAME=...
 # AZURE_ACCOUNT_KEY=...
 
-# Autenticação GCP
+# Autenticacao GCP
 # GOOGLE_PROJECT_ID=...
 # GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
 ```
 
 ## 🔑 Gerenciamento Seguro de Credenciais
 
-O projeto suporta várias fontes para armazenamento seguro de credenciais:
+O projeto suporta varias fontes para armazenamento seguro de credenciais:
 
 ### 1. Keyring do Sistema
 
@@ -186,13 +186,13 @@ python -m examples.secure_credentials --source keyring --action setup --key REST
 CREDENTIAL_SOURCE=keyring make backup
 ```
 
-### 2. Serviços de Nuvem
+### 2. Servicos de Nuvem
 
 Suporta os principais gerenciadores de segredos em nuvem:
 
 - **AWS Secrets Manager**: Configure `AWS_REGION` e credenciais AWS
-- **Azure Key Vault**: Configure `AZURE_KEYVAULT_URL` e autenticação Azure
-- **GCP Secret Manager**: Configure `GOOGLE_PROJECT_ID` e autenticação GCP
+- **Azure Key Vault**: Configure `AZURE_KEYVAULT_URL` e autenticacao Azure
+- **GCP Secret Manager**: Configure `GOOGLE_PROJECT_ID` e autenticacao GCP
 
 ### 3. SOPS (Secrets OPerationS)
 
@@ -216,7 +216,7 @@ CREDENTIAL_SOURCE=sops SOPS_FILE=.env.enc make backup
 ### Comandos Principais
 
 ```bash
-# Verificar saúde do sistema
+# Verificar saude do sistema
 make health
 
 # Fazer backup
@@ -225,7 +225,7 @@ make backup
 # Listar snapshots
 make list
 
-# Restaurar último backup
+# Restaurar ultimo backup
 make restore
 
 # Verificar integridade
@@ -234,17 +234,17 @@ make check
 # Limpar snapshots antigos
 make prune
 
-# Ver todos os comandos disponíveis
+# Ver todos os comandos disponiveis
 make help
 ```
 
-### Comandos de Setup e Manutenção
+### Comandos de Setup e Manutencao
 
 ```bash
-# Configuração inicial completa
+# Configuracao inicial completa
 make first-run
 
-# Instalar agendamento automático
+# Instalar agendamento automatico
 make schedule-install
 
 # Verificar status do agendamento
@@ -253,33 +253,33 @@ make schedule-status
 # Remover agendamento
 make schedule-remove
 
-# Reparar repositório
+# Reparar repositorio
 make repair
 
-# Reconstruir índice
+# Reconstruir indice
 make rebuild-index
 ```
 
 ### Comandos Detalhados via `make`
 
-| Comando                            | Descrição                                          |
+| Comando                            | Descricao                                          |
 | ---------------------------------- | -------------------------------------------------- |
-| `make backup`                      | Executa o backup e aplica retenção se ativada      |
-| `make list`                        | Lista todos os snapshots no repositório            |
-| `make list-files ID=xxx`           | Lista conteúdo de um snapshot específico           |
+| `make backup`                      | Executa o backup e aplica retencao se ativada      |
+| `make list`                        | Lista todos os snapshots no repositorio            |
+| `make list-files ID=xxx`           | Lista conteudo de um snapshot especifico           |
 | `make restore`                     | Restaura o snapshot mais recente                   |
-| `make restore-id ID=xxx`           | Restaura um snapshot específico                    |
-| `make restore-file ID=xxx FILE=xx` | Restaura arquivo específico de um snapshot         |
-| `make manual-prune`                | Aplica retenção manual via script Python           |
-| `make check`                       | Verifica Restic, variáveis e acesso ao repositório |
-| `make help`                        | Mostra a lista de comandos disponíveis             |
+| `make restore-id ID=xxx`           | Restaura um snapshot especifico                    |
+| `make restore-file ID=xxx FILE=xx` | Restaura arquivo especifico de um snapshot         |
+| `make manual-prune`                | Aplica retencao manual via script Python           |
+| `make check`                       | Verifica Restic, variaveis e acesso ao repositorio |
+| `make help`                        | Mostra a lista de comandos disponiveis             |
 
-## 🔄 Operações Assíncronas
+## 🔄 Operacoes Assincronas
 
-O projeto suporta operações assíncronas para melhor desempenho em tarefas de I/O intensivo:
+O projeto suporta operacoes assincronas para melhor desempenho em tarefas de I/O intensivo:
 
 ```python
-# Exemplo de uso do cliente assíncrono
+# Exemplo de uso do cliente assincrono
 from services.restic_client_async import ResticClientAsync
 
 async def main():
@@ -296,14 +296,14 @@ async def main():
 
 Veja um exemplo completo em `examples/async_backup.py`.
 
-> **Nota:** ao usar `make restore-file`, cada restauração é colocada em um subdiretório com timestamp dentro de `RESTORE_TARGET_DIR` para evitar sobreposições.
+> **Nota:** ao usar `make restore-file`, cada restauracao e colocada em um subdiretorio com timestamp dentro de `RESTORE_TARGET_DIR` para evitar sobreposicoes.
 
-## Agendamento Automático
+## Agendamento Automatico
 
 O Safestic pode configurar automaticamente backups regulares:
 
 ```bash
-# Instalar agendamento (backup diário + limpeza semanal)
+# Instalar agendamento (backup diario + limpeza semanal)
 make schedule-install
 
 # Verificar status
@@ -316,38 +316,38 @@ make schedule-remove
 **Windows**: Usa Agendador de Tarefas  
 **Linux**: Usa systemd timers
 
-## Monitoramento e Manutenção
+## Monitoramento e Manutencao
 
 ```bash
-# Verificar saúde geral do sistema
+# Verificar saude geral do sistema
 make health
 
-# Validar configuração
+# Validar configuracao
 make validate
 
-# Reparar problemas no repositório
+# Reparar problemas no repositorio
 make repair
 
-# Otimizar repositório
+# Otimizar repositorio
 make rebuild-index
 
-# Montar repositório como sistema de arquivos
+# Montar repositorio como sistema de arquivos
 make mount
 
-# Desmontar repositório
+# Desmontar repositorio
 make unmount
 ```
 
-## Solução de Problemas
+## Solucao de Problemas
 
-Para problemas comuns e soluções, consulte:
-- `make health` - Diagnóstico completo
-- `make validate` - Verificar configuração
-- `SETUP_SAFESTIC.md` - Guia de solução de problemas
+Para problemas comuns e solucoes, consulte:
+- `make health` - Diagnostico completo
+- `make validate` - Verificar configuracao
+- `SETUP_SAFESTIC.md` - Guia de solucao de problemas
 
 ---
 
-## 🧪 Verificação rápida
+## 🧪 Verificacao rapida
 
 Execute:
 
@@ -357,16 +357,16 @@ make check
 
 Isso verifica:
 
-- Se `restic` está no `PATH`
-- Se as variáveis obrigatórias estão presentes
-- Se o repositório é acessível (ou será inicializado)
+- Se `restic` esta no `PATH`
+- Se as variaveis obrigatorias estao presentes
+- Se o repositorio e acessivel (ou sera inicializado)
 
 ---
 
-## 🔒 Segurança
+## 🔒 Seguranca
 
-- Os backups são criptografados com AES-256 pelo próprio Restic
-- Nunca suba `.env` em repositórios públicos (já ignorado no `.gitignore`)
+- Os backups sao criptografados com AES-256 pelo proprio Restic
+- Nunca suba `.env` em repositorios publicos (ja ignorado no `.gitignore`)
 
 ---
 
@@ -376,65 +376,66 @@ Isso verifica:
 safestic/
 ├── scripts/                    # Scripts Python e Shell
 │   ├── backup.py              # Script de backup
-│   ├── restore.py             # Script de restauração
+│   ├── restore.py             # Script de restauracao
 │   ├── list.py                # Listagem de snapshots
 │   ├── prune.py               # Limpeza de snapshots
-│   ├── check.py               # Verificação de integridade
-│   ├── validate_config.py     # Validação de configuração
-│   ├── health_check.py        # Verificação de saúde
+│   ├── check.py               # Verificacao de integridade
+│   ├── validate_config.py     # Validacao de configuracao
+│   ├── health_check.py        # Verificacao de saude
 │   ├── forget_snapshots.py    # Esquecimento de snapshots
-│   ├── mount_repo.py          # Montagem do repositório
-│   ├── unmount_repo.py        # Desmontagem do repositório
-│   ├── rebuild_index.py       # Reconstrução de índice
-│   ├── repair_repo.py         # Reparo do repositório
+│   ├── mount_repo.py          # Montagem do repositorio
+│   ├── unmount_repo.py        # Desmontagem do repositorio
+│   ├── rebuild_index.py       # Reconstrucao de indice
+│   ├── repair_repo.py         # Reparo do repositorio
 │   ├── bootstrap_windows.ps1  # Bootstrap Windows
 │   ├── setup_windows.sh       # Setup Windows (Git Bash)
 │   ├── setup_linux.sh         # Setup Linux
 │   ├── schedule_windows.ps1   # Agendamento Windows
 │   ├── schedule_linux.sh      # Agendamento Linux
-│   └── validate-setup.sh      # Validação do setup
+│   └── validate-setup.sh      # Validacao do setup
 ├── logs/                      # Arquivos de log
-├── .env.example              # Exemplo de configuração
-├── .env                      # Suas configurações (criar)
+├── .env.example              # Exemplo de configuracao
+├── .env                      # Suas configuracoes (criar)
 ├── Makefile                  # Comandos make
-├── requirements.txt          # Dependências Python
-├── pyproject.toml           # Configuração do projeto Python
+├── requirements.txt          # Dependencias Python
+├── pyproject.toml           # Configuracao do projeto Python
 ├── README.md                # Este arquivo
-└── SETUP_SAFESTIC.md        # Guia completo de instalação
+└── SETUP_SAFESTIC.md        # Guia completo de instalacao
 ```
 
 ---
 
 ## Suporte
 
-- 📖 **Documentação**: [SETUP_SAFESTIC.md](SETUP_SAFESTIC.md)
+- 📖 **Documentacao**: [SETUP_SAFESTIC.md](SETUP_SAFESTIC.md)
 - 🐛 **Issues**: Abra uma issue no GitHub
-- 💬 **Discussões**: Use as discussões do GitHub
-- 📚 **Restic**: [Documentação oficial do Restic](https://restic.readthedocs.io/)
+- 💬 **Discussoes**: Use as discussoes do GitHub
+- 📚 **Restic**: [Documentacao oficial do Restic](https://restic.readthedocs.io/)
 
 ## Status do Projeto
 
 ✅ **Funcionalidades Implementadas:**
 - Setup automatizado para Windows e Linux
-- Agendamento automático de backups
-- Ferramentas avançadas de manutenção e reparo
-- Sistema completo de monitoramento e saúde
+- Agendamento automatico de backups
+- Ferramentas avancadas de manutencao e reparo
+- Sistema completo de monitoramento e saude
 - Suporte completo multi-cloud
 - Interface unificada via Makefile
-- Documentação abrangente
+- Documentacao abrangente
 
-🚀 **Pronto para Produção!**
+🚀 **Pronto para Producao!**
 
-## Contribuição
+## Contribuicao
 
-Contribuições são bem-vindas! Por favor:
+Contribuicoes sao bem-vindas! Por favor:
 
-1. Faça um fork do projeto
+1. Faca um fork do projeto
 2. Crie uma branch para sua feature
-3. Commit suas mudanças
+3. Commit suas mudancas
 4. Push para a branch
 5. Abra um Pull Request
 
-## Licença
+## Licenca
 
-Este projeto está licenciado sob a MIT License - veja o arquivo LICENSE para detalhes.
+Este projeto esta licenciado sob a MIT License - veja o arquivo LICENSE para detalhes.
+

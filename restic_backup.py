@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import logging
 from typing import List
@@ -8,14 +8,14 @@ from services.restic_client import ResticClient, ResticError
 
 
 def build_args(prefix, items):
-    """Repete ``prefix`` para cada item não vazio."""
+    """Repete ``prefix`` para cada item nao vazio."""
     return [arg for i in items for arg in (prefix, i.strip()) if i.strip()]
 
 
 def run_backup():
-    """Executa o backup com base nas variáveis do .env e aplica política de retenção se ativada.
+    """Executa o backup com base nas variaveis do .env e aplica politica de retencao se ativada.
     
-    Utiliza o ResticClient para executar o backup com retry automático e tratamento de erros.
+    Utiliza o ResticClient para executar o backup com retry automatico e tratamento de erros.
     """
     with ResticScript("backup") as ctx:
         # Configurar logging
@@ -25,7 +25,7 @@ def run_backup():
             handlers=[logging.StreamHandler()],
         )
         
-        # Carregar variáveis de ambiente
+        # Carregar variaveis de ambiente
         source_dirs = os.getenv("BACKUP_SOURCE_DIRS", "").split(",")
         source_dirs = [d.strip() for d in source_dirs if d.strip()]
         excludes = os.getenv("RESTIC_EXCLUDES", "").split(",")
@@ -40,7 +40,7 @@ def run_backup():
         keep_monthly = int(os.getenv("RETENTION_KEEP_MONTHLY", "6"))
 
         if not source_dirs:
-            ctx.log("[FATAL] Variáveis obrigatórias ausentes no .env")
+            ctx.log("[FATAL] Variaveis obrigatorias ausentes no .env")
             sys.exit(1)
 
         ctx.log("=== Iniciando backup com Restic ===")
@@ -49,12 +49,12 @@ def run_backup():
         client = ResticClient(max_attempts=3)
         
         try:
-            # Verificar acesso ao repositório
-            ctx.log("🔍 Verificando acesso ao repositório...")
+            # Verificar acesso ao repositorio
+            ctx.log("🔍 Verificando acesso ao repositorio...")
             if not client.check_repository_access():
-                ctx.log("Não foi possível acessar o repositório. Abortando.")
+                ctx.log("Nao foi possivel acessar o repositorio. Abortando.")
                 return
-            ctx.log("✅ Repositório acessível.")
+            ctx.log("✅ Repositorio acessivel.")
             
             # Executar backup
             ctx.log(f"Executando backup de: {', '.join(source_dirs)}")
@@ -63,11 +63,11 @@ def run_backup():
                 excludes=excludes,
                 tags=tags,
             )
-            ctx.log(f"Backup concluído com sucesso. ID do snapshot: {snapshot_id}")
+            ctx.log(f"Backup concluido com sucesso. ID do snapshot: {snapshot_id}")
             
-            # Aplicar política de retenção se ativada
+            # Aplicar politica de retencao se ativada
             if retention_enabled:
-                ctx.log("Aplicando política de retenção...")
+                ctx.log("Aplicando politica de retencao...")
                 client.apply_retention_policy(
                     keep_hourly=keep_hourly,
                     keep_daily=keep_daily,
@@ -75,9 +75,9 @@ def run_backup():
                     keep_monthly=keep_monthly,
                     prune=True,
                 )
-                ctx.log("Política de retenção aplicada.")
+                ctx.log("Politica de retencao aplicada.")
             else:
-                ctx.log("Retenção desativada via .env.")
+                ctx.log("Retencao desativada via .env.")
                 
         except ResticError as e:
             ctx.log(f"[ERRO] {e}")
@@ -91,3 +91,4 @@ def run_backup():
 
 if __name__ == "__main__":
     run_backup()
+

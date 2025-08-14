@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Exemplo de uso do ResticClientAsync para realizar backups em paralelo.
 
-Este script demonstra como utilizar o cliente assíncrono para executar
-operações de backup em paralelo, melhorando o desempenho quando há
-múltiplos diretórios para backup.
+Este script demonstra como utilizar o cliente assincrono para executar
+operacoes de backup em paralelo, melhorando o desempenho quando ha
+multiplos diretorios para backup.
 """
 
 import asyncio
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-# Adicionar diretório pai ao path para importar o pacote safestic
+# Adicionar diretorio pai ao path para importar o pacote safestic
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.credentials import load_credentials
@@ -23,14 +23,14 @@ from services.restic_client_async import ResticClientAsync
 
 
 async def backup_directory(client: ResticClientAsync, path: str, tags: Optional[List[str]] = None) -> str:
-    """Realiza backup de um diretório específico.
+    """Realiza backup de um diretorio especifico.
     
     Parameters
     ----------
     client : ResticClientAsync
-        Cliente Restic assíncrono
+        Cliente Restic assincrono
     path : str
-        Caminho do diretório para backup
+        Caminho do diretorio para backup
     tags : Optional[List[str]]
         Tags a serem associadas ao snapshot
         
@@ -49,7 +49,7 @@ async def backup_directory(client: ResticClientAsync, path: str, tags: Optional[
             tags=tags or ["async_backup", Path(path).name],
         )
         
-        logger.info(f"Backup de {path} concluído com sucesso. Snapshot ID: {snapshot_id}")
+        logger.info(f"Backup de {path} concluido com sucesso. Snapshot ID: {snapshot_id}")
         return snapshot_id
     except Exception as e:
         logger.error(f"Erro ao realizar backup de {path}: {str(e)}")
@@ -57,7 +57,7 @@ async def backup_directory(client: ResticClientAsync, path: str, tags: Optional[
 
 
 async def main():
-    """Função principal assíncrona."""
+    """Funcao principal assincrona."""
     # Configurar logger
     logger = setup_logger(
         name="safestic.async_backup",
@@ -72,34 +72,34 @@ async def main():
         password = credentials.get("RESTIC_PASSWORD")
         
         if not repository or not password:
-            logger.error("Credenciais incompletas. Verifique as variáveis RESTIC_REPOSITORY e RESTIC_PASSWORD.")
+            logger.error("Credenciais incompletas. Verifique as variaveis RESTIC_REPOSITORY e RESTIC_PASSWORD.")
             return 1
     except Exception as e:
         logger.error(f"Erro ao carregar credenciais: {str(e)}")
         return 1
     
-    # Obter diretórios para backup
+    # Obter diretorios para backup
     backup_dirs_str = os.getenv("BACKUP_SOURCE_DIRS", "")
     if not backup_dirs_str:
-        logger.error("Nenhum diretório para backup especificado. Defina a variável BACKUP_SOURCE_DIRS.")
+        logger.error("Nenhum diretorio para backup especificado. Defina a variavel BACKUP_SOURCE_DIRS.")
         return 1
     
     backup_dirs = [d.strip() for d in backup_dirs_str.split(",")]
-    logger.info(f"Diretórios para backup: {backup_dirs}")
+    logger.info(f"Diretorios para backup: {backup_dirs}")
     
-    # Criar cliente Restic assíncrono
+    # Criar cliente Restic assincrono
     client = ResticClientAsync(repository=repository, password=password)
     
-    # Verificar repositório
+    # Verificar repositorio
     try:
-        logger.info("Verificando repositório...")
+        logger.info("Verificando repositorio...")
         repo_ok = await client.check_repository()
         if not repo_ok:
-            logger.error("Repositório não está íntegro.")
+            logger.error("Repositorio nao esta integro.")
             return 1
-        logger.info("Repositório verificado com sucesso.")
+        logger.info("Repositorio verificado com sucesso.")
     except Exception as e:
-        logger.error(f"Erro ao verificar repositório: {str(e)}")
+        logger.error(f"Erro ao verificar repositorio: {str(e)}")
         return 1
     
     # Realizar backups em paralelo
@@ -108,18 +108,18 @@ async def main():
         tasks = [backup_directory(client, path) for path in backup_dirs]
         snapshot_ids = await asyncio.gather(*tasks)
         
-        logger.info(f"Todos os backups concluídos. Snapshots: {snapshot_ids}")
+        logger.info(f"Todos os backups concluidos. Snapshots: {snapshot_ids}")
         
-        # Aplicar política de retenção
+        # Aplicar politica de retencao
         keep_daily = int(os.getenv("KEEP_DAILY", "7"))
-        logger.info(f"Aplicando política de retenção (keep-daily={keep_daily})...")
+        logger.info(f"Aplicando politica de retencao (keep-daily={keep_daily})...")
         await client.apply_retention_policy(keep_daily=keep_daily)
-        logger.info("Política de retenção aplicada com sucesso.")
+        logger.info("Politica de retencao aplicada com sucesso.")
         
-        # Obter estatísticas
-        logger.info("Obtendo estatísticas do repositório...")
+        # Obter estatisticas
+        logger.info("Obtendo estatisticas do repositorio...")
         stats = await client.get_stats()
-        logger.info(f"Estatísticas: {stats}")
+        logger.info(f"Estatisticas: {stats}")
         
         return 0
     except Exception as e:
@@ -128,9 +128,9 @@ async def main():
 
 
 if __name__ == "__main__":
-    # Criar diretório de logs se não existir
+    # Criar diretorio de logs se nao existir
     Path("logs").mkdir(exist_ok=True)
     
-    # Executar função principal assíncrona
+    # Executar funcao principal assincrona
     exit_code = asyncio.run(main())
     sys.exit(exit_code)

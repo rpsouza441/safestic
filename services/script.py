@@ -1,10 +1,10 @@
-"""Gerenciador de contexto compartilhado para scripts CLI.
+﻿"""Gerenciador de contexto compartilhado para scripts CLI.
 
-Este módulo expõe a classe :class:`ResticScript` que centraliza o código
-boilerplate necessário para todos os utilitários de linha de comando:
-carregamento da configuração do ambiente Restic, preparação de um arquivo
-de log com timestamp e fornecimento de métodos auxiliares para logging
-e execução de comandos externos.
+Este modulo expoe a classe :class:`ResticScript` que centraliza o codigo
+boilerplate necessario para todos os utilitarios de linha de comando:
+carregamento da configuracao do ambiente Restic, preparacao de um arquivo
+de log com timestamp e fornecimento de metodos auxiliares para logging
+e execucao de comandos externos.
 """
 
 from __future__ import annotations
@@ -26,12 +26,12 @@ class ResticScript:
     log_prefix: str
         Identificador usado para o nome do arquivo de log gerado.
     log_dir: str | None
-        Diretório onde os arquivos de log serão armazenados. O padrão é a variável
-        de ambiente ``LOG_DIR`` ou ``"logs"`` quando não definida.
+        Diretorio onde os arquivos de log serao armazenados. O padrao e a variavel
+        de ambiente ``LOG_DIR`` ou ``"logs"`` quando nao definida.
     credential_source: str
-        Fonte para obtenção de credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops).
+        Fonte para obtencao de credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops).
     log_level: str
-        Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        Nivel de log (DEBUG, INFO, WARNING, ERROR, CRITICAL).
     """
 
     def __init__(
@@ -56,21 +56,21 @@ class ResticScript:
 
     def __enter__(self) -> "ResticScript":
         try:
-            # Carregar configuração do Restic
+            # Carregar configuracao do Restic
             self.repository, self.env, self.provider = load_restic_env(self.credential_source)
             
-            # Carregar configuração completa validada
+            # Carregar configuracao completa validada
             try:
                 self.config = load_restic_config(self.credential_source)
             except Exception as exc:
-                print(f"[AVISO] Falha ao carregar configuração completa: {exc}")
-                print("[AVISO] Continuando com configuração básica")
+                print(f"[AVISO] Falha ao carregar configuracao completa: {exc}")
+                print("[AVISO] Continuando com configuracao basica")
         except ValueError as exc:  # pragma: no cover - environment errors
             print(f"[FATAL] {exc}")
             raise SystemExit(1)
 
         try:
-            # Criar diretório de log se não existir
+            # Criar diretorio de log se nao existir
             Path(self.log_dir).mkdir(parents=True, exist_ok=True)
             
             # Criar arquivo de log
@@ -84,7 +84,7 @@ class ResticScript:
                 log_file=self.log_filename,
             )
             
-            # Registrar início da execução
+            # Registrar inicio da execucao
             self.log(
                 f"Iniciando {self.log_prefix}", 
                 level="INFO",
@@ -102,10 +102,10 @@ class ResticScript:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         if exc_type is not None:
-            # Registrar exceção não tratada
+            # Registrar excecao nao tratada
             if self.log_file is not None:
                 self.log(
-                    f"Erro não tratado: {exc}", 
+                    f"Erro nao tratado: {exc}", 
                     level="ERROR",
                     extra={
                         "exception_type": exc_type.__name__,
@@ -114,7 +114,7 @@ class ResticScript:
                     }
                 )
         
-        # Registrar finalização
+        # Registrar finalizacao
         if self.log_file is not None:
             self.log(
                 f"Finalizando {self.log_prefix}", 
@@ -125,21 +125,21 @@ class ResticScript:
 
     # Convenience wrappers -------------------------------------------------
     def log(self, message: str, level: str = "INFO", extra: Optional[Dict[str, Any]] = None) -> None:
-        """Escreve ``message`` no arquivo de log e stdout com nível e contexto.
+        """Escreve ``message`` no arquivo de log e stdout com nivel e contexto.
         
         Parameters
         ----------
         message : str
             Mensagem a ser registrada
         level : str
-            Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            Nivel de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         extra : Optional[Dict[str, Any]]
-            Informações adicionais para incluir no log
+            Informacoes adicionais para incluir no log
         """
         if self.log_file is None:  # pragma: no cover - defensive programming
-            raise RuntimeError("ResticScript não inicializado")
+            raise RuntimeError("ResticScript nao inicializado")
         
-        # Adicionar informações padrão ao contexto
+        # Adicionar informacoes padrao ao contexto
         context = {}
         if extra:
             context.update(extra)
@@ -154,7 +154,7 @@ class ResticScript:
         timeout: Optional[int] = None,
         check: bool = False,
     ) -> int:
-        """Executa ``cmd`` encaminhando a saída para o arquivo de log.
+        """Executa ``cmd`` encaminhando a saida para o arquivo de log.
         
         Parameters
         ----------
@@ -163,22 +163,22 @@ class ResticScript:
         timeout : Optional[int]
             Tempo limite em segundos
         check : bool
-            Se deve lançar exceção em caso de erro
+            Se deve lancar excecao em caso de erro
             
         Returns
         -------
         int
-            Código de retorno do comando
+            Codigo de retorno do comando
             
         Raises
         ------
         subprocess.CalledProcessError
-            Se check=True e o comando retornar código diferente de zero
+            Se check=True e o comando retornar codigo diferente de zero
         subprocess.TimeoutExpired
             Se o comando exceder o timeout
         """
         if self.log_file is None:  # pragma: no cover - defensive programming
-            raise RuntimeError("ResticScript não inicializado")
+            raise RuntimeError("ResticScript nao inicializado")
         
         return _run_cmd(
             cmd,
@@ -187,3 +187,4 @@ class ResticScript:
             timeout=timeout,
             check=check,
         )
+

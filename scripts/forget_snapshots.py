@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Script para esquecer snapshots baseado na política de retenção - Safestic
-Implementa o comando 'restic forget' com as configurações do .env
+Script para esquecer snapshots baseado na politica de retencao - Safestic
+Implementa o comando 'restic forget' com as configuracoes do .env
 """
 
 import os
@@ -11,20 +11,20 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 def load_config():
-    """Carrega configurações do .env"""
+    """Carrega configuracoes do .env"""
     env_path = Path('.env')
     if not env_path.exists():
-        print("❌ Arquivo .env não encontrado")
+        print("❌ Arquivo .env nao encontrado")
         return False
     
     load_dotenv(env_path)
     return True
 
 def build_restic_env():
-    """Constrói variáveis de ambiente para o Restic"""
+    """Constroi variaveis de ambiente para o Restic"""
     env = os.environ.copy()
     
-    # Configurar repositório baseado no provedor
+    # Configurar repositorio baseado no provedor
     provider = os.getenv('STORAGE_PROVIDER', '').lower()
     bucket = os.getenv('STORAGE_BUCKET', '')
     
@@ -38,21 +38,21 @@ def build_restic_env():
     elif provider == 'gcp':
         env['RESTIC_REPOSITORY'] = f'gs:{bucket}'
     
-    # Senha do repositório
+    # Senha do repositorio
     env['RESTIC_PASSWORD'] = os.getenv('RESTIC_PASSWORD', '')
     
     return env
 
 def build_forget_command():
-    """Constrói comando restic forget com política de retenção"""
+    """Constroi comando restic forget com politica de retencao"""
     cmd = ['restic', 'forget']
     
-    # Verificar se retenção está habilitada
+    # Verificar se retencao esta habilitada
     if os.getenv('RETENTION_ENABLED', 'true').lower() != 'true':
-        print("⚠️  Retenção desabilitada. Nenhum snapshot será esquecido.")
+        print("⚠️  Retencao desabilitada. Nenhum snapshot sera esquecido.")
         return None
     
-    # Adicionar políticas de retenção
+    # Adicionar politicas de retencao
     retention_policies = {
         '--keep-hourly': os.getenv('KEEP_HOURLY', '24'),
         '--keep-daily': os.getenv('KEEP_DAILY', '7'),
@@ -73,14 +73,14 @@ def build_forget_command():
                 cmd.extend(['--tag', tag])
     
     # Adicionar flags adicionais
-    cmd.append('--prune')  # Remove dados não referenciados
+    cmd.append('--prune')  # Remove dados nao referenciados
     cmd.append('--verbose')
     
     return cmd
 
 def run_forget():
     """Executa o comando forget"""
-    print("🗑️  Esquecendo snapshots baseado na política de retenção...")
+    print("🗑️  Esquecendo snapshots baseado na politica de retencao...")
     
     # Construir comando
     cmd = build_forget_command()
@@ -111,18 +111,18 @@ def run_forget():
         print(f"❌ Erro ao esquecer snapshots: {e}")
         return False
     except FileNotFoundError:
-        print("❌ Restic não encontrado. Verifique se está instalado e no PATH.")
+        print("❌ Restic nao encontrado. Verifique se esta instalado e no PATH.")
         return False
     except Exception as e:
         print(f"❌ Erro inesperado: {e}")
         return False
 
 def show_retention_policy():
-    """Mostra a política de retenção atual"""
-    print("📋 Política de Retenção Atual:")
+    """Mostra a politica de retencao atual"""
+    print("📋 Politica de Retencao Atual:")
     
     if os.getenv('RETENTION_ENABLED', 'true').lower() != 'true':
-        print("   ⚠️  Retenção DESABILITADA")
+        print("   ⚠️  Retencao DESABILITADA")
         return
     
     policies = {
@@ -143,20 +143,20 @@ def show_retention_policy():
     print()
 
 def main():
-    """Função principal"""
+    """Funcao principal"""
     print("🗑️  Safestic - Forget Snapshots")
     print()
     
-    # Carregar configuração
+    # Carregar configuracao
     if not load_config():
         return 1
     
-    # Mostrar política atual
+    # Mostrar politica atual
     show_retention_policy()
     
     # Executar forget
     if run_forget():
-        print("🎉 Operação concluída com sucesso!")
+        print("🎉 Operacao concluida com sucesso!")
         return 0
     else:
         return 1

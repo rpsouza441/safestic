@@ -1,4 +1,4 @@
-"""Configurações e fixtures para testes do projeto safestic."""
+﻿"""Configuracoes e fixtures para testes do projeto safestic."""
 
 import os
 import json
@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 
 @pytest.fixture
 def mock_env_vars() -> Dict[str, str]:
-    """Retorna variáveis de ambiente simuladas para testes."""
+    """Retorna variaveis de ambiente simuladas para testes."""
     return {
         "STORAGE_PROVIDER": "aws",
         "STORAGE_BUCKET": "test-bucket",
@@ -32,7 +32,7 @@ def mock_env_vars() -> Dict[str, str]:
 
 @pytest.fixture
 def mock_env(mock_env_vars: Dict[str, str]) -> Generator[None, None, None]:
-    """Configura variáveis de ambiente simuladas para testes."""
+    """Configura variaveis de ambiente simuladas para testes."""
     original_environ = os.environ.copy()
     os.environ.update(mock_env_vars)
     yield
@@ -42,7 +42,7 @@ def mock_env(mock_env_vars: Dict[str, str]) -> Generator[None, None, None]:
 
 @pytest.fixture
 def mock_successful_subprocess() -> Generator[MagicMock, None, None]:
-    """Simula uma execução bem-sucedida de subprocess."""
+    """Simula uma execucao bem-sucedida de subprocess."""
     with patch("subprocess.run") as mock_run:
         process_mock = MagicMock()
         process_mock.returncode = 0
@@ -54,12 +54,12 @@ def mock_successful_subprocess() -> Generator[MagicMock, None, None]:
 
 @pytest.fixture
 def mock_failed_subprocess() -> Generator[MagicMock, None, None]:
-    """Simula uma execução com falha de subprocess."""
+    """Simula uma execucao com falha de subprocess."""
     with patch("subprocess.run") as mock_run:
         process_mock = MagicMock()
         process_mock.returncode = 1
         process_mock.stdout = ""
-        process_mock.stderr = "Erro simulado de execução"
+        process_mock.stderr = "Erro simulado de execucao"
         mock_run.return_value = process_mock
         yield mock_run
 
@@ -78,7 +78,7 @@ def mock_network_error_subprocess() -> Generator[MagicMock, None, None]:
 
 @pytest.fixture
 def mock_auth_error_subprocess() -> Generator[MagicMock, None, None]:
-    """Simula um erro de autenticação no subprocess."""
+    """Simula um erro de autenticacao no subprocess."""
     with patch("subprocess.run") as mock_run:
         process_mock = MagicMock()
         process_mock.returncode = 1

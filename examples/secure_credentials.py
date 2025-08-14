@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Exemplo de uso do sistema de gerenciamento seguro de credenciais.
 
 Este script demonstra como utilizar diferentes fontes de credenciais
-para operações do Restic, incluindo keyring do sistema, serviços de
+para operacoes do Restic, incluindo keyring do sistema, servicos de
 nuvem e arquivos criptografados.
 """
 
@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Optional
 
-# Adicionar diretório pai ao path para importar o pacote safestic
+# Adicionar diretorio pai ao path para importar o pacote safestic
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.credentials import load_credentials, set_credential, get_credential
@@ -22,7 +22,7 @@ from services.restic_client import ResticClient
 
 
 def setup_credentials(source: str, key: str, value: str) -> bool:
-    """Configura uma credencial em uma fonte específica.
+    """Configura uma credencial em uma fonte especifica.
     
     Parameters
     ----------
@@ -50,7 +50,7 @@ def setup_credentials(source: str, key: str, value: str) -> bool:
 
 
 def test_credentials(source: str) -> bool:
-    """Testa o carregamento de credenciais de uma fonte específica.
+    """Testa o carregamento de credenciais de uma fonte especifica.
     
     Parameters
     ----------
@@ -76,7 +76,7 @@ def test_credentials(source: str) -> bool:
             logger.warning(f"Credenciais ausentes: {', '.join(missing_keys)}")
             return False
         
-        # Exibir informações (com redação de segredos)
+        # Exibir informacoes (com redacao de segredos)
         logger.info(f"Credenciais carregadas com sucesso da fonte {source}")
         for key in credentials:
             value = credentials[key]
@@ -91,7 +91,7 @@ def test_credentials(source: str) -> bool:
 
 
 def test_restic_with_credentials(source: str) -> bool:
-    """Testa o cliente Restic com credenciais de uma fonte específica.
+    """Testa o cliente Restic com credenciais de uma fonte especifica.
     
     Parameters
     ----------
@@ -112,18 +112,18 @@ def test_restic_with_credentials(source: str) -> bool:
         password = credentials.get("RESTIC_PASSWORD")
         
         if not repository or not password:
-            logger.error("Credenciais incompletas. Verifique as variáveis RESTIC_REPOSITORY e RESTIC_PASSWORD.")
+            logger.error("Credenciais incompletas. Verifique as variaveis RESTIC_REPOSITORY e RESTIC_PASSWORD.")
             return False
         
         # Criar cliente Restic
         client = ResticClient(repository=repository, password=password)
         
-        # Verificar repositório
-        logger.info("Verificando repositório...")
+        # Verificar repositorio
+        logger.info("Verificando repositorio...")
         repo_ok = client.check_repository()
         
         if repo_ok:
-            logger.info("Repositório verificado com sucesso.")
+            logger.info("Repositorio verificado com sucesso.")
             
             # Listar snapshots
             logger.info("Listando snapshots...")
@@ -132,7 +132,7 @@ def test_restic_with_credentials(source: str) -> bool:
             
             return True
         else:
-            logger.error("Repositório não está íntegro.")
+            logger.error("Repositorio nao esta integro.")
             return False
     except Exception as e:
         logger.error(f"Erro ao testar Restic com credenciais da fonte {source}: {str(e)}")
@@ -140,7 +140,7 @@ def test_restic_with_credentials(source: str) -> bool:
 
 
 def main():
-    """Função principal."""
+    """Funcao principal."""
     # Configurar parser de argumentos
     parser = argparse.ArgumentParser(description="Exemplo de uso do sistema de gerenciamento seguro de credenciais")
     parser.add_argument(
@@ -153,20 +153,20 @@ def main():
         "--action",
         choices=["setup", "test", "restic"],
         default="test",
-        help="Ação a ser executada"
+        help="Acao a ser executada"
     )
     parser.add_argument(
         "--key",
-        help="Chave da credencial (para ação 'setup')"
+        help="Chave da credencial (para acao 'setup')"
     )
     parser.add_argument(
         "--value",
-        help="Valor da credencial (para ação 'setup')"
+        help="Valor da credencial (para acao 'setup')"
     )
     
     args = parser.parse_args()
     
-    # Criar diretório de logs se não existir
+    # Criar diretorio de logs se nao existir
     Path("logs").mkdir(exist_ok=True)
     
     # Configurar logger
@@ -176,10 +176,10 @@ def main():
         log_file="logs/secure_credentials.log",
     )
     
-    # Executar ação solicitada
+    # Executar acao solicitada
     if args.action == "setup":
         if not args.key or not args.value:
-            logger.error("Para a ação 'setup', é necessário fornecer --key e --value")
+            logger.error("Para a acao 'setup', e necessario fornecer --key e --value")
             return 1
         
         success = setup_credentials(args.source, args.key, args.value)

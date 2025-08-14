@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Script para montar repositório Restic como sistema de arquivos - Safestic
-Permite navegar pelos snapshots como diretórios normais
+Script para montar repositorio Restic como sistema de arquivos - Safestic
+Permite navegar pelos snapshots como diretorios normais
 """
 
 import os
@@ -12,20 +12,20 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 def load_config():
-    """Carrega configurações do .env"""
+    """Carrega configuracoes do .env"""
     env_path = Path('.env')
     if not env_path.exists():
-        print("❌ Arquivo .env não encontrado")
+        print("Arquivo .env nao encontrado")
         return False
     
     load_dotenv(env_path)
     return True
 
 def build_restic_env():
-    """Constrói variáveis de ambiente para o Restic"""
+    """Constroi variaveis de ambiente para o Restic"""
     env = os.environ.copy()
     
-    # Configurar repositório baseado no provedor
+    # Configurar repositorio baseado no provedor
     provider = os.getenv('STORAGE_PROVIDER', '').lower()
     bucket = os.getenv('STORAGE_BUCKET', '')
     
@@ -39,31 +39,31 @@ def build_restic_env():
     elif provider == 'gcp':
         env['RESTIC_REPOSITORY'] = f'gs:{bucket}'
     
-    # Senha do repositório
+    # Senha do repositorio
     env['RESTIC_PASSWORD'] = os.getenv('RESTIC_PASSWORD', '')
     
     return env
 
 def check_fuse_support():
-    """Verifica se FUSE está disponível"""
+    """Verifica se FUSE esta disponivel"""
     system = os.name
     
     if system == 'posix':  # Linux/macOS
-        # Verificar se FUSE está instalado
+        # Verificar se FUSE esta instalado
         try:
             subprocess.run(['fusermount', '--version'], 
                          capture_output=True, check=True)
             return True, './mount'
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("❌ FUSE não encontrado.")
-            print("💡 Instale FUSE:")
+            print("FUSE nao encontrado.")
+            print("Instale FUSE:")
             print("   Ubuntu/Debian: sudo apt install fuse")
             print("   Fedora: sudo dnf install fuse")
             print("   macOS: brew install macfuse")
             return False, None
     
     elif system == 'nt':  # Windows
-        # Verificar se WinFsp está instalado
+        # Verificar se WinFsp esta instalado
         winfsp_paths = [
             r'C:\Program Files\WinFsp\bin\launchctl-x64.exe',
             r'C:\Program Files (x86)\WinFsp\bin\launchctl-x86.exe'
@@ -73,26 +73,26 @@ def check_fuse_support():
             if Path(path).exists():
                 return True, '.\\mount'
         
-        print("❌ WinFsp não encontrado.")
-        print("💡 Instale WinFsp de: https://winfsp.dev/rel/")
+        print("WinFsp nao encontrado.")
+        print("Instale WinFsp de: https://winfsp.dev/rel/")
         return False, None
     
     else:
-        print(f"❌ Sistema não suportado: {system}")
+        print(f"Sistema nao suportado: {system}")
         return False, None
 
 def create_mount_point(mount_path):
-    """Cria ponto de montagem se não existir"""
+    """Cria ponto de montagem se nao existir"""
     try:
         Path(mount_path).mkdir(parents=True, exist_ok=True)
         return True
     except Exception as e:
-        print(f"❌ Erro ao criar ponto de montagem: {e}")
+        print(f"Erro ao criar ponto de montagem: {e}")
         return False
 
 def mount_repository(mount_path):
-    """Monta o repositório"""
-    print(f"🗂️  Montando repositório em: {mount_path}")
+    """Monta o repositorio"""
+    print(f"Montando repositorio em: {mount_path}")
     
     # Construir comando
     cmd = ['restic', 'mount', mount_path]
@@ -100,14 +100,14 @@ def mount_repository(mount_path):
     # Construir ambiente
     env = build_restic_env()
     
-    print(f"📋 Comando: {' '.join(cmd)}")
+    print(f"Comando: {' '.join(cmd)}")
     print()
-    print("⚠️  ATENÇÃO:")
-    print("   - O repositório será montado em modo somente leitura")
+    print("ATENCAO:")
+    print("   - O repositorio sera montado em modo somente leitura")
     print("   - Use Ctrl+C para desmontar")
-    print("   - Não feche este terminal enquanto estiver montado")
+    print("   - Nao feche este terminal enquanto estiver montado")
     print()
-    print("🚀 Iniciando montagem...")
+    print("Iniciando montagem...")
     
     try:
         # Executar comando
@@ -123,7 +123,7 @@ def mount_repository(mount_path):
         
         # Configurar handler para Ctrl+C
         def signal_handler(sig, frame):
-            print("\n🛑 Desmontando repositório...")
+            print("\nDesmontando repositorio...")
             process.terminate()
             try:
                 process.wait(timeout=10)
@@ -133,37 +133,37 @@ def mount_repository(mount_path):
         
         signal.signal(signal.SIGINT, signal_handler)
         
-        print("✅ Repositório montado com sucesso!")
-        print(f"📁 Acesse os snapshots em: {Path(mount_path).absolute()}")
-        print("🔍 Cada snapshot aparecerá como um diretório")
+        print("Repositorio montado com sucesso!")
+        print(f"Acesse os snapshots em: {Path(mount_path).absolute()}")
+        print("Cada snapshot aparecera como um diretorio")
         print()
-        print("⌨️  Pressione Ctrl+C para desmontar")
+        print("Pressione Ctrl+C para desmontar")
         
         # Aguardar processo
         for line in process.stdout:
             if line.strip():
-                print(f"📋 {line.strip()}")
+                print(f"Log: {line.strip()}")
         
         process.wait()
         
     except subprocess.CalledProcessError as e:
-        print(f"❌ Erro ao montar repositório: {e}")
+        print(f"Erro ao montar repositorio: {e}")
         return False
     except FileNotFoundError:
-        print("❌ Restic não encontrado. Verifique se está instalado e no PATH.")
+        print("Restic nao encontrado. Verifique se esta instalado e no PATH.")
         return False
     except Exception as e:
-        print(f"❌ Erro inesperado: {e}")
+        print(f"Erro inesperado: {e}")
         return False
     
     return True
 
 def main():
-    """Função principal"""
-    print("🗂️  Safestic - Mount Repository")
+    """Funcao principal"""
+    print("Safestic - Mount Repository")
     print()
     
-    # Carregar configuração
+    # Carregar configuracao
     if not load_config():
         return 1
     
@@ -179,9 +179,9 @@ def main():
     if not create_mount_point(mount_path):
         return 1
     
-    # Montar repositório
+    # Montar repositorio
     if mount_repository(mount_path):
-        print("🎉 Operação concluída!")
+        print("Operacao concluida!")
         return 0
     else:
         return 1

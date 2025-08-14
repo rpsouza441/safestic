@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 import sys
 
@@ -7,9 +7,9 @@ from services.restic_client import ResticClient, ResticError
 
 
 def check_restic_access() -> None:
-    """Verifica se o Restic está instalado e se o repositório está acessível.
+    """Verifica se o Restic esta instalado e se o repositorio esta acessivel.
     
-    Utiliza o ResticClient para verificar acesso ao repositório com retry automático e tratamento de erros.
+    Utiliza o ResticClient para verificar acesso ao repositorio com retry automatico e tratamento de erros.
     """
     with ResticScript("check_restic_access") as ctx:
         # Configurar logging
@@ -19,13 +19,13 @@ def check_restic_access() -> None:
             handlers=[logging.StreamHandler()],
         )
         
-        ctx.log("=== Verificando acesso ao repositório Restic ===")
+        ctx.log("=== Verificando acesso ao repositorio Restic ===")
         restic_password = os.getenv("RESTIC_PASSWORD")
 
-        print("🔍 Verificando variáveis essenciais do .env")
+        print("Verificando variaveis essenciais do .env")
 
         def print_status(name: str, result: bool) -> None:
-            line = f"{name.ljust(30)}: {'OK' if result else '❌ FALHA'}"
+            line = f"{name.ljust(30)}: {'OK' if result else 'FALHA'}"
             print(line)
             ctx.log(line)
 
@@ -49,35 +49,35 @@ def check_restic_access() -> None:
             )
 
         if not ctx.repository or not restic_password:
-            ctx.log("[FATAL] Variáveis obrigatórias estão ausentes. Abortando.")
-            print("\n[FATAL] Variáveis obrigatórias estão ausentes. Abortando.")
+            ctx.log("[FATAL] Variaveis obrigatorias estao ausentes. Abortando.")
+            print("\n[FATAL] Variaveis obrigatorias estao ausentes. Abortando.")
             sys.exit(1)
 
         try:
             # Criar cliente Restic com retry
             client = ResticClient(max_attempts=3)
             
-            # Verificar se o Restic está disponível
-            ctx.log("\nVerificando se 'restic' está disponível no PATH...")
+            # Verificar se o Restic esta disponivel
+            ctx.log("\nVerificando se 'restic' esta disponivel no PATH...")
             if not client.check_restic_installed():
-                ctx.log("Restic não encontrado ou com erro")
+                ctx.log("Restic nao encontrado ou com erro")
                 sys.exit(1)
-            ctx.log("Restic está instalado e acessível.")
-            print("Restic está instalado e acessível.")
+            ctx.log("Restic esta instalado e acessivel.")
+            print("Restic esta instalado e acessivel.")
             
-            # Testar acesso ao repositório
-            ctx.log("\nTestando acesso ao repositório...")
+            # Testar acesso ao repositorio
+            ctx.log("\nTestando acesso ao repositorio...")
             if client.check_repository_access():
-                ctx.log("Acesso ao repositório bem-sucedido.")
-                print("Acesso ao repositório bem-sucedido.")
+                ctx.log("Acesso ao repositorio bem-sucedido.")
+                print("Acesso ao repositorio bem-sucedido.")
             else:
-                print("Não foi possível acessar o repositório.")
+                print("Nao foi possivel acessar o repositorio.")
                 ctx.log("Tentando inicializar...")
                 if client.init_repository():
-                    ctx.log("Repositório foi inicializado com sucesso!")
-                    print("Repositório foi inicializado com sucesso!")
+                    ctx.log("Repositorio foi inicializado com sucesso!")
+                    print("Repositorio foi inicializado com sucesso!")
                 else:
-                    ctx.log("Falha ao inicializar o repositório")
+                    ctx.log("Falha ao inicializar o repositorio")
                     sys.exit(1)
                     
         except ResticError as exc:
@@ -90,3 +90,4 @@ def check_restic_access() -> None:
 
 if __name__ == "__main__":
     check_restic_access()
+

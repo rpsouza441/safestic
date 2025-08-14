@@ -1,12 +1,12 @@
-"""Gerenciamento seguro de credenciais para o Restic.
+﻿"""Gerenciamento seguro de credenciais para o Restic.
 
-Este módulo fornece funções para carregar credenciais de forma segura de várias fontes:
+Este modulo fornece funcoes para carregar credenciais de forma segura de varias fontes:
 - Keyring do sistema operacional
 - Gerenciadores de segredos em nuvem (AWS, Azure, GCP)
 - Arquivo .env criptografado com SOPS
-- Arquivo .env padrão (fallback)
+- Arquivo .env padrao (fallback)
 
-Todas as funções garantem que segredos não sejam expostos em logs ou saídas.
+Todas as funcoes garantem que segredos nao sejam expostos em logs ou saidas.
 """
 
 from __future__ import annotations
@@ -22,14 +22,14 @@ from typing import Dict, Optional, Any, Union, cast
 import keyring
 from dotenv import load_dotenv
 
-# Configuração de logging
+# Configuracao de logging
 logger = logging.getLogger(__name__)
 
 
 class CredentialSource(str, Enum):
-    """Fontes possíveis para obtenção de credenciais."""
+    """Fontes possiveis para obtencao de credenciais."""
 
-    ENV = "env"  # Variáveis de ambiente ou .env
+    ENV = "env"  # Variaveis de ambiente ou .env
     KEYRING = "keyring"  # Keyring do sistema
     AWS_SECRETS = "aws_secrets"  # AWS Secrets Manager
     AZURE_KEYVAULT = "azure_keyvault"  # Azure Key Vault
@@ -40,16 +40,16 @@ class CredentialSource(str, Enum):
 class CredentialManager:
     """Gerenciador de credenciais para o Restic.
     
-    Fornece métodos para obter credenciais de várias fontes de forma segura.
+    Fornece metodos para obter credenciais de varias fontes de forma segura.
     
     Parameters
     ----------
     app_name : str
-        Nome da aplicação para uso com keyring
+        Nome da aplicacao para uso com keyring
     credential_source : CredentialSource
-        Fonte primária para obtenção de credenciais
+        Fonte primaria para obtencao de credenciais
     fallback_to_env : bool
-        Se deve usar variáveis de ambiente como fallback
+        Se deve usar variaveis de ambiente como fallback
     sops_file : Optional[str]
         Caminho para arquivo .env criptografado com SOPS
     """
@@ -68,7 +68,7 @@ class CredentialManager:
                 self.credential_source = CredentialSource(credential_source.lower())
             except ValueError:
                 logger.warning(
-                    f"Fonte de credenciais '{credential_source}' inválida. Usando ENV como padrão."
+                    f"Fonte de credenciais '{credential_source}' invalida. Usando ENV como padrao."
                 )
                 self.credential_source = CredentialSource.ENV
         else:
@@ -78,18 +78,18 @@ class CredentialManager:
         self.sops_file = sops_file
         self._loaded_env = False
         
-        # Carregar variáveis de ambiente se necessário
+        # Carregar variaveis de ambiente se necessario
         if self.credential_source == CredentialSource.ENV or self.fallback_to_env:
             self._ensure_env_loaded()
 
     def _ensure_env_loaded(self) -> None:
-        """Garante que as variáveis de ambiente foram carregadas."""
+        """Garante que as variaveis de ambiente foram carregadas."""
         if not self._loaded_env:
             load_dotenv()
             self._loaded_env = True
 
     def get_credential(self, key: str) -> Optional[str]:
-        """Obtém uma credencial da fonte configurada.
+        """Obtem uma credencial da fonte configurada.
         
         Parameters
         ----------
@@ -99,11 +99,11 @@ class CredentialManager:
         Returns
         -------
         Optional[str]
-            Valor da credencial ou None se não encontrada
+            Valor da credencial ou None se nao encontrada
         """
         value = None
         
-        # Tentar obter da fonte primária
+        # Tentar obter da fonte primaria
         try:
             if self.credential_source == CredentialSource.KEYRING:
                 value = self._get_from_keyring(key)
@@ -120,17 +120,17 @@ class CredentialManager:
         except Exception as e:
             logger.error(f"Erro ao obter credencial {key}: {str(e)}")
             
-        # Fallback para variáveis de ambiente se necessário
+        # Fallback para variaveis de ambiente se necessario
         if value is None and self.fallback_to_env and self.credential_source != CredentialSource.ENV:
             self._ensure_env_loaded()
             value = os.getenv(key)
             if value is not None:
-                logger.debug(f"Usando fallback de variável de ambiente para {key}")
+                logger.debug(f"Usando fallback de variavel de ambiente para {key}")
                 
         return value
 
     def _get_from_keyring(self, key: str) -> Optional[str]:
-        """Obtém credencial do keyring do sistema."""
+        """Obtem credencial do keyring do sistema."""
         try:
             return keyring.get_password(self.app_name, key)
         except Exception as e:
@@ -138,7 +138,7 @@ class CredentialManager:
             return None
 
     def _get_from_aws_secrets(self, key: str) -> Optional[str]:
-        """Obtém credencial do AWS Secrets Manager."""
+        """Obtem credencial do AWS Secrets Manager."""
         try:
             import boto3
             
@@ -163,14 +163,14 @@ class CredentialManager:
             
             return None
         except ImportError:
-            logger.error("Módulo boto3 não instalado. Instale com 'pip install boto3'")
+            logger.error("Modulo boto3 nao instalado. Instale com 'pip install boto3'")
             return None
         except Exception as e:
             logger.error(f"Erro ao acessar AWS Secrets Manager: {str(e)}")
             return None
 
     def _get_from_azure_keyvault(self, key: str) -> Optional[str]:
-        """Obtém credencial do Azure Key Vault."""
+        """Obtem credencial do Azure Key Vault."""
         try:
             from azure.identity import DefaultAzureCredential
             from azure.keyvault.secrets import SecretClient
@@ -178,7 +178,7 @@ class CredentialManager:
             # Obter URL do Key Vault
             vault_url = os.getenv("AZURE_KEYVAULT_URL")
             if not vault_url:
-                logger.error("AZURE_KEYVAULT_URL não definida")
+                logger.error("AZURE_KEYVAULT_URL nao definida")
                 return None
             
             # Criar cliente do Key Vault
@@ -189,21 +189,21 @@ class CredentialManager:
             secret = client.get_secret(key)
             return secret.value
         except ImportError:
-            logger.error("Módulos Azure não instalados. Instale com 'pip install azure-keyvault-secrets azure-identity'")
+            logger.error("Modulos Azure nao instalados. Instale com 'pip install azure-keyvault-secrets azure-identity'")
             return None
         except Exception as e:
             logger.error(f"Erro ao acessar Azure Key Vault: {str(e)}")
             return None
 
     def _get_from_gcp_secrets(self, key: str) -> Optional[str]:
-        """Obtém credencial do Google Cloud Secret Manager."""
+        """Obtem credencial do Google Cloud Secret Manager."""
         try:
             from google.cloud import secretmanager
             
             # Obter ID do projeto
             project_id = os.getenv("GCP_PROJECT_ID")
             if not project_id:
-                logger.error("GCP_PROJECT_ID não definida")
+                logger.error("GCP_PROJECT_ID nao definida")
                 return None
             
             # Criar cliente do Secret Manager
@@ -216,20 +216,20 @@ class CredentialManager:
             response = client.access_secret_version(request={"name": name})
             return response.payload.data.decode("UTF-8")
         except ImportError:
-            logger.error("Módulo google-cloud-secret-manager não instalado. Instale com 'pip install google-cloud-secret-manager'")
+            logger.error("Modulo google-cloud-secret-manager nao instalado. Instale com 'pip install google-cloud-secret-manager'")
             return None
         except Exception as e:
             logger.error(f"Erro ao acessar GCP Secret Manager: {str(e)}")
             return None
 
     def _get_from_sops(self, key: str) -> Optional[str]:
-        """Obtém credencial de arquivo .env criptografado com SOPS."""
+        """Obtem credencial de arquivo .env criptografado com SOPS."""
         if not self.sops_file:
-            logger.error("Arquivo SOPS não configurado")
+            logger.error("Arquivo SOPS nao configurado")
             return None
             
         if not Path(self.sops_file).exists():
-            logger.error(f"Arquivo SOPS não encontrado: {self.sops_file}")
+            logger.error(f"Arquivo SOPS nao encontrado: {self.sops_file}")
             return None
             
         try:
@@ -241,7 +241,7 @@ class CredentialManager:
                 check=True,
             )
             
-            # Processar saída como .env
+            # Processar saida como .env
             for line in result.stdout.splitlines():
                 if "=" in line and not line.strip().startswith("#"):
                     k, v = line.split("=", 1)
@@ -269,19 +269,19 @@ class CredentialManager:
         Returns
         -------
         bool
-            True se a operação foi bem-sucedida, False caso contrário
+            True se a operacao foi bem-sucedida, False caso contrario
         """
         try:
             if self.credential_source == CredentialSource.KEYRING:
                 keyring.set_password(self.app_name, key, value)
                 return True
             elif self.credential_source == CredentialSource.ENV:
-                # Não é possível definir variáveis de ambiente permanentemente
-                logger.warning("Não é possível definir credenciais permanentemente em variáveis de ambiente")
+                # Nao e possivel definir variaveis de ambiente permanentemente
+                logger.warning("Nao e possivel definir credenciais permanentemente em variaveis de ambiente")
                 os.environ[key] = value
                 return True
             else:
-                logger.warning(f"Definição de credenciais não implementada para {self.credential_source}")
+                logger.warning(f"Definicao de credenciais nao implementada para {self.credential_source}")
                 return False
         except Exception as e:
             logger.error(f"Erro ao definir credencial {key}: {str(e)}")
@@ -289,19 +289,19 @@ class CredentialManager:
 
 
 def load_credentials(credential_source: str = "env") -> Dict[str, str]:
-    """Carrega todas as credenciais necessárias para o Restic.
+    """Carrega todas as credenciais necessarias para o Restic.
     
     Parameters
     ----------
     credential_source : str
-        Fonte para obtenção de credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops)
+        Fonte para obtencao de credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops)
         
     Returns
     -------
     Dict[str, str]
-        Dicionário com as credenciais carregadas
+        Dicionario com as credenciais carregadas
     """
-    # Credenciais necessárias para o Restic
+    # Credenciais necessarias para o Restic
     required_keys = [
         "RESTIC_PASSWORD",
         "AWS_ACCESS_KEY_ID",
@@ -330,19 +330,19 @@ def load_credentials(credential_source: str = "env") -> Dict[str, str]:
 
 
 def get_credential(key: str, credential_source: str = "env") -> Optional[str]:
-    """Obtém uma credencial específica de forma segura.
+    """Obtem uma credencial especifica de forma segura.
     
     Parameters
     ----------
     key : str
         Nome da credencial a ser obtida
     credential_source : str
-        Fonte para obtenção de credenciais
+        Fonte para obtencao de credenciais
         
     Returns
     -------
     Optional[str]
-        Valor da credencial ou None se não encontrada
+        Valor da credencial ou None se nao encontrada
     """
     manager = CredentialManager(credential_source=credential_source)
     return manager.get_credential(key)

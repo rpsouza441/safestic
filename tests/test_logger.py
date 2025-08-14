@@ -1,4 +1,4 @@
-"""Testes para o módulo services.logger."""
+﻿"""Testes para o modulo services.logger."""
 
 import json
 import logging
@@ -13,10 +13,10 @@ from services.logger import create_log_file, log, run_cmd
 
 
 class TestCreateLogFile:
-    """Testes para a função create_log_file."""
+    """Testes para a funcao create_log_file."""
 
     def test_create_log_file(self) -> None:
-        """Testa criação de arquivo de log."""
+        """Testa criacao de arquivo de log."""
         with tempfile.TemporaryDirectory() as temp_dir:
             log_file = create_log_file("test", temp_dir)
             assert log_file.startswith(temp_dir)
@@ -25,7 +25,7 @@ class TestCreateLogFile:
             assert Path(log_file).parent.exists()
 
     def test_create_log_file_creates_directory(self) -> None:
-        """Testa criação de diretório de log quando não existe."""
+        """Testa criacao de diretorio de log quando nao existe."""
         with tempfile.TemporaryDirectory() as temp_dir:
             non_existent_dir = os.path.join(temp_dir, "logs")
             log_file = create_log_file("test", non_existent_dir)
@@ -34,7 +34,7 @@ class TestCreateLogFile:
 
 
 class TestLog:
-    """Testes para a função log."""
+    """Testes para a funcao log."""
 
     def test_log_writes_to_file(self) -> None:
         """Testa escrita de log em arquivo."""
@@ -56,10 +56,10 @@ class TestLog:
 
 
 class TestRunCmd:
-    """Testes para a função run_cmd."""
+    """Testes para a funcao run_cmd."""
 
     def test_run_cmd_success(self) -> None:
-        """Testa execução de comando com sucesso."""
+        """Testa execucao de comando com sucesso."""
         with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
             log_path = temp_file.name
 
@@ -83,7 +83,7 @@ class TestRunCmd:
                 os.unlink(log_path)
 
     def test_run_cmd_failure(self) -> None:
-        """Testa execução de comando com falha."""
+        """Testa execucao de comando com falha."""
         with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
             log_path = temp_file.name
 

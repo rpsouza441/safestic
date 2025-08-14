@@ -1,8 +1,19 @@
 # Caminho para o Python (ajuste conforme necessario)
 ifeq ($(OS),Windows_NT)
 	PYTHON=python
+	VENV_ACTIVATE=.venv\Scripts\Activate.ps1
+	VENV_PYTHON=.venv\Scripts\python.exe
 else
 	PYTHON=python3
+	VENV_ACTIVATE=.venv/bin/activate
+	VENV_PYTHON=.venv/bin/python
+endif
+
+# Verificar se ambiente virtual existe e usar se disponivel
+ifeq ($(OS),Windows_NT)
+	PYTHON_CMD=$(if $(wildcard .venv\Scripts\python.exe),$(VENV_PYTHON),$(PYTHON))
+else
+	PYTHON_CMD=$(if $(wildcard .venv/bin/python),$(VENV_PYTHON),$(PYTHON))
 endif
 
 .PHONY: backup list restore restore-id restore-file list-files manual-prune check help init dry-run stats validate test-backup test-restore clean prune
@@ -12,30 +23,30 @@ endif
 ## Executa o backup com base nas variaveis do .env
 backup:
 	@echo "Executando backup com Restic..."
-	$(PYTHON) restic_backup.py
+	$(PYTHON_CMD) restic_backup.py
 
 ## Lista todos os snapshots no repositorio
 list:
 	@echo "Listando snapshots disponiveis..."
-	$(PYTHON) list_snapshots.py
+	$(PYTHON_CMD) list_snapshots.py
 
 ## Lista todos os snapshots com tamanho estimado
 list-size:
 	@echo "Listando snapshots com tamanho estimado..."
-	$(PYTHON) list_snapshots_with_size.py
+	$(PYTHON_CMD) list_snapshots_with_size.py
 
-## Lista arquivos contidos em um snapshot especifico (ex: make list-files ID=abc123)
+## Lista arquivos contidos em um snapshot especifico (ex: make list-files ID=abc123 FORMAT=json OUTPUT=files.json)
 list-files:
 ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make list-files ID=abc123)
 endif
 	@echo "Listando arquivos do snapshot ID=$(ID)..."
-	$(PYTHON) list_snapshot_files.py --id $(ID)
+	$(PYTHON_CMD) list_snapshot_files.py $(ID)
 
 ## Restaura o snapshot mais recente (default = latest)
 restore:
 	@echo "Restaurando o ultimo snapshot..."
-	$(PYTHON) restore_snapshot.py
+	$(PYTHON_CMD) restore_snapshot.py
 
 ## Restaura snapshot especifico (ex: make restore-id ID=abc123)
 restore-id:
@@ -43,122 +54,154 @@ ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make restore-id ID=abc123)
 endif
 	@echo "Restaurando snapshot ID=$(ID)..."
-	$(PYTHON) restore_snapshot.py --id $(ID)
+	$(PYTHON_CMD) restore_snapshot.py $(ID)
 
-## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE=/etc/hosts)
+## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE="/etc/hosts")
 restore-file:
 ifndef ID
-	$(error Voce precisa passar o ID do snapshot: make restore-file ID=abc123 FILE=/caminho)
+	$(error Voce precisa passar o ID do snapshot: make restore-file ID=abc123 FILE="/caminho")
 endif
 ifndef FILE
-	$(error Voce precisa passar o caminho do arquivo: make restore-file ID=abc123 FILE=/caminho)
+	$(error Voce precisa passar o caminho do arquivo: make restore-file ID=abc123 FILE="/caminho")
 endif
 	@echo "Restaurando arquivo $(FILE) do snapshot ID=$(ID)..."
-	$(PYTHON) restore_file.py --id $(ID) --path $(FILE)
+	$(PYTHON_CMD) restore_file.py $(ID) "$(FILE)"
 
 ## Aplica retencao manual usando o script Python dedicado
 manual-prune:
 	@echo "Executando retencao manual via Python..."
-	$(PYTHON) manual_prune.py
+	$(PYTHON_CMD) manual_prune.py
 
 ## Verifica se Restic esta instalado, variaveis estao corretas e repositorio esta acessivel
 check:
 	@echo "Executando verificacao da configuracao Restic..."
-	$(PYTHON) check_restic_access.py
+	$(PYTHON_CMD) check_restic_access.py
 
-## Exibe o total de dados únicos armazenados no repositório
+## Exibe o total de dados unicos armazenados no repositorio
 repo-size:
-	@echo "Calculando uso real do repositório..."
-	$(PYTHON) repository_stats.py
+	@echo "Calculando uso real do repositorio..."
+	$(PYTHON_CMD) repository_stats.py
 
-## Inicializa repositório Restic (apenas se não existir)
+## Inicializa repositorio Restic (apenas se nao existir)
 init:
-	@echo "Inicializando repositório Restic..."
-	$(PYTHON) -c "\
-from services.restic_client import ResticClient; \
-from services.restic import load_restic_config; \
-config = load_restic_config(); \
-client = ResticClient(config.repository_url, config.environment); \
-try: \
-    client.list_snapshots(); \
-    print('✅ Repositório já existe'); \
-except: \
-    client.init_repository(); \
-    print('✅ Repositório inicializado')"
+	@echo "Inicializando repositorio Restic..."
+	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; from services.restic import load_restic_config; config = load_restic_config(); client = ResticClient(); exec('try:\n    client.check_repository_access()\n    print(\"Repositorio ja existe\")\nexcept:\n    client.init_repository()\n    print(\"Repositorio inicializado\")')"
 
 ## Simula backup sem executar (dry-run)
 dry-run:
 	@echo "Simulando backup (dry-run)..."
-	$(PYTHON) -c "\
-from services.restic import load_restic_config; \
-from pathlib import Path; \
-config = load_restic_config(); \
-print('📋 Configuração de backup:'); \
-print(f'Diretórios: {config.backup_source_dirs}'); \
-print(f'Exclusões: {config.excludes}'); \
-print(f'Tags: {config.tags}'); \
-for dir_path in config.backup_source_dirs: \
-    if Path(dir_path).exists(): \
-        print(f'✅ {dir_path} - OK'); \
-    else: \
-        print(f'❌ {dir_path} - NÃO ENCONTRADO')"
+	$(PYTHON_CMD) -c "from services.restic import load_restic_config; from pathlib import Path; config = load_restic_config(); print('Configuracao de backup:'); print(f'Diretorios: {config.backup_source_dirs}'); print(f'Exclusoes: {config.restic_excludes}'); print(f'Tags: {config.restic_tags}'); [print(f'{dir_path} - OK') if Path(dir_path).exists() else print(f'{dir_path} - NAO ENCONTRADO') for dir_path in config.backup_source_dirs]"
 
-## Mostra estatísticas detalhadas do repositório
+## Mostra estatisticas detalhadas do repositorio
 stats:
-	@echo "Obtendo estatísticas detalhadas..."
-	$(PYTHON) -c "\
-from services.restic_client import ResticClient; \
-from services.restic import load_restic_config; \
-config = load_restic_config(); \
-client = ResticClient(config.repository_url, config.environment); \
-stats = client.get_repository_stats(); \
-print(f'Total de snapshots: {len(client.list_snapshots())}'); \
-print('Executando restic stats...'); \
-import subprocess; \
-result = subprocess.run(['restic', '-r', config.repository_url, 'stats'], \
-                       capture_output=True, text=True, env=config.environment); \
-print(result.stdout)"
+	@echo "Obtendo estatisticas detalhadas..."
+	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; ResticClient().show_stats()"
 
-## Aplica política de retenção (prune)
+## Aplica politica de retencao (prune)
 prune:
-	@echo "Aplicando política de retenção..."
-	$(PYTHON) manual_prune.py
+	@echo "Aplicando politica de retencao..."
+	$(PYTHON_CMD) scripts/forget_snapshots.py
 
-## Executa todos os checks de validação
+## Executa todos os checks de validacao
 validate:
-	@echo "Executando validação completa..."
-	@echo "1. Verificando configuração..."
-	$(PYTHON) check_restic_access.py
+	@echo "Executando validacao completa..."
+	@echo "1. Verificando configuracao..."
+	$(PYTHON_CMD) scripts/validate_config.py
 	@echo "2. Verificando integridade..."
-	$(PYTHON) -c "from services.restic_client import ResticClient; from services.restic import load_restic_config; config = load_restic_config(); ResticClient(config.repository_url, config.environment).check_repository()"
+	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; client = ResticClient(); client.check_repository_access()"
 	@echo "3. Listando snapshots..."
-	$(PYTHON) list_snapshots.py
-	@echo "✅ Validação concluída"
+	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; ResticClient().list_snapshots()"
+	@echo "Validacao concluida"
 
-## Cria backup de teste em diretório temporário
+## Cria backup de teste em diretorio temporario
 test-backup:
 	@echo "Criando backup de teste..."
+ifeq ($(OS),Windows_NT)
+	@if not exist "temp\safestic-test" mkdir "temp\safestic-test"
+	@echo Arquivo de teste - %date% %time% > "temp\safestic-test\teste.txt"
+	@set BACKUP_SOURCE_DIRS=temp\safestic-test&& set RESTIC_TAGS=teste&& $(PYTHON_CMD) restic_backup.py
+	@if exist "temp\safestic-test" rmdir /s /q "temp\safestic-test"
+else
 	mkdir -p /tmp/safestic-test
 	echo "Arquivo de teste - $$(date)" > /tmp/safestic-test/teste.txt
-	BACKUP_SOURCE_DIRS=/tmp/safestic-test RESTIC_TAGS=teste $(PYTHON) restic_backup.py
+	BACKUP_SOURCE_DIRS=/tmp/safestic-test RESTIC_TAGS=teste $(PYTHON_CMD) restic_backup.py
 	rm -rf /tmp/safestic-test
-	@echo "✅ Backup de teste concluído"
+endif
+	@echo "Backup de teste concluido"
 
-## Restaura para diretório temporário (teste)
+## Restaura para diretorio temporario (teste)
 test-restore:
-	@echo "Testando restauração..."
+	@echo "Testando restauracao..."
+ifeq ($(OS),Windows_NT)
+	@if exist "temp\safestic-restore-test" rmdir /s /q "temp\safestic-restore-test"
+	@if not exist "temp\safestic-restore-test" mkdir "temp\safestic-restore-test"
+	@set RESTORE_TARGET_DIR=temp\safestic-restore-test&& $(PYTHON_CMD) restore_snapshot.py
+	@dir "temp\safestic-restore-test"
+else
 	rm -rf /tmp/safestic-restore-test
 	mkdir -p /tmp/safestic-restore-test
-	RESTORE_TARGET_DIR=/tmp/safestic-restore-test $(PYTHON) restore_snapshot.py
+	RESTORE_TARGET_DIR=/tmp/safestic-restore-test $(PYTHON_CMD) restore_snapshot.py
 	ls -la /tmp/safestic-restore-test
-	@echo "✅ Teste de restauração concluído"
+endif
+	@echo "Teste de restauracao concluido"
 
-## Limpa arquivos temporários e logs antigos
+## Limpa arquivos temporarios e logs antigos
 clean:
-	@echo "Limpando arquivos temporários..."
+	@echo "Limpando arquivos temporarios..."
+ifeq ($(OS),Windows_NT)
+	@if exist "logs" forfiles /p logs /m *.log /d -30 /c "cmd /c del @path" 2>nul || echo "Nenhum log antigo encontrado"
+	@if exist "temp" rmdir /s /q "temp" 2>nul || echo "Diretorio temp nao existe"
+else
 	find logs -name "*.log" -mtime +30 -delete 2>/dev/null || true
 	rm -rf /tmp/safestic-* 2>/dev/null || true
-	@echo "✅ Limpeza concluída"
+endif
+	@echo "Limpeza concluida"
+
+# Agendamento simplificado - FASE 4
+## Instala tarefas agendadas (versao simplificada)
+schedule-install:
+	@echo "Instalando tarefas agendadas..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File "scripts/schedule.ps1" install
+else
+	@bash "scripts/schedule.sh" install
+endif
+
+## Remove tarefas agendadas (versao simplificada)
+schedule-remove:
+	@echo "Removendo tarefas agendadas..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File "scripts/schedule.ps1" remove
+else
+	@bash "scripts/schedule.sh" remove
+endif
+
+## Mostra status das tarefas agendadas (versao simplificada)
+schedule-status:
+	@echo "Verificando status das tarefas agendadas..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File "scripts/schedule.ps1" status
+else
+	@bash "scripts/schedule.sh" status
+endif
+
+## Executa backup manualmente (mesmo script das tarefas agendadas)
+backup-task:
+	@echo "Executando backup via script de tarefa..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File "scripts\backup_task.ps1"
+else
+	@bash scripts/backup_task.sh
+endif
+
+## Executa prune manualmente (mesmo script das tarefas agendadas)
+prune-task:
+	@echo "Executando prune via script de tarefa..."
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File "scripts\prune_task.ps1"
+else
+	@bash scripts/prune_task.sh
+endif
 
 # Novos targets - FASE 4
 setup:
@@ -169,13 +212,13 @@ ifeq ($(OS),Windows_NT)
 	) else if exist "scripts\setup_windows.sh" ( \
 		bash "scripts\setup_windows.sh" --assume-yes \
 	) else ( \
-		echo "Erro: Scripts de setup não encontrados" && exit 1 \
+		echo "Erro: Scripts de setup nao encontrados" && exit 1 \
 	)
 else
 	@if [ -f "scripts/setup_linux.sh" ]; then \
 		bash "scripts/setup_linux.sh" --assume-yes; \
 	else \
-		echo "Erro: Script de setup Linux não encontrado"; \
+		echo "Erro: Script de setup Linux nao encontrado"; \
 		exit 1; \
 	fi
 endif
@@ -186,187 +229,120 @@ ifeq ($(OS),Windows_NT)
 	@if exist "scripts\bootstrap_windows.ps1" ( \
 		powershell -ExecutionPolicy Bypass -File "scripts\bootstrap_windows.ps1" \
 	) else ( \
-		echo "Erro: bootstrap_windows.ps1 não encontrado" && exit 1 \
+		echo "Erro: bootstrap_windows.ps1 nao encontrado" && exit 1 \
 	)
 else
-	@echo "Bootstrap não implementado para Linux. Use: make setup"
+	@echo "Bootstrap nao implementado para Linux. Use: make setup"
 	@exit 1
 endif
 
-first-run: setup
-	@echo "Executando primeira configuração..."
+first-run:
+	@echo "Executando primeira configuracao..."
 	@echo "1. Verificando arquivo .env..."
-	@if [ ! -f ".env" ]; then \
-		echo "Copiando .env.example para .env..."; \
-		cp .env.example .env; \
-		echo "ATENÇÃO: Configure o arquivo .env antes de continuar!"; \
-	else \
-		echo ".env já existe"; \
-	fi
-	@echo "2. Validando configuração..."
-	$(PYTHON) scripts/validate_config.py
-	@echo "3. Inicializando repositório (se necessário)..."
-	@$(MAKE) init || echo "Repositório já existe ou erro na inicialização"
-	@echo "4. Executando verificação..."
+	@powershell -Command "if (-not (Test-Path '.env')) { Write-Host 'Copiando .env.example para .env...'; Copy-Item '.env.example' '.env'; Write-Host 'ATENCAO: Configure o arquivo .env antes de continuar!' } else { Write-Host '.env ja existe' }"
+	@echo "2. Validando configuracao..."
+	$(PYTHON_CMD) scripts/validate_config.py
+	@echo "3. Inicializando repositorio (se necessario)..."
+	@$(MAKE) init || echo "Repositorio ja existe ou erro na inicializacao"
+	@echo "4. Executando verificacao..."
 	@$(MAKE) check
-	@echo "Primeira configuração concluída!"
+	@echo "Primeira configuracao concluida!"
 
-schedule-install:
-	@echo "Instalando agendamento automático..."
-ifeq ($(OS),Windows_NT)
-	@if exist "scripts\schedule_windows.ps1" ( \
-		powershell -ExecutionPolicy Bypass -File "scripts\schedule_windows.ps1" install \
-	) else ( \
-		echo "Erro: schedule_windows.ps1 não encontrado" && exit 1 \
-	)
-else
-	@if [ -f "scripts/schedule_linux.sh" ]; then \
-		bash "scripts/schedule_linux.sh" install; \
-	else \
-		echo "Erro: schedule_linux.sh não encontrado"; \
-		exit 1; \
-	fi
-endif
+# Comandos de agendamento removidos - usar schedule-install, schedule-remove, schedule-status da secao simplificada
 
-schedule-remove:
-	@echo "Removendo agendamento automático..."
-ifeq ($(OS),Windows_NT)
-	@if exist "scripts\schedule_windows.ps1" ( \
-		powershell -ExecutionPolicy Bypass -File "scripts\schedule_windows.ps1" remove \
-	) else ( \
-		echo "Erro: schedule_windows.ps1 não encontrado" && exit 1 \
-	)
-else
-	@if [ -f "scripts/schedule_linux.sh" ]; then \
-		bash "scripts/schedule_linux.sh" remove; \
-	else \
-		echo "Erro: schedule_linux.sh não encontrado"; \
-		exit 1; \
-	fi
-endif
-
-schedule-status:
-	@echo "Verificando status do agendamento..."
-ifeq ($(OS),Windows_NT)
-	@if exist "scripts\schedule_windows.ps1" ( \
-		powershell -ExecutionPolicy Bypass -File "scripts\schedule_windows.ps1" status \
-	) else ( \
-		echo "Erro: schedule_windows.ps1 não encontrado" && exit 1 \
-	)
-else
-	@if [ -f "scripts/schedule_linux.sh" ]; then \
-		bash "scripts/schedule_linux.sh" status; \
-	else \
-		echo "Erro: schedule_linux.sh não encontrado"; \
-		exit 1; \
-	fi
-endif
-
-# Operações avançadas do Restic
+# Operacoes avancadas do Restic
 forget:
-	@echo "Esquecendo snapshots baseado na política de retenção..."
-	$(PYTHON) scripts/forget_snapshots.py
+	@echo "Esquecendo snapshots baseado na politica de retencao..."
+	$(PYTHON_CMD) scripts/forget_snapshots.py
 
 mount:
-	@echo "Montando repositório como sistema de arquivos..."
-	@echo "ATENÇÃO: Esta operação requer FUSE (Linux/macOS) ou WinFsp (Windows)"
-	$(PYTHON) scripts/mount_repo.py
+	@echo "Montando repositorio como sistema de arquivos..."
+	@echo "ATENCAO: Esta operacao requer FUSE (Linux/macOS) ou WinFsp (Windows)"
+	$(PYTHON_CMD) scripts/mount_repo.py
 
 unmount:
-	@echo "Desmontando repositório..."
-	$(PYTHON) scripts/unmount_repo.py
+	@echo "Desmontando repositorio..."
+	$(PYTHON_CMD) scripts/unmount_repo.py
 
 rebuild-index:
-	@echo "Reconstruindo índice do repositório..."
-	$(PYTHON) scripts/rebuild_index.py
+	@echo "Reconstruindo indice do repositorio..."
+	$(PYTHON_CMD) scripts/rebuild_index.py
 
 repair:
-	@echo "Reparando repositório..."
-	@echo "ATENÇÃO: Esta operação pode ser destrutiva!"
+	@echo "Reparando repositorio..."
+	@echo "ATENCAO: Esta operacao pode ser destrutiva!"
+ifeq ($(OS),Windows_NT)
+	@set /p confirm="Tem certeza? (y/N): " && if not "!confirm!"=="y" exit 1
+	$(PYTHON_CMD) scripts/repair_repo.py
+else
 	@read -p "Tem certeza? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
-	$(PYTHON) scripts/repair_repo.py
+	$(PYTHON_CMD) scripts/repair_repo.py
+endif
 
-# Utilitários
+# Utilitarios
+## Verifica saude completa do sistema
 health:
-	@echo "Verificando saúde completa do sistema..."
-ifeq ($(OS),Windows_NT)
-	@if exist "check-backup-health.sh" ( \
-		bash "check-backup-health.sh" \
-	) else ( \
-		echo "Script de saúde não encontrado" \
-	)
-else
-	@if [ -f "check-backup-health.sh" ]; then \
-		bash "check-backup-health.sh"; \
-	else \
-		echo "Script de saúde não encontrado"; \
-	fi
-endif
+	@echo "Verificando saude completa do sistema..."
+	$(PYTHON_CMD) scripts/health_check.py
 
+## Verifica suporte ao comando mount (WinFsp)
+check-mount-support:
+	@echo "Verificando suporte ao comando mount..."
+	$(PYTHON_CMD) scripts/check_mount_support.py
+
+## Valida configuracao completa do setup
 validate-setup:
-	@echo "Validando configuração completa do setup..."
-ifeq ($(OS),Windows_NT)
-	@if exist "validate-setup.sh" ( \
-		bash "validate-setup.sh" \
-	) else ( \
-		echo "Script de validação não encontrado" \
-	)
-else
-	@if [ -f "validate-setup.sh" ]; then \
-		bash "validate-setup.sh"; \
-	else \
-		echo "Script de validação não encontrado"; \
-	fi
-endif
+	@echo "Validando configuracao completa do setup..."
+	$(PYTHON_CMD) scripts/validate_setup.py
 
 ## Mostra ajuda com todos os comandos disponiveis
 help:
-	@echo "=== COMANDOS SAFESTIC ==="
+	@echo "SafeStic - Sistema de Backup com Restic"
 	@echo ""
-	@echo "📦 OPERAÇÕES DE BACKUP:"
+	@echo "BACKUP:"
 	@echo "  backup          - Executa backup completo"
 	@echo "  dry-run         - Simula backup sem executar"
 	@echo "  test-backup     - Testa backup com dados de exemplo"
 	@echo ""
-	@echo "📋 LISTAGEM E CONSULTA:"
-	@echo "  list            - Lista snapshots disponíveis"
+	@echo "LISTAGEM E CONSULTA:"
+	@echo "  list            - Lista snapshots disponiveis"
 	@echo "  list-size       - Lista snapshots com tamanhos"
-	@echo "  list-files      - Lista arquivos no último snapshot"
-	@echo "  stats           - Mostra estatísticas do repositório"
-	@echo "  repo-size       - Mostra tamanho do repositório"
+	@echo "  list-files      - Lista arquivos no ultimo snapshot"
+	@echo "  stats           - Mostra estatisticas do repositorio"
+	@echo "  repo-size       - Mostra tamanho do repositorio"
 	@echo ""
-	@echo "🔄 RESTAURAÇÃO:"
-	@echo "  restore         - Restaura último snapshot"
-	@echo "  restore-id      - Restaura snapshot específico (ID=snapshot_id)"
-	@echo "  restore-file    - Restaura arquivo específico (FILE=caminho/arquivo)"
-	@echo "  test-restore    - Testa restauração com dados de exemplo"
+	@echo "RESTAURACAO:"
+	@echo "  restore         - Restaura ultimo snapshot"
+	@echo "  restore-id      - Restaura snapshot especifico (ID=snapshot_id)"
+	@echo "  restore-file    - Restaura arquivo especifico (FILE=caminho/arquivo)"
+	@echo "  test-restore    - Testa restauracao com dados de exemplo"
 	@echo ""
-	@echo "🧹 MANUTENÇÃO:"
-	@echo "  prune           - Remove snapshots antigos (automático)"
+	@echo "MANUTENCAO:"
+	@echo "  prune           - Remove snapshots antigos (automatico)"
 	@echo "  manual-prune    - Remove snapshots antigos manualmente"
-	@echo "  forget          - Esquece snapshots baseado na política"
-	@echo "  check           - Verifica integridade do repositório"
-	@echo "  rebuild-index   - Reconstrói índice do repositório"
-	@echo "  repair          - Repara repositório (CUIDADO!)"
-	@echo "  clean           - Limpa logs e arquivos temporários"
+	@echo "  forget          - Esquece snapshots baseado na politica"
+	@echo "  check           - Verifica integridade do repositorio"
+	@echo "  rebuild-index   - Reconstroi indice do repositorio"
+	@echo "  repair          - Repara repositorio (CUIDADO!)"
+	@echo "  clean           - Limpa logs e arquivos temporarios"
 	@echo ""
-	@echo "⚙️  CONFIGURAÇÃO:"
-	@echo "  setup           - Instala dependências do sistema"
+	@echo "CONFIGURACAO:"
+	@echo "  setup           - Instala dependencias do sistema"
 	@echo "  bootstrap       - Bootstrap completo (Windows)"
-	@echo "  first-run       - Primeira configuração do projeto"
-	@echo "  init            - Inicializa novo repositório"
-	@echo "  validate        - Valida configuração e dependências"
+	@echo "  first-run       - Primeira configuracao do projeto"
+	@echo "  init            - Inicializa novo repositorio"
+	@echo "  validate        - Valida configuracao e dependencias"
 	@echo "  validate-setup  - Valida setup completo"
-	@echo "  health          - Verifica saúde do sistema"
+	@echo "  health          - Verifica saude do sistema"
 	@echo ""
-	@echo "📅 AGENDAMENTO:"
-	@echo "  schedule-install - Instala agendamento automático"
-	@echo "  schedule-remove  - Remove agendamento automático"
+	@echo "AGENDAMENTO:"
+	@echo "  schedule-install - Instala agendamento automatico"
+	@echo "  schedule-remove  - Remove agendamento automatico"
 	@echo "  schedule-status  - Status do agendamento"
 	@echo ""
-	@echo "🗂️  AVANÇADO:"
-	@echo "  mount           - Monta repositório como filesystem"
-	@echo "  unmount         - Desmonta repositório"
+	@echo "AVANCADO:"
+	@echo "  mount           - Monta repositorio como filesystem"
+	@echo "  unmount         - Desmonta repositorio"
 	@echo ""
-	@echo "❓ AJUDA:"
+	@echo "AJUDA:"
 	@echo "  help            - Mostra esta ajuda"

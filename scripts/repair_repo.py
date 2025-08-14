@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Script para reparar repositório Restic - Safestic
-Repara snapshots e dados corrompidos no repositório
+Script para reparar repositorio Restic - Safestic
+Repara snapshots e dados corrompidos no repositorio
 """
 
 import os
@@ -11,20 +11,20 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 def load_config():
-    """Carrega configurações do .env"""
+    """Carrega configuracoes do .env"""
     env_path = Path('.env')
     if not env_path.exists():
-        print("❌ Arquivo .env não encontrado")
+        print("❌ Arquivo .env nao encontrado")
         return False
     
     load_dotenv(env_path)
     return True
 
 def build_restic_env():
-    """Constrói variáveis de ambiente para o Restic"""
+    """Constroi variaveis de ambiente para o Restic"""
     env = os.environ.copy()
     
-    # Configurar repositório baseado no provedor
+    # Configurar repositorio baseado no provedor
     provider = os.getenv('STORAGE_PROVIDER', '').lower()
     bucket = os.getenv('STORAGE_BUCKET', '')
     
@@ -53,14 +53,14 @@ def build_restic_env():
         if os.getenv('GOOGLE_PROJECT_ID'):
             env['GOOGLE_PROJECT_ID'] = os.getenv('GOOGLE_PROJECT_ID')
     
-    # Senha do repositório
+    # Senha do repositorio
     env['RESTIC_PASSWORD'] = os.getenv('RESTIC_PASSWORD', '')
     
     return env
 
 def check_repository_problems():
-    """Verifica problemas no repositório"""
-    print("🔍 Verificando problemas no repositório...")
+    """Verifica problemas no repositorio"""
+    print("🔍 Verificando problemas no repositorio...")
     
     try:
         env = build_restic_env()
@@ -73,7 +73,7 @@ def check_repository_problems():
         )
         
         if result.returncode == 0:
-            print("✅ Nenhum problema encontrado no repositório")
+            print("✅ Nenhum problema encontrado no repositorio")
             return True, []
         else:
             print("⚠️  Problemas encontrados:")
@@ -84,11 +84,11 @@ def check_repository_problems():
             return False, problems
             
     except subprocess.TimeoutExpired:
-        print("❌ Timeout na verificação")
-        return False, ['Timeout na verificação']
+        print("❌ Timeout na verificacao")
+        return False, ['Timeout na verificacao']
     except FileNotFoundError:
-        print("❌ Restic não encontrado. Verifique se está instalado e no PATH.")
-        return False, ['Restic não encontrado']
+        print("❌ Restic nao encontrado. Verifique se esta instalado e no PATH.")
+        return False, ['Restic nao encontrado']
     except Exception as e:
         print(f"❌ Erro inesperado: {e}")
         return False, [str(e)]
@@ -130,13 +130,13 @@ def repair_snapshots():
         return False
 
 def repair_index():
-    """Repara índice corrompido"""
-    print("🔧 Reparando índice...")
+    """Repara indice corrompido"""
+    print("🔧 Reparando indice...")
     
     try:
         env = build_restic_env()
         
-        # Reparar índice
+        # Reparar indice
         result = subprocess.run(
             ['restic', 'repair', 'index'],
             env=env,
@@ -146,7 +146,7 @@ def repair_index():
         )
         
         if result.returncode == 0:
-            print("✅ Índice reparado com sucesso")
+            print("✅ indice reparado com sucesso")
             if result.stdout:
                 print("📋 Detalhes:")
                 for line in result.stdout.split('\n'):
@@ -154,15 +154,15 @@ def repair_index():
                         print(f"   {line.strip()}")
             return True
         else:
-            print(f"❌ Erro ao reparar índice:")
+            print(f"❌ Erro ao reparar indice:")
             print(result.stderr)
             return False
             
     except subprocess.TimeoutExpired:
-        print("❌ Timeout no reparo do índice")
+        print("❌ Timeout no reparo do indice")
         return False
     except Exception as e:
-        print(f"❌ Erro no reparo do índice: {e}")
+        print(f"❌ Erro no reparo do indice: {e}")
         return False
 
 def repair_packs():
@@ -202,8 +202,8 @@ def repair_packs():
         return False
 
 def final_verification():
-    """Verificação final após reparo"""
-    print("🔍 Verificação final...")
+    """Verificacao final apos reparo"""
+    print("🔍 Verificacao final...")
     
     try:
         env = build_restic_env()
@@ -216,26 +216,26 @@ def final_verification():
         )
         
         if result.returncode == 0:
-            print("✅ Verificação final bem-sucedida")
+            print("✅ Verificacao final bem-sucedida")
             return True
         else:
-            print(f"⚠️  Ainda há problemas após o reparo:")
+            print(f"⚠️  Ainda ha problemas apos o reparo:")
             print(result.stderr)
             return False
             
     except subprocess.TimeoutExpired:
-        print("⚠️  Timeout na verificação final")
-        return True  # Não falhar por timeout
+        print("⚠️  Timeout na verificacao final")
+        return True  # Nao falhar por timeout
     except Exception as e:
-        print(f"❌ Erro na verificação final: {e}")
+        print(f"❌ Erro na verificacao final: {e}")
         return False
 
 def main():
-    """Função principal"""
+    """Funcao principal"""
     print("🔧 Safestic - Repair Repository")
     print()
     
-    # Carregar configuração
+    # Carregar configuracao
     if not load_config():
         return 1
     
@@ -251,18 +251,18 @@ def main():
     print(f"🔧 Tipo de reparo: {repair_type}")
     print()
     
-    print("⚠️  ATENÇÃO:")
-    print("   - Esta operação pode demorar muito tempo")
-    print("   - O repositório ficará inacessível durante o reparo")
-    print("   - Faça backup das configurações antes de continuar")
-    print("   - Não interrompa o processo")
+    print("⚠️  ATENcaO:")
+    print("   - Esta operacao pode demorar muito tempo")
+    print("   - O repositorio ficara inacessivel durante o reparo")
+    print("   - Faca backup das configuracoes antes de continuar")
+    print("   - Nao interrompa o processo")
     print()
     
     # Verificar problemas iniciais
     has_problems, problems = check_repository_problems()
     
     if has_problems and not problems:
-        print("✅ Repositório está íntegro, nenhum reparo necessário")
+        print("✅ Repositorio esta integro, nenhum reparo necessario")
         return 0
     
     print("🚀 Iniciando processo de reparo...")
@@ -286,27 +286,27 @@ def main():
             success = False
         print()
     
-    # Verificação final
+    # Verificacao final
     if success:
         if final_verification():
-            print("🎉 Reparo concluído com sucesso!")
+            print("🎉 Reparo concluido com sucesso!")
             print()
-            print("💡 Recomendações pós-reparo:")
-            print("   - Execute 'make check' para verificação completa")
-            print("   - Execute 'make prune' para otimizar o repositório")
+            print("💡 Recomendacoes pos-reparo:")
+            print("   - Execute 'make check' para verificacao completa")
+            print("   - Execute 'make prune' para otimizar o repositorio")
             print("   - Teste um backup pequeno para confirmar funcionamento")
-            print("   - Monitore próximos backups para garantir estabilidade")
+            print("   - Monitore proximos backups para garantir estabilidade")
             return 0
         else:
             print("⚠️  Reparo parcialmente bem-sucedido")
-            print("💡 Execute 'make check' para diagnóstico detalhado")
+            print("💡 Execute 'make check' para diagnostico detalhado")
             return 1
     else:
         print("❌ Falha no processo de reparo")
-        print("💡 Opções:")
-        print("   - Tente reparar componentes específicos (--snapshots, --index, --packs)")
+        print("💡 Opcoes:")
+        print("   - Tente reparar componentes especificos (--snapshots, --index, --packs)")
         print("   - Verifique conectividade e credenciais")
-        print("   - Considere restaurar de backup se disponível")
+        print("   - Considere restaurar de backup se disponivel")
         return 1
 
 if __name__ == '__main__':

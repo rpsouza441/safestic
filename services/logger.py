@@ -1,8 +1,8 @@
-"""Sistema de logging estruturado para o projeto safestic.
+﻿"""Sistema de logging estruturado para o projeto safestic.
 
-Este módulo fornece funcionalidades para logging estruturado em formato JSON,
-com suporte a níveis de log, contexto adicional e redação automática de segredos.
-Também inclui funções para execução de comandos com logging detalhado.
+Este modulo fornece funcionalidades para logging estruturado em formato JSON,
+com suporte a niveis de log, contexto adicional e redacao automatica de segredos.
+Tambem inclui funcoes para execucao de comandos com logging detalhado.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from pythonjsonlogger import jsonlogger
 
 from .credentials import get_credential
 
-# Padrões para redação de segredos
+# Padroes para redacao de segredos
 SECRET_PATTERNS = [
     # Senhas
     r'(RESTIC_PASSWORD=)[^\s]+',
@@ -63,7 +63,7 @@ def redact_secrets(text: str) -> str:
 
 
 class SafesticJsonFormatter(jsonlogger.JsonFormatter):
-    """Formatador JSON personalizado com campos adicionais e redação de segredos."""
+    """Formatador JSON personalizado com campos adicionais e redacao de segredos."""
     
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -71,10 +71,10 @@ class SafesticJsonFormatter(jsonlogger.JsonFormatter):
         self.platform = platform.system()
     
     def add_fields(self, log_record: Dict[str, Any], record: logging.LogRecord, message_dict: Dict[str, Any]) -> None:
-        """Adiciona campos padrão e redige segredos."""
+        """Adiciona campos padrao e redige segredos."""
         super().add_fields(log_record, record, message_dict)
         
-        # Adicionar campos padrão
+        # Adicionar campos padrao
         log_record["timestamp"] = datetime.datetime.now().isoformat()
         log_record["hostname"] = self.hostname
         log_record["platform"] = self.platform
@@ -93,7 +93,7 @@ def setup_logger(name: str, log_level: str = "INFO", log_file: Optional[str] = N
     name : str
         Nome do logger
     log_level : str
-        Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        Nivel de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     log_file : Optional[str]
         Caminho para arquivo de log
         
@@ -104,7 +104,7 @@ def setup_logger(name: str, log_level: str = "INFO", log_file: Optional[str] = N
     """
     logger = logging.getLogger(name)
     
-    # Converter nível de log para constante do logging
+    # Converter nivel de log para constante do logging
     level = getattr(logging, log_level.upper(), logging.INFO)
     logger.setLevel(level)
     
@@ -125,7 +125,7 @@ def setup_logger(name: str, log_level: str = "INFO", log_file: Optional[str] = N
     
     # Adicionar handler para arquivo se especificado
     if log_file:
-        # Garantir que o diretório exista
+        # Garantir que o diretorio exista
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         
         file_handler = logging.FileHandler(log_file)
@@ -143,13 +143,13 @@ def create_log_file(prefix: str, log_dir: str) -> str:
     prefix: str
         Identificador curto usado no nome do arquivo, ex: "backup".
     log_dir: str
-        Diretório onde o arquivo de log será criado.
+        Diretorio onde o arquivo de log sera criado.
 
     Returns
     -------
     str
-        Caminho completo para o arquivo de log. O diretório é criado
-        automaticamente se não existir.
+        Caminho completo para o arquivo de log. O diretorio e criado
+        automaticamente se nao existir.
     """
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     now = datetime.datetime.now()
@@ -166,9 +166,9 @@ def log(msg: str, log_file: TextIO, level: str = "INFO", extra: Optional[Dict[st
     log_file : TextIO
         Arquivo de log aberto para escrita
     level : str
-        Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        Nivel de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     extra : Optional[Dict[str, Any]]
-        Informações adicionais para incluir no log
+        Informacoes adicionais para incluir no log
     """
     timestamp = datetime.datetime.now().isoformat()
     
@@ -183,7 +183,7 @@ def log(msg: str, log_file: TextIO, level: str = "INFO", extra: Optional[Dict[st
         "hostname": socket.gethostname(),
     }
     
-    # Adicionar informações extras se fornecidas
+    # Adicionar informacoes extras se fornecidas
     if extra:
         for key, value in extra.items():
             if isinstance(value, str):
@@ -209,7 +209,7 @@ def run_cmd(
     timeout: Optional[int] = None,
     check: bool = False,
 ) -> int:
-    """Executa um comando e registra saída e erros.
+    """Executa um comando e registra saida e erros.
     
     Parameters
     ----------
@@ -218,28 +218,28 @@ def run_cmd(
     log_file : TextIO
         Arquivo de log aberto para escrita
     env : Optional[Dict[str, str]]
-        Variáveis de ambiente para o comando
+        Variaveis de ambiente para o comando
     timeout : Optional[int]
         Tempo limite em segundos
     check : bool
-        Se deve lançar exceção em caso de erro
+        Se deve lancar excecao em caso de erro
         
     Returns
     -------
     int
-        Código de retorno do comando
+        Codigo de retorno do comando
         
     Raises
     ------
     subprocess.CalledProcessError
-        Se check=True e o comando retornar código diferente de zero
+        Se check=True e o comando retornar codigo diferente de zero
     subprocess.TimeoutExpired
         Se o comando exceder o timeout
     """
     # Redigir segredos no comando para logging
     safe_cmd = [redact_secrets(str(arg)) for arg in cmd]
     
-    # Registrar início da execução
+    # Registrar inicio da execucao
     start_time = time.time()
     log(
         f"Executando: {' '.join(safe_cmd)}", 
@@ -259,17 +259,17 @@ def run_cmd(
             check=check,
         )
         
-        # Calcular tempo de execução
+        # Calcular tempo de execucao
         execution_time = time.time() - start_time
         
-        # Redigir segredos na saída
+        # Redigir segredos na saida
         safe_stdout = redact_secrets(result.stdout)
         safe_stderr = redact_secrets(result.stderr)
         
         # Registrar resultado
         if result.returncode == 0:
             log(
-                f"Comando concluído com sucesso em {execution_time:.2f}s", 
+                f"Comando concluido com sucesso em {execution_time:.2f}s", 
                 log_file, 
                 level="INFO",
                 extra={
@@ -280,10 +280,10 @@ def run_cmd(
                 }
             )
             if safe_stdout:
-                log(f"Saída: {safe_stdout}", log_file, level="DEBUG", extra={"stdout": safe_stdout})
+                log(f"Saida: {safe_stdout}", log_file, level="DEBUG", extra={"stdout": safe_stdout})
         else:
             log(
-                f"Comando falhou com código {result.returncode} em {execution_time:.2f}s", 
+                f"Comando falhou com codigo {result.returncode} em {execution_time:.2f}s", 
                 log_file, 
                 level="ERROR",
                 extra={
@@ -296,17 +296,17 @@ def run_cmd(
             if safe_stderr:
                 log(f"ERRO: {safe_stderr}", log_file, level="ERROR", extra={"stderr": safe_stderr})
             if safe_stdout:
-                log(f"Saída: {safe_stdout}", log_file, level="DEBUG", extra={"stdout": safe_stdout})
+                log(f"Saida: {safe_stdout}", log_file, level="DEBUG", extra={"stdout": safe_stdout})
         
         return result.returncode
     
     except subprocess.TimeoutExpired as e:
-        # Calcular tempo de execução
+        # Calcular tempo de execucao
         execution_time = time.time() - start_time
         
         # Registrar timeout
         log(
-            f"Comando excedeu o timeout de {timeout}s após {execution_time:.2f}s", 
+            f"Comando excedeu o timeout de {timeout}s apos {execution_time:.2f}s", 
             log_file, 
             level="ERROR",
             extra={
@@ -317,11 +317,11 @@ def run_cmd(
             }
         )
         
-        # Re-lançar exceção
+        # Re-lancar excecao
         raise
     
     except Exception as e:
-        # Calcular tempo de execução
+        # Calcular tempo de execucao
         execution_time = time.time() - start_time
         
         # Registrar erro
@@ -337,6 +337,7 @@ def run_cmd(
             }
         )
         
-        # Re-lançar exceção
+        # Re-lancar excecao
         raise
+
 

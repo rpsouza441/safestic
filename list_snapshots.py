@@ -1,4 +1,4 @@
-"""List all snapshots stored in the configured Restic repository."""
+﻿"""List all snapshots stored in the configured Restic repository."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from services.restic_client import ResticClient, ResticError
 def list_snapshots() -> None:
     """Fetch and print all snapshots from the repository.
     
-    Utiliza o ResticClient para obter a lista de snapshots com retry automático e tratamento de erros.
+    Utiliza o ResticClient para obter a lista de snapshots com retry automatico e tratamento de erros.
     """
 
     with ResticScript("list_snapshots") as ctx:
@@ -24,7 +24,7 @@ def list_snapshots() -> None:
             handlers=[logging.StreamHandler()],
         )
         
-        ctx.log(f"Listando snapshots do repositório: {ctx.repository}\n")
+        ctx.log(f"Listando snapshots do repositorio: {ctx.repository}\n")
 
         try:
             # Criar cliente Restic com retry
@@ -34,7 +34,7 @@ def list_snapshots() -> None:
             snapshots = client.list_snapshots()
             
             if not snapshots:
-                ctx.log("Nenhum snapshot encontrado no repositório.")
+                ctx.log("Nenhum snapshot encontrado no repositorio.")
                 sys.exit(0)
 
             print("{:<12} {:<20} {:<15} {}".format("ID", "Data", "Host", "Caminhos"))
@@ -65,3 +65,4 @@ def list_snapshots() -> None:
 
 if __name__ == "__main__":
     list_snapshots()
+
