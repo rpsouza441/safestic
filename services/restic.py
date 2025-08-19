@@ -1,4 +1,4 @@
-﻿"""Funcoes para carregamento e validacao da configuracao do Restic.
+"""Funcoes para carregamento e validacao da configuracao do Restic.
 
 Este modulo fornece funcoes para carregar variaveis de ambiente,
 construir a string de repositorio do Restic e validar a configuracao.

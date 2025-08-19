@@ -67,24 +67,45 @@ def check_cloud_credentials() -> Tuple[bool, List[str]]:
         Tuple[bool, List[str]]: (todas_configuradas, lista_de_mensagens)
     """
     provider = os.getenv('STORAGE_PROVIDER', '').lower()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
     messages = []
     all_configured = True
     
     if provider == 'aws':
-        aws_key = os.getenv('AWS_ACCESS_KEY_ID')
-        aws_secret = os.getenv('AWS_SECRET_ACCESS_KEY')
+        # Tentar obter da fonte configurada primeiro
+        aws_key = None
+        aws_secret = None
+        
+        if get_credential:
+            try:
+                aws_key = get_credential('AWS_ACCESS_KEY_ID', credential_source)
+                aws_secret = get_credential('AWS_SECRET_ACCESS_KEY', credential_source)
+            except Exception:
+                pass
+        
+        # Fallback para variáveis de ambiente
+        if not aws_key:
+            aws_key = os.getenv('AWS_ACCESS_KEY_ID')
+        if not aws_secret:
+            aws_secret = os.getenv('AWS_SECRET_ACCESS_KEY')
         
         if not aws_key:
             messages.append("AWS_ACCESS_KEY_ID nao configurado")
             all_configured = False
         else:
-            messages.append("AWS_ACCESS_KEY_ID configurado")
+            if credential_source == 'keyring':
+                messages.append("AWS_ACCESS_KEY_ID configurado no keyring")
+            else:
+                messages.append("AWS_ACCESS_KEY_ID configurado")
             
         if not aws_secret:
             messages.append("AWS_SECRET_ACCESS_KEY nao configurado")
             all_configured = False
         else:
-            messages.append("AWS_SECRET_ACCESS_KEY configurado")
+            if credential_source == 'keyring':
+                messages.append("AWS_SECRET_ACCESS_KEY configurado no keyring")
+            else:
+                messages.append("AWS_SECRET_ACCESS_KEY configurado")
             
     elif provider == 'azure':
         azure_name = os.getenv('AZURE_ACCOUNT_NAME')
