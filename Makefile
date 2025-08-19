@@ -127,9 +127,9 @@ validate:
 	@echo "1. Verificando configuracao..."
 	$(PYTHON_CMD) scripts/validate_config.py
 	@echo "2. Verificando integridade..."
-	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; client = ResticClient(); client.check_repository_access()"
+	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; client = ResticClient(); result = client.check_repository_access(); print('✅ Repositorio acessivel' if result else '❌ Repositorio inacessivel')"
 	@echo "3. Listando snapshots..."
-	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; ResticClient().list_snapshots()"
+	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; snapshots = ResticClient().list_snapshots(); print(f'📋 Encontrados {len(snapshots)} snapshots no repositorio'); [print(f'  - {s.get(\"short_id\", s.get(\"id\", \"N/A\"))[:8]} ({s.get(\"time\", \"N/A\")}) - {s.get(\"hostname\", \"N/A\")}') for s in snapshots[:5]]; print('  ...') if len(snapshots) > 5 else None"
 	@echo "Validacao concluida"
 
 ## Cria backup de teste em diretorio temporario
