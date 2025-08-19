@@ -87,6 +87,11 @@ manual-prune:
 	$(PYTHON_CMD) manual_prune.py
 
 ## Verifica se Restic esta instalado, variaveis estao corretas e repositorio esta acessivel
+## Verifica se o ambiente está configurado corretamente
+verify-env:
+	@echo "Verificando ambiente de desenvolvimento..."
+	$(PYTHON_CMD) scripts/verify_environment.py
+
 check:
 	@echo "Executando verificacao da configuracao Restic..."
 	@echo "Verificando credenciais..."
@@ -379,6 +384,7 @@ help:
 	@echo "  bootstrap       - Bootstrap completo (Windows)"
 	@echo "  first-run       - Primeira configuracao do projeto"
 	@echo "  init            - Inicializa novo repositorio"
+	@echo "  verify-env      - Verifica ambiente de desenvolvimento"
 	@echo "  validate        - Valida configuracao e dependencias"
 	@echo "  validate-setup  - Valida setup completo"
 	@echo "  health          - Verifica saude do sistema"
