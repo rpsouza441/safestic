@@ -66,7 +66,7 @@ ifndef ID
 endif
 	@echo "Restaurando snapshot ID=$(ID)..."
 	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
-	$(PYTHON_CMD) restore_snapshot.py $(ID)
+	$(PYTHON_CMD) restore_snapshot.py --id $(ID)
 
 ## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE="C:\Users\Admin\Documents")
 ## Cria estrutura: C:\Restore\AAAA-MM-DD-HHMMSS\C\Users\Admin\Documents
@@ -113,7 +113,7 @@ dry-run:
 ## Mostra estatisticas detalhadas do repositorio
 stats:
 	@echo "Obtendo estatisticas detalhadas..."
-	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; ResticClient().show_stats()"
+	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; import json; client = ResticClient(); stats = client.get_repository_stats(); print(json.dumps(stats, indent=2))"
 
 ## Aplica politica de retencao (prune)
 prune:
