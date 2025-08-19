@@ -146,6 +146,19 @@ def setup_restic_password(source: str, non_interactive: bool = False) -> bool:
     print("   - GUARDE esta senha em local seguro")
     print("   - SEM esta senha, você NÃO conseguirá restaurar seus backups")
     
+    # Obter APP_NAME do .env
+    if load_dotenv:
+        load_dotenv()
+    app_name = os.getenv('APP_NAME', 'safestic')
+    
+    # Aviso sobre APP_NAME para keyring
+    if source == 'keyring':
+        print(f"\n  📝 NOTA: Usando identificador '{app_name}' no keyring do sistema")
+        if app_name == 'safestic':
+            print("     ⚠️  ATENÇÃO: Se você tem múltiplos projetos Safestic, configure")
+            print("        APP_NAME=nome-unico no arquivo .env para evitar conflitos!")
+        print("     Exemplo: APP_NAME=safestic-projeto-aws")
+    
     if not non_interactive:
         input("\nPressione Enter para continuar...")
     
@@ -153,7 +166,7 @@ def setup_restic_password(source: str, non_interactive: bool = False) -> bool:
     existing_password = None
     if source == 'keyring' and keyring:
         try:
-            existing_password = keyring.get_password('safestic', 'RESTIC_PASSWORD')
+            existing_password = keyring.get_password(app_name, 'RESTIC_PASSWORD')
         except Exception:
             pass
     elif source == 'env':
@@ -161,7 +174,7 @@ def setup_restic_password(source: str, non_interactive: bool = False) -> bool:
         existing_password = config.get('RESTIC_PASSWORD')
     
     if existing_password and not non_interactive:
-        print("\n✅ RESTIC_PASSWORD já está configurado.")
+        print(f"\n✅ RESTIC_PASSWORD já está configurado para '{app_name}'.")
         overwrite = input("Deseja sobrescrever? (s/N): ").strip().lower()
         if overwrite not in ['s', 'sim', 'y', 'yes']:
             return True
@@ -196,8 +209,8 @@ def setup_restic_password(source: str, non_interactive: bool = False) -> bool:
     # Salvar senha
     try:
         if source == 'keyring' and keyring:
-            keyring.set_password('safestic', 'RESTIC_PASSWORD', password)
-            print(" RESTIC_PASSWORD salvo no keyring do sistema")
+            keyring.set_password(app_name, 'RESTIC_PASSWORD', password)
+            print(f" RESTIC_PASSWORD salvo no keyring do sistema para '{app_name}'")
         
         elif source == 'env':
             env_file = project_root / '.env'
@@ -346,9 +359,14 @@ def save_credentials(credentials: Dict[str, str], source: str) -> bool:
     """Salva credenciais na fonte especificada."""
     try:
         if source == 'keyring' and keyring:
+            # Obter APP_NAME do .env
+            if load_dotenv:
+                load_dotenv()
+            app_name = os.getenv('APP_NAME', 'safestic')
+            
             for key, value in credentials.items():
-                keyring.set_password('safestic', key, value)
-            print(" Credenciais salvas no keyring do sistema")
+                keyring.set_password(app_name, key, value)
+            print(f" Credenciais salvas no keyring do sistema para '{app_name}'")
         
         elif source == 'env':
             env_file = project_root / '.env'

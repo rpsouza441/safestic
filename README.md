@@ -184,6 +184,37 @@ O Safestic verifica automaticamente se as credenciais estao configuradas antes d
 
 Se as credenciais nao estiverem configuradas, o sistema exibira uma mensagem de erro clara com instrucoes de como configurar.
 
+#### 🏷️ Multiplos Projetos com APP_NAME
+
+**IMPORTANTE**: Se você tem múltiplas instalações do Safestic, use a variável `APP_NAME` para evitar conflitos de credenciais no keyring:
+
+```bash
+# No arquivo .env do primeiro projeto
+APP_NAME=safestic-projeto-aws
+CREDENTIAL_SOURCE=keyring
+
+# No arquivo .env do segundo projeto
+APP_NAME=safestic-backup-pessoal
+CREDENTIAL_SOURCE=keyring
+```
+
+**Como funciona**:
+- Cada projeto usa um identificador único no keyring do sistema
+- Evita sobrescrever credenciais entre projetos diferentes
+- Permite usar senhas diferentes para cada repositório
+- Funciona apenas com `CREDENTIAL_SOURCE=keyring`
+
+**Exemplo prático**:
+```bash
+# Projeto 1: C:\safestic
+echo "APP_NAME=safestic-principal" >> .env
+make setup-credentials-keyring
+
+# Projeto 2: C:\safestic-aws
+echo "APP_NAME=safestic-aws" >> .env
+make setup-credentials-keyring
+```
+
 ### 1. Arquivo .env (Padrão)
 ```bash
 # No arquivo .env

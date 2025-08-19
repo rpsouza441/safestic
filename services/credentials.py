@@ -1,4 +1,4 @@
-﻿"""Gerenciamento seguro de credenciais para o Restic.
+"""Gerenciamento seguro de credenciais para o Restic.
 
 Este modulo fornece funcoes para carregar credenciais de forma segura de varias fontes:
 - Keyring do sistema operacional
@@ -312,8 +312,13 @@ def load_credentials(credential_source: str = "env") -> Dict[str, str]:
         "GOOGLE_PROJECT_ID",
     ]
     
+    # Carregar .env para obter APP_NAME se disponivel
+    load_dotenv()
+    app_name = os.getenv("APP_NAME", "safestic")
+    
     # Inicializar gerenciador de credenciais
     manager = CredentialManager(
+        app_name=app_name,
         credential_source=credential_source,
         fallback_to_env=True,
         sops_file=os.getenv("SOPS_FILE"),
@@ -344,5 +349,12 @@ def get_credential(key: str, credential_source: str = "env") -> Optional[str]:
     Optional[str]
         Valor da credencial ou None se nao encontrada
     """
-    manager = CredentialManager(credential_source=credential_source)
+    # Carregar .env para obter APP_NAME se disponivel
+    load_dotenv()
+    app_name = os.getenv("APP_NAME", "safestic")
+    
+    manager = CredentialManager(
+        app_name=app_name,
+        credential_source=credential_source
+    )
     return manager.get_credential(key)
