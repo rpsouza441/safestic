@@ -44,7 +44,7 @@ ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make list-files ID=abc123)
 endif
 	@echo "Listando arquivos do snapshot ID=$(ID)..."
-	$(PYTHON_CMD) list_snapshot_files.py $(ID)
+	$(PYTHON_CMD) list_snapshot_files.py --id $(ID)$(if $(FORMAT), --format $(FORMAT))$(if $(OUTPUT), --output $(OUTPUT))$(if $(PRETTY), --pretty)
 
 ## Restaura o snapshot mais recente (default = latest)
 restore:
