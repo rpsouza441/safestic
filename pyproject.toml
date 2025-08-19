@@ -16,7 +16,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-security = ["keyring>=24.0.0"]
+security = [
+    "keyring>=24.0.0",
+    "secretstorage>=3.0.0; sys_platform == 'linux'",
+    "dbus-python>=1.2.0; sys_platform == 'linux'"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -200,16 +200,16 @@ BASIC_PACKAGES="git make python3 python3-pip curl bzip2"
 # Ajustar nomes de pacotes por distribuicao
 case $DISTRO in
     ubuntu|debian)
-        PACKAGES="$BASIC_PACKAGES python3-venv"
+        PACKAGES="$BASIC_PACKAGES python3-venv python3-dev libdbus-glib-1-dev gnome-keyring"
         ;;
     fedora|centos|rhel)
-        PACKAGES="$BASIC_PACKAGES python3-devel"
+        PACKAGES="$BASIC_PACKAGES python3-devel dbus-glib-devel gnome-keyring"
         ;;
     arch|manjaro)
-        PACKAGES="git make python python-pip curl bzip2"
+        PACKAGES="git make python python-pip curl bzip2 python-devel dbus-glib gnome-keyring"
         ;;
     opensuse*)
-        PACKAGES="$BASIC_PACKAGES python3-devel"
+        PACKAGES="$BASIC_PACKAGES python3-devel dbus-1-glib-devel gnome-keyring"
         ;;
     *)
         PACKAGES="$BASIC_PACKAGES"
@@ -375,6 +375,14 @@ if [ -f "pyproject.toml" ]; then
         
         # Instalar dependencias opcionais de seguranca se ambiente virtual estiver ativo
         if [ "$VENV_ACTIVATED" = true ]; then
+            log_info "Instalando dependencias do keyring para Linux..."
+            # Instalar dbus-python e secretstorage primeiro
+            if $PIP_CMD install dbus-python secretstorage; then
+                log_success "Dependencias base do keyring instaladas"
+            else
+                log_warning "Falha ao instalar dependencias base do keyring"
+            fi
+            
             log_info "Instalando dependencias opcionais de seguranca (keyring)..."
             if $PIP_CMD install -e ".[security]"; then
                 log_success "Dependencias de seguranca instaladas"
@@ -434,6 +442,21 @@ fi
 
 log_success "=== SETUP CONCLUIDO COM SUCESSO ==="
 log_info "Todas as dependencias foram instaladas e verificadas!"
+
+# Verificar se keyring esta funcionando (apenas se ambiente virtual estiver ativo)
+if [ "$VENV_ACTIVATED" = true ]; then
+    log_info "Testando funcionalidade do keyring..."
+    if python -c "import keyring; print('Keyring backend:', keyring.get_keyring())" 2>/dev/null; then
+        log_success "Keyring configurado e funcionando"
+    else
+        log_warning "Keyring pode nao estar totalmente funcional"
+        log_info "Se houver problemas com keyring, tente:"
+        log_info "1. Reiniciar a sessao ou executar: dbus-run-session -- sh"
+        log_info "2. Inicializar o gnome-keyring: echo 'senha' | gnome-keyring-daemon --unlock"
+        log_info "3. Ou usar apenas variaveis de ambiente (.env) como alternativa"
+    fi
+fi
+
 log_info "Proximos passos:"
 log_info "1. Configure o arquivo .env baseado no .env.example"
 log_info "2. Execute: make init"
