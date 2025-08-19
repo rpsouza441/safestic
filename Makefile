@@ -90,7 +90,7 @@ manual-prune:
 check:
 	@echo "Executando verificacao da configuracao Restic..."
 	@echo "Verificando credenciais..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Algumas credenciais nao estao configuradas" && echo "Execute: make setup-credentials" && echo "")
+	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Algumas credenciais nao estao configuradas. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
 	$(PYTHON_CMD) check_restic_access.py
 
 ## Exibe o total de dados unicos armazenados no repositorio
@@ -242,7 +242,7 @@ else
 	fi
 endif
 	@echo "Verificando credenciais apos setup..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais com: make setup-credentials" && echo "")
+	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
 
 bootstrap:
 	@echo "Executando bootstrap completo..."
@@ -257,14 +257,14 @@ else
 	@exit 1
 endif
 	@echo "Verificando credenciais apos bootstrap..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais com: make setup-credentials" && echo "")
+	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
 
 first-run:
 	@echo "Executando primeira configuracao..."
 	@echo "1. Verificando arquivo .env..."
 	@powershell -Command "if (-not (Test-Path '.env')) { Write-Host 'Copiando .env.example para .env...'; Copy-Item '.env.example' '.env'; Write-Host 'ATENCAO: Configure o arquivo .env antes de continuar!' } else { Write-Host '.env ja existe' }"
 	@echo "2. Verificando credenciais..."
-	@$(PYTHON_CMD) scripts/check_credentials.py || (echo "" && echo "ERRO: Credenciais nao configuradas!" && echo "Execute: make setup-credentials" && echo "" && exit 1)
+	@$(PYTHON_CMD) scripts/check_credentials.py || (echo "" && echo "ERRO: Credenciais nao configuradas!" && echo "Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "" && exit 1)
 	@echo "3. Validando configuracao..."
 	$(PYTHON_CMD) scripts/validate_config.py
 	@echo "4. Inicializando repositorio (se necessario)..."

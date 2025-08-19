@@ -375,6 +375,40 @@ def setup_gcp_credentials(required_creds: List[str], source: str, non_interactiv
     return save_credentials(credentials, source)
 
 
+def update_credential_source_in_env(source: str) -> bool:
+    """Atualiza o CREDENTIAL_SOURCE no arquivo .env."""
+    try:
+        env_file = project_root / '.env'
+        
+        # Ler arquivo existente
+        lines = []
+        if env_file.exists():
+            with open(env_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        
+        # Atualizar ou adicionar CREDENTIAL_SOURCE
+        updated = False
+        for i, line in enumerate(lines):
+            if line.strip().startswith('CREDENTIAL_SOURCE='):
+                lines[i] = f'CREDENTIAL_SOURCE={source}\n'
+                updated = True
+                break
+        
+        if not updated:
+            lines.append(f'CREDENTIAL_SOURCE={source}\n')
+        
+        # Salvar arquivo
+        with open(env_file, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        
+        print(f" CREDENTIAL_SOURCE atualizado para '{source}' em {env_file}")
+        return True
+    
+    except Exception as e:
+        print(f" Erro ao atualizar CREDENTIAL_SOURCE: {e}")
+        return False
+
+
 def save_credentials(credentials: Dict[str, str], source: str) -> bool:
     """Salva credenciais na fonte especificada."""
     try:
@@ -508,6 +542,10 @@ def main():
         if not setup_cloud_credentials(cloud_creds, credential_source, args.non_interactive):
             print(" Falha ao configurar credenciais da nuvem")
             return 1
+    
+    # Atualizar CREDENTIAL_SOURCE no .env para manter consistência
+    if not update_credential_source_in_env(credential_source):
+        print(" Aviso: Não foi possível atualizar CREDENTIAL_SOURCE no .env")
     
     print("\n Configuração de credenciais concluída com sucesso!")
     print("\n Próximos passos:")

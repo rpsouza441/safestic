@@ -186,7 +186,10 @@ def check_all_credentials(verbose: bool = True) -> bool:
     if not cloud_ok:
         all_ok = False
         if verbose:
-            print("   DICA: Configure com: make setup-credentials")
+            print("   DICA: Configure com uma das opcoes:")
+            print("     make setup-credentials        - Configuracao interativa")
+            print("     make setup-credentials-keyring - Keyring (mais seguro)")
+            print("     make setup-credentials-env    - Arquivo .env (menos seguro)")
     
     return all_ok
 
@@ -223,7 +226,10 @@ def main():
         all_ok = check_all_credentials(verbose=not args.quiet)
         if not args.quiet and not all_ok:
             print("\n[ERRO] Algumas credenciais nao estao configuradas.")
-            print("   Execute 'make setup-credentials' para configurar.")
+            print("   Execute uma das opcoes para configurar:")
+            print("     make setup-credentials        - Configuracao interativa")
+            print("     make setup-credentials-keyring - Keyring (mais seguro)")
+            print("     make setup-credentials-env    - Arquivo .env (menos seguro)")
         sys.exit(0 if all_ok else 1)
 
 
