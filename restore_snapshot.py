@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import datetime
 import logging
 import os
@@ -6,6 +6,12 @@ from pathlib import Path
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
+from services.restore_utils import (
+    create_timestamped_restore_path,
+    create_full_restore_structure,
+    format_restore_info,
+    get_snapshot_paths_from_data
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,13 +40,10 @@ def run_restore_snapshot(snapshot_id: str) -> None:
             handlers=[logging.StreamHandler()],
         )
         
-        restore_target = os.getenv("RESTORE_TARGET_DIR", "restore")
+        base_restore_target = os.getenv("RESTORE_TARGET_DIR", "C:\\Restore")
         ctx.log("=== Iniciando restauracao de snapshot com Restic ===")
 
         try:
-            # Criar diretorio de destino
-            Path(restore_target).mkdir(parents=True, exist_ok=True)
-            
             # Criar cliente Restic com retry
             client = ResticClient(max_attempts=3)
             
@@ -48,17 +51,26 @@ def run_restore_snapshot(snapshot_id: str) -> None:
             ctx.log(f"Buscando informacoes do snapshot '{snapshot_id}'...")
             snapshot_data = client.get_snapshot_info(snapshot_id)
             
-            # Formatar data do snapshot
-            snapshot_time = datetime.datetime.fromisoformat(
-                snapshot_data["time"].replace("Z", "+00:00")
+            # Criar estrutura de pastas baseada na data/hora do snapshot
+            # Formato: C:\Restore\2025-08-19-100320
+            restore_target = create_timestamped_restore_path(
+                base_restore_target, 
+                snapshot_data
             )
             
-            # Exibir informacoes
-            ctx.log(f"Snapshot ID: {snapshot_data['short_id']}")
-            ctx.log(
-                f"Data do Snapshot: {snapshot_time.strftime('%Y-%m-%d %H:%M:%S')}"
-            )
+            # Obter caminhos originais do backup para informação
+            original_paths = get_snapshot_paths_from_data(snapshot_data)
+            
+            # Formatar e exibir informacoes
+            info = format_restore_info(snapshot_data, restore_target)
+            
+            ctx.log(f"Snapshot ID: {info['snapshot_id']}")
+            ctx.log(f"Data do Snapshot: {info['snapshot_date']}")
+            ctx.log(f"Hostname: {info['hostname']}")
+            if original_paths:
+                ctx.log(f"Caminhos originais: {', '.join(original_paths)}")
             ctx.log(f"Destino da restauracao: {restore_target}")
+            ctx.log(f"Estrutura: {base_restore_target}\\{info['snapshot_date'].replace(' ', '-').replace(':', '')}\\<estrutura_original>")
             print("\nIniciando processo de restauracao... O progresso sera exibido abaixo.")
 
             # Executar restauracao

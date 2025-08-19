@@ -52,12 +52,14 @@ endif
 	$(PYTHON_CMD) list_snapshot_files.py --id $(ID)$(if $(FORMAT), --format $(FORMAT))$(if $(OUTPUT), --output $(OUTPUT))$(if $(PRETTY), --pretty)
 
 ## Restaura o snapshot mais recente (default = latest)
+## Cria estrutura: C:\Restore\AAAA-MM-DD-HHMMSS\<estrutura_original>
 restore:
 	@echo "Restaurando o ultimo snapshot..."
 	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) restore_snapshot.py
 
 ## Restaura snapshot especifico (ex: make restore-id ID=abc123)
+## Cria estrutura: C:\Restore\AAAA-MM-DD-HHMMSS\<estrutura_original>
 restore-id:
 ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make restore-id ID=abc123)
@@ -66,7 +68,9 @@ endif
 	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
 	$(PYTHON_CMD) restore_snapshot.py $(ID)
 
-## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE="/etc/hosts")
+## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE="C:\Users\Admin\Documents")
+## Cria estrutura: C:\Restore\AAAA-MM-DD-HHMMSS\C\Users\Admin\Documents
+## Onde AAAA-MM-DD-HHMMSS corresponde à data/hora do snapshot
 restore-file:
 ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make restore-file ID=abc123 FILE="/caminho")

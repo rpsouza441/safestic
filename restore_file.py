@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import json
 import logging
 import os
@@ -7,6 +7,11 @@ from pathlib import Path
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
+from services.restore_utils import (
+    create_full_restore_structure,
+    format_restore_info,
+    get_snapshot_paths_from_data
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,13 +47,10 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
             handlers=[logging.StreamHandler()],
         )
         
-        base_restore_target = os.getenv("RESTORE_TARGET_DIR", "restore")
+        base_restore_target = os.getenv("RESTORE_TARGET_DIR", "C:\\Restore")
         ctx.log("=== Iniciando restauracao de arquivo com Restic ===")
         
         try:
-            # Criar diretorio de destino
-            Path(base_restore_target).mkdir(parents=True, exist_ok=True)
-            
             # Criar cliente Restic com retry
             client = ResticClient(max_attempts=3)
             
@@ -56,21 +58,30 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
             ctx.log(f"Buscando informacoes do snapshot '{snapshot_id}'...")
             snapshot_data = client.get_snapshot_info(snapshot_id)
             
-            # Formatar data do snapshot
-            snapshot_time = datetime.fromisoformat(
-                snapshot_data["time"].replace("Z", "+00:00")
+            # Criar estrutura completa de pastas baseada na data/hora do snapshot
+            # Formato: C:\Restore\2025-08-19-100320\C\Users\Administrator\Documents\Docker
+            restore_target = create_full_restore_structure(
+                base_restore_target,
+                snapshot_data,
+                include_path
             )
-            timestamp_str = snapshot_time.strftime("%Y-%m-%d_%H%M%S")
-            restore_target = os.path.join(base_restore_target, timestamp_str)
-            Path(restore_target).mkdir(parents=True, exist_ok=True)
             
-            # Exibir informacoes
-            ctx.log(f"Snapshot ID: {snapshot_data['short_id']}")
-            ctx.log(
-                f"Data do Snapshot: {snapshot_time.strftime('%Y-%m-%d %H:%M:%S')}"
-            )
+            # Formatar e exibir informacoes
+            info = format_restore_info(snapshot_data, restore_target, include_path)
+            
+            ctx.log(f"Snapshot ID: {info['snapshot_id']}")
+            ctx.log(f"Data do Snapshot: {info['snapshot_date']}")
+            ctx.log(f"Hostname: {info['hostname']}")
             ctx.log(f"Arquivo/diretorio a restaurar: {include_path}")
             ctx.log(f"Destino da restauracao: {restore_target}")
+            
+            # Mostrar exemplo da estrutura criada
+            timestamp_part = info['snapshot_date'].replace(' ', '-').replace(':', '')
+            normalized_path = include_path.replace(':', '')
+            if normalized_path.startswith(('\\', '/')):
+                normalized_path = normalized_path[1:]
+            example_structure = f"{base_restore_target}\\{timestamp_part}\\{normalized_path}"
+            ctx.log(f"Estrutura criada: {example_structure}")
             
             # Executar restauracao do arquivo especifico
             success = client.restore_snapshot(
