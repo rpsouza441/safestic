@@ -280,28 +280,6 @@ fi
 # Instalar Restic
 install_restic
 
-# Funcao para detectar ambiente Python gerenciado externamente
-check_externally_managed() {
-    local python_cmd="$1"
-    local pip_cmd="$2"
-    
-    # Tentar uma instalacao de teste para detectar ambiente gerenciado
-    if $pip_cmd --version >/dev/null 2>&1; then
-        # Testar se pip funciona sem restricoes
-        if echo "import sys" | $pip_cmd install --dry-run --quiet - 2>&1 | grep -q "externally-managed-environment"; then
-            return 0  # Ambiente gerenciado
-        fi
-        
-        # Verificar se existe arquivo EXTERNALLY-MANAGED
-        local python_path=$($python_cmd -c "import sys; print(sys.prefix)" 2>/dev/null)
-        if [ -f "$python_path/EXTERNALLY-MANAGED" ] || [ -f "$python_path/pyvenv.cfg" ]; then
-            return 0  # Ambiente gerenciado
-        fi
-    fi
-    
-    return 1  # Nao gerenciado
-}
-
 # Funcao para criar ambiente virtual
 setup_virtual_environment() {
     local python_cmd="$1"
@@ -345,18 +323,42 @@ if [ -f ".venv/bin/activate" ]; then
     PIP_CMD="pip"  # Usar pip do ambiente virtual
 else
     # Verificar se o ambiente e gerenciado externamente
-    if check_externally_managed "$PYTHON_CMD" "$PIP_CMD"; then
-        log_warning "Ambiente Python gerenciado externamente detectado"
-        log_info "Sera criado um ambiente virtual para evitar conflitos"
-        
-        if setup_virtual_environment "$PYTHON_CMD"; then
-            VENV_ACTIVATED=true
-            PIP_CMD="pip"  # Usar pip do ambiente virtual
+    log_info "Verificando se ambiente Python e gerenciado externamente..."
+    
+    # Tentar uma instalacao de teste simples
+    if ! $PIP_CMD install --dry-run --quiet pip >/dev/null 2>&1; then
+        # Se falhou, verificar se e por ambiente gerenciado
+        if $PIP_CMD install --dry-run pip 2>&1 | grep -q "externally-managed-environment"; then
+            log_warning "Ambiente Python gerenciado externamente detectado"
+            log_info "Sera criado um ambiente virtual para evitar conflitos"
+            
+            if setup_virtual_environment "$PYTHON_CMD"; then
+                VENV_ACTIVATED=true
+                PIP_CMD="pip"  # Usar pip do ambiente virtual
+            else
+                log_error "Falha ao configurar ambiente virtual"
+                log_info "Tentando instalacao com --break-system-packages (nao recomendado)"
+                PIP_CMD="$PIP_CMD --break-system-packages"
+            fi
         else
-            log_error "Falha ao configurar ambiente virtual"
-            log_info "Tentando instalacao com --break-system-packages (nao recomendado)"
-            PIP_CMD="$PIP_CMD --break-system-packages"
+            # Outro tipo de erro, verificar arquivo EXTERNALLY-MANAGED
+            local python_path=$($PYTHON_CMD -c "import sys; print(sys.prefix)" 2>/dev/null)
+            if [ -f "$python_path/EXTERNALLY-MANAGED" ]; then
+                log_warning "Arquivo EXTERNALLY-MANAGED detectado"
+                log_info "Sera criado um ambiente virtual para evitar conflitos"
+                
+                if setup_virtual_environment "$PYTHON_CMD"; then
+                    VENV_ACTIVATED=true
+                    PIP_CMD="pip"  # Usar pip do ambiente virtual
+                else
+                    log_error "Falha ao configurar ambiente virtual"
+                    log_info "Tentando instalacao com --break-system-packages (nao recomendado)"
+                    PIP_CMD="$PIP_CMD --break-system-packages"
+                fi
+            fi
         fi
+    else
+        log_info "Ambiente Python permite instalacoes globais"
     fi
 fi
 
