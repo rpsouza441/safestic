@@ -175,7 +175,9 @@ class SetupValidator:
         print("\n Validando configuracao Restic...")
         
         try:
-            config = load_restic_config()
+            # Obter CREDENTIAL_SOURCE do .env
+            credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+            config = load_restic_config(credential_source)
             
             # Verificar configuracoes criticas
             if config.storage_bucket:

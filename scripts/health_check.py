@@ -122,7 +122,9 @@ class HealthChecker:
     def check_restic_config(self):
         """Verifica configuracao do Restic"""
         try:
-            config = load_restic_config()
+            # Obter CREDENTIAL_SOURCE do .env
+            credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+            config = load_restic_config(credential_source)
             
             # Verificar variaveis essenciais
             if config.storage_bucket:

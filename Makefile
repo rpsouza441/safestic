@@ -108,12 +108,12 @@ init:
 	@echo "Inicializando repositorio Restic..."
 	@echo "Verificando credenciais..."
 	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
-	$(PYTHON_CMD) -c "from services.restic_client import ResticClient; from services.restic import load_restic_config; config = load_restic_config(); client = ResticClient(); exec('try:\n    client.check_repository_access()\n    print(\"Repositorio ja existe\")\nexcept:\n    client.init_repository()\n    print(\"Repositorio inicializado\")')"
+	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic_client import ResticClient; from services.restic import load_restic_config; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); config = load_restic_config(credential_source); client = ResticClient(credential_source=credential_source); exec('try:\n    client.check_repository_access()\n    print(\"Repositorio ja existe\")\nexcept:\n    client.init_repository()\n    print(\"Repositorio inicializado\")')"
 
 ## Simula backup sem executar (dry-run)
 dry-run:
 	@echo "Simulando backup (dry-run)..."
-	$(PYTHON_CMD) -c "from services.restic import load_restic_config; from pathlib import Path; config = load_restic_config(); print('Configuracao de backup:'); print(f'Diretorios: {config.backup_source_dirs}'); print(f'Exclusoes: {config.restic_excludes}'); print(f'Tags: {config.restic_tags}'); [print(f'{dir_path} - OK') if Path(dir_path).exists() else print(f'{dir_path} - NAO ENCONTRADO') for dir_path in config.backup_source_dirs]"
+	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic import load_restic_config; from pathlib import Path; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); config = load_restic_config(credential_source); print('Configuracao de backup:'); print(f'Diretorios: {config.backup_source_dirs}'); print(f'Exclusoes: {config.restic_excludes}'); print(f'Tags: {config.restic_tags}'); [print(f'{dir_path} - OK') if Path(dir_path).exists() else print(f'{dir_path} - NAO ENCONTRADO') for dir_path in config.backup_source_dirs]"
 
 ## Mostra estatisticas detalhadas do repositorio
 stats:
