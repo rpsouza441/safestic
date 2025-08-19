@@ -38,7 +38,12 @@ list-size:
 	@echo "Listando snapshots com tamanho estimado..."
 	$(PYTHON_CMD) list_snapshots_with_size.py
 
-## Lista arquivos contidos em um snapshot especifico (ex: make list-files ID=abc123 FORMAT=json OUTPUT=files.json)
+## Lista arquivos contidos em um snapshot especifico
+## Exemplos:
+##   make list-files ID=abc123                    # Saida em texto no terminal
+##   make list-files ID=abc123 FORMAT=json        # Saida em JSON no terminal
+##   make list-files ID=abc123 FORMAT=json OUTPUT=files.json  # Salvar JSON em arquivo
+##   make list-files ID=abc123 PRETTY=1           # Formatacao legivel para humanos
 list-files:
 ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make list-files ID=abc123)
