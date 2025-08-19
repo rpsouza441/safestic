@@ -1,19 +1,19 @@
 # Caminho para o Python (ajuste conforme necessario)
 ifeq ($(OS),Windows_NT)
-	PYTHON=python
-	VENV_ACTIVATE=.venv\Scripts\Activate.ps1
-	VENV_PYTHON=.venv\Scripts\python.exe
+    PYTHON=python
+    VENV_ACTIVATE=.venv\Scripts\Activate.ps1
+    VENV_PYTHON=.venv\Scripts\python.exe
 else
-	PYTHON=python3
-	VENV_ACTIVATE=.venv/bin/activate
-	VENV_PYTHON=.venv/bin/python
+    PYTHON=python3
+    VENV_ACTIVATE=.venv/bin/activate
+    VENV_PYTHON=.venv/bin/python
 endif
 
 # Verificar se ambiente virtual existe e usar se disponivel
 ifeq ($(OS),Windows_NT)
-	PYTHON_CMD=$(if $(wildcard .venv\Scripts\python.exe),$(VENV_PYTHON),$(PYTHON))
+    PYTHON_CMD=$(if $(wildcard .venv\Scripts\python.exe),$(VENV_PYTHON),$(PYTHON))
 else
-	PYTHON_CMD=$(if $(wildcard .venv/bin/python),$(VENV_PYTHON),$(PYTHON))
+    PYTHON_CMD=$(if $(wildcard .venv/bin/python),$(VENV_PYTHON),$(PYTHON))
 endif
 
 .PHONY: backup list restore restore-id restore-file list-files manual-prune check help init dry-run stats validate test-backup test-restore clean prune
