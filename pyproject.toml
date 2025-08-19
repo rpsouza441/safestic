@@ -15,6 +15,9 @@ dependencies = [
     "psutil>=5.9.0"
 ]
 
+[project.optional-dependencies]
+security = ["keyring>=24.0.0"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["services*"]

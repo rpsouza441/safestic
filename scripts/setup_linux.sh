@@ -372,7 +372,15 @@ if [ -f "pyproject.toml" ]; then
     log_info "Detectado pyproject.toml. Instalando dependencias..."
     if $PIP_CMD install -e .; then
         log_success "Dependencias do pyproject.toml instaladas"
+        
+        # Instalar dependencias opcionais de seguranca se ambiente virtual estiver ativo
         if [ "$VENV_ACTIVATED" = true ]; then
+            log_info "Instalando dependencias opcionais de seguranca (keyring)..."
+            if $PIP_CMD install -e ".[security]"; then
+                log_success "Dependencias de seguranca instaladas"
+            else
+                log_warning "Falha ao instalar dependencias de seguranca. Keyring nao estara disponivel."
+            fi
             log_info "Dependencias instaladas no ambiente virtual .venv"
             log_warning "Para usar o projeto, ative o ambiente virtual: source .venv/bin/activate"
         fi

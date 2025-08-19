@@ -19,8 +19,15 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional, Any, Union, cast
 
-import keyring
 from dotenv import load_dotenv
+
+# Importacao condicional do keyring
+try:
+    import keyring
+    KEYRING_AVAILABLE = True
+except ImportError:
+    keyring = None
+    KEYRING_AVAILABLE = False
 
 # Configuracao de logging
 logger = logging.getLogger(__name__)
@@ -131,6 +138,10 @@ class CredentialManager:
 
     def _get_from_keyring(self, key: str) -> Optional[str]:
         """Obtem credencial do keyring do sistema."""
+        if not KEYRING_AVAILABLE:
+            logger.warning("Keyring não está disponível. Instale com: pip install keyring")
+            return None
+            
         try:
             return keyring.get_password(self.app_name, key)
         except Exception as e:
@@ -273,6 +284,9 @@ class CredentialManager:
         """
         try:
             if self.credential_source == CredentialSource.KEYRING:
+                if not KEYRING_AVAILABLE:
+                    logger.warning("Keyring não está disponível. Instale com: pip install keyring")
+                    return False
                 keyring.set_password(self.app_name, key, value)
                 return True
             elif self.credential_source == CredentialSource.ENV:
