@@ -1,8 +1,10 @@
-﻿import argparse
+import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -20,7 +22,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def main(snapshot_id: str, output_format: str = "text", output_file: str = None, pretty: bool = False) -> None:
-    with ResticScript("list_snapshot_files") as ctx:
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
+    with ResticScript("list_snapshot_files", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

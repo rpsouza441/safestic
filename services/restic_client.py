@@ -1,4 +1,4 @@
-﻿"""Wrapper centralizado para operacoes do Restic com retry e tratamento de erros.
+"""Wrapper centralizado para operacoes do Restic com retry e tratamento de erros.
 
 Este modulo fornece a classe ResticClient que encapsula todas as operacoes comuns
 do Restic (backup, restore, listagem, etc.) com suporte a retry automatico,
@@ -184,6 +184,10 @@ class ResticClient:
         max_attempts: int = 3,
         initial_backoff: float = 1.0,
         max_backoff: float = 30.0,
+        credential_source: str = "env",
+        repository: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        provider: Optional[str] = None,
     ):
         """Inicializa o cliente Restic.
 
@@ -197,8 +201,23 @@ class ResticClient:
             Tempo inicial de espera entre tentativas em segundos, por padrao 1.0
         max_backoff : float, optional
             Tempo maximo de espera entre tentativas em segundos, por padrao 30.0
+        credential_source : str, optional
+            Fonte de credenciais (env, keyring, etc.), por padrao "env"
+        repository : Optional[str], optional
+            URL do repositorio (se fornecido, evita carregar do ambiente)
+        env : Optional[Dict[str, str]], optional
+            Variaveis de ambiente (se fornecido, evita carregar do ambiente)
+        provider : Optional[str], optional
+            Provedor de armazenamento (se fornecido, evita carregar do ambiente)
         """
-        self.repository, self.env, self.provider = load_restic_env()
+        # Usar valores fornecidos ou carregar do ambiente
+        if repository and env and provider:
+            self.repository = repository
+            self.env = env
+            self.provider = provider
+        else:
+            self.repository, self.env, self.provider = load_restic_env(credential_source)
+        
         self.log_file = log_file
         self.logger = logging.getLogger("restic_client")
 

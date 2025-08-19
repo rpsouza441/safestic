@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -39,7 +40,10 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
     include_path : str
         Caminho do arquivo ou diretorio a ser restaurado
     """
-    with ResticScript("restore_file") as ctx:
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
+    with ResticScript("restore_file", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Script de verificacao de saude completa do sistema SafeStic
 Verifica todas as dependencias, configuracoes e funcionalidades
@@ -154,7 +154,17 @@ class HealthChecker:
     def check_restic_repository(self):
         """Verifica acesso ao repositorio Restic"""
         try:
-            client = ResticClient()
+            # Carregar ambiente com credential_source correto
+            from dotenv import load_dotenv
+            load_dotenv()
+            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
+            repository, env, provider = load_restic_env(credential_source)
+            
+            client = ResticClient(
+                repository=repository,
+                env=env,
+                provider=provider
+            )
             client.check_repository_access()
             self.add_result("Repositorio", "Acesso", "OK", "Repositorio acessivel")
             

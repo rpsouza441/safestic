@@ -1,6 +1,7 @@
-﻿import logging
+import logging
 import os
 import sys
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -11,7 +12,10 @@ def main() -> None:
     
     Utiliza o ResticClient para aplicar politicas de retencao com retry automatico e tratamento de erros.
     """
-    with ResticScript("manual_prune") as ctx:
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
+    with ResticScript("manual_prune", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -32,8 +36,13 @@ def main() -> None:
             ctx.log(f"- Manter backups semanais: {keep_weekly}")
             ctx.log(f"- Manter backups mensais: {keep_monthly}")
 
-            # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3)
+            # Criar cliente Restic com retry usando o ambiente já carregado
+            client = ResticClient(
+                max_attempts=3,
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider
+            )
             
             # Aplicar politica de retencao
             success = client.apply_retention_policy(

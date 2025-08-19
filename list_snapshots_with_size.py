@@ -1,10 +1,12 @@
-﻿"""List snapshots and their approximate restore size from a Restic repository."""
+"""List snapshots and their approximate restore size from a Restic repository."""
 
 from __future__ import annotations
 
 import json
+import os
 import sys
 import logging
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -15,7 +17,10 @@ def list_snapshots_with_size() -> None:
     
     Utiliza o ResticClient para obter snapshots e seus tamanhos com retry automatico e tratamento de erros.
     """
-    with ResticScript("list_snapshots_with_size") as ctx:
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
+    with ResticScript("list_snapshots_with_size", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -24,8 +29,12 @@ def list_snapshots_with_size() -> None:
         )
         
         try:
-            # Criar cliente Restic com retry
-            client = ResticClient()
+            # Criar cliente Restic com retry usando o ambiente já carregado
+            client = ResticClient(
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider
+            )
             
             # Obter lista de snapshots
             snapshots = client.list_snapshots()

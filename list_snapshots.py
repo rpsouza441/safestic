@@ -1,10 +1,12 @@
-﻿"""List all snapshots stored in the configured Restic repository."""
+"""List all snapshots stored in the configured Restic repository."""
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import datetime
 import logging
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -15,8 +17,10 @@ def list_snapshots() -> None:
     
     Utiliza o ResticClient para obter a lista de snapshots com retry automatico e tratamento de erros.
     """
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
 
-    with ResticScript("list_snapshots") as ctx:
+    with ResticScript("list_snapshots", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -27,8 +31,13 @@ def list_snapshots() -> None:
         ctx.log(f"Listando snapshots do repositorio: {ctx.repository}\n")
 
         try:
-            # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3)
+            # Criar cliente Restic com retry usando o ambiente já carregado
+            client = ResticClient(
+                max_attempts=3,
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider
+            )
             
             # Obter lista de snapshots
             snapshots = client.list_snapshots()

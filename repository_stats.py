@@ -1,9 +1,11 @@
-﻿"""Show overall size information about the Restic repository."""
+"""Show overall size information about the Restic repository."""
 
 from __future__ import annotations
 
 import logging
+import os
 import sys
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -14,7 +16,10 @@ def show_repository_stats() -> None:
     
     Utiliza o ResticClient para obter estatisticas com retry automatico e tratamento de erros.
     """
-    with ResticScript("repository_stats") as ctx:
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
+    with ResticScript("repository_stats", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -25,8 +30,13 @@ def show_repository_stats() -> None:
         ctx.log(f"Obtendo estatisticas gerais do repositorio: {ctx.repository}\n")
 
         try:
-            # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3)
+            # Criar cliente Restic com retry usando o ambiente já carregado
+            client = ResticClient(
+                max_attempts=3,
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider
+            )
             
             # Obter estatisticas do repositorio
             stats = client.get_repository_stats()

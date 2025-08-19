@@ -284,8 +284,18 @@ def setup_aws_credentials(required_creds: List[str], source: str, non_interactiv
         
         if cred == 'AWS_ACCESS_KEY_ID':
             value = input(f"\nDigite {cred}: ").strip()
+            # Mostrar feedback visual se algo foi digitado
+            if value:
+                print(f"✓ {cred}: {value[:4]}{'*' * (len(value) - 4)} ({len(value)} caracteres)")
+            else:
+                print(f"⚠ {cred}: (vazio)")
         elif cred == 'AWS_SECRET_ACCESS_KEY':
             value = getpass.getpass(f"Digite {cred}: ")
+            # Mostrar feedback visual se algo foi digitado
+            if value:
+                print(f"✓ {cred}: {'*' * min(len(value), 20)} ({len(value)} caracteres)")
+            else:
+                print(f"⚠ {cred}: (vazio)")
         else:
             value = input(f"Digite {cred} (opcional): ").strip()
         
@@ -314,8 +324,18 @@ def setup_azure_credentials(required_creds: List[str], source: str, non_interact
         
         if cred == 'AZURE_ACCOUNT_NAME':
             value = input(f"\nDigite {cred}: ").strip()
+            # Mostrar feedback visual se algo foi digitado
+            if value:
+                print(f"✓ {cred}: {value}")
+            else:
+                print(f"⚠ {cred}: (vazio)")
         elif cred == 'AZURE_ACCOUNT_KEY':
             value = getpass.getpass(f"Digite {cred}: ")
+            # Mostrar feedback visual se algo foi digitado
+            if value:
+                print(f"✓ {cred}: {'*' * min(len(value), 20)} ({len(value)} caracteres)")
+            else:
+                print(f"⚠ {cred}: (vazio)")
         else:
             value = input(f"Digite {cred}: ").strip()
         

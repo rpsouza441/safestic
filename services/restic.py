@@ -148,6 +148,29 @@ def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str]
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password
     
+    # Carregar credenciais especificas do provedor
+    if provider_enum == StorageProvider.AWS:
+        aws_access_key = get_credential("AWS_ACCESS_KEY_ID", credential_source)
+        aws_secret_key = get_credential("AWS_SECRET_ACCESS_KEY", credential_source)
+        if aws_access_key:
+            env["AWS_ACCESS_KEY_ID"] = aws_access_key
+        if aws_secret_key:
+            env["AWS_SECRET_ACCESS_KEY"] = aws_secret_key
+    elif provider_enum == StorageProvider.AZURE:
+        azure_account_name = get_credential("AZURE_ACCOUNT_NAME", credential_source)
+        azure_account_key = get_credential("AZURE_ACCOUNT_KEY", credential_source)
+        if azure_account_name:
+            env["AZURE_ACCOUNT_NAME"] = azure_account_name
+        if azure_account_key:
+            env["AZURE_ACCOUNT_KEY"] = azure_account_key
+    elif provider_enum == StorageProvider.GCP:
+        google_project_id = get_credential("GOOGLE_PROJECT_ID", credential_source)
+        google_app_credentials = get_credential("GOOGLE_APPLICATION_CREDENTIALS", credential_source)
+        if google_project_id:
+            env["GOOGLE_PROJECT_ID"] = google_project_id
+        if google_app_credentials:
+            env["GOOGLE_APPLICATION_CREDENTIALS"] = google_app_credentials
+    
     return repository, env, provider
 
 

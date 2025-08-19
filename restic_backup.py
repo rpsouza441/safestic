@@ -1,7 +1,8 @@
-﻿import os
+import os
 import sys
 import logging
 from typing import List
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -17,7 +18,10 @@ def run_backup():
     
     Utiliza o ResticClient para executar o backup com retry automatico e tratamento de erros.
     """
-    with ResticScript("backup") as ctx:
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
+    with ResticScript("backup", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -45,8 +49,13 @@ def run_backup():
 
         ctx.log("=== Iniciando backup com Restic ===")
 
-        # Criar cliente Restic com retry
-        client = ResticClient(max_attempts=3)
+        # Criar cliente Restic com retry usando o ambiente já carregado
+        client = ResticClient(
+            max_attempts=3,
+            repository=ctx.repository,
+            env=ctx.env,
+            provider=ctx.provider
+        )
         
         try:
             # Verificar acesso ao repositorio

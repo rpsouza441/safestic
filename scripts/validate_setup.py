@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Script de validacao completa do setup SafeStic
 Valida se o sistema esta corretamente configurado e pronto para uso
@@ -234,7 +234,17 @@ class SetupValidator:
         print("\n Validando acesso ao repositorio...")
         
         try:
-            client = ResticClient()
+            # Carregar ambiente com credential_source correto
+            from dotenv import load_dotenv
+            load_dotenv()
+            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
+            repository, env, provider = load_restic_env(credential_source)
+            
+            client = ResticClient(
+                repository=repository,
+                env=env,
+                provider=provider
+            )
             
             # Verificar se repositorio existe e e acessivel
             try:

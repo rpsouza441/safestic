@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -32,7 +33,10 @@ def run_restore_snapshot(snapshot_id: str) -> None:
     snapshot_id : str
         ID do snapshot a ser restaurado ou "latest" para o mais recente
     """
-    with ResticScript("restore_snapshot") as ctx:
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
+    with ResticScript("restore_snapshot", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -44,8 +48,13 @@ def run_restore_snapshot(snapshot_id: str) -> None:
         ctx.log("=== Iniciando restauracao de snapshot com Restic ===")
 
         try:
-            # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3)
+            # Criar cliente Restic com retry usando o ambiente já carregado
+            client = ResticClient(
+                max_attempts=3,
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider
+            )
             
             # Obter informacoes do snapshot
             ctx.log(f"Buscando informacoes do snapshot '{snapshot_id}'...")

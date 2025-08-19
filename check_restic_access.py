@@ -25,7 +25,7 @@ def check_restic_access() -> None:
         )
         
         ctx.log("=== Verificando acesso ao repositorio Restic ===")
-        restic_password = os.getenv("RESTIC_PASSWORD")
+        restic_password = ctx.env.get("RESTIC_PASSWORD")
 
         print("Verificando variaveis essenciais do .env")
 
@@ -38,19 +38,19 @@ def check_restic_access() -> None:
         print_status("RESTIC_PASSWORD", bool(restic_password))
 
         if ctx.provider == "aws":
-            print_status("AWS_ACCESS_KEY_ID", bool(os.getenv("AWS_ACCESS_KEY_ID")))
+            print_status("AWS_ACCESS_KEY_ID", bool(ctx.env.get("AWS_ACCESS_KEY_ID")))
             print_status(
                 "AWS_SECRET_ACCESS_KEY",
-                bool(os.getenv("AWS_SECRET_ACCESS_KEY")),
+                bool(ctx.env.get("AWS_SECRET_ACCESS_KEY")),
             )
         elif ctx.provider == "azure":
-            print_status("AZURE_ACCOUNT_NAME", bool(os.getenv("AZURE_ACCOUNT_NAME")))
-            print_status("AZURE_ACCOUNT_KEY", bool(os.getenv("AZURE_ACCOUNT_KEY")))
+            print_status("AZURE_ACCOUNT_NAME", bool(ctx.env.get("AZURE_ACCOUNT_NAME")))
+            print_status("AZURE_ACCOUNT_KEY", bool(ctx.env.get("AZURE_ACCOUNT_KEY")))
         elif ctx.provider == "gcp":
-            print_status("GOOGLE_PROJECT_ID", bool(os.getenv("GOOGLE_PROJECT_ID")))
+            print_status("GOOGLE_PROJECT_ID", bool(ctx.env.get("GOOGLE_PROJECT_ID")))
             print_status(
                 "GOOGLE_APPLICATION_CREDENTIALS",
-                bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")),
+                bool(ctx.env.get("GOOGLE_APPLICATION_CREDENTIALS")),
             )
 
         if not ctx.repository or not restic_password:
@@ -59,8 +59,13 @@ def check_restic_access() -> None:
             sys.exit(1)
 
         try:
-            # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3)
+            # Criar cliente Restic com retry usando o ambiente já carregado
+            client = ResticClient(
+                max_attempts=3,
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider
+            )
             
             # Verificar se o Restic esta disponivel
             ctx.log("\nVerificando se 'restic' esta disponivel no PATH...")
