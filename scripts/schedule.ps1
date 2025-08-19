@@ -15,6 +15,19 @@ $ProjectDir = Split-Path -Parent $PSScriptRoot
 $ProjectName = "Safestic"
 $CurrentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
+# Carregar APP_NAME do arquivo .env
+$EnvFile = Join-Path $ProjectDir ".env"
+$AppName = "safestic"  # Valor padrao
+if (Test-Path $EnvFile) {
+    $envContent = Get-Content $EnvFile
+    foreach ($line in $envContent) {
+        if ($line -match "^APP_NAME=(.+)$") {
+            $AppName = $matches[1].Trim('"').Trim("'")
+            break
+        }
+    }
+}
+
 # Funcoes de log
 function Write-LogInfo {
     param([string]$Message)
@@ -45,7 +58,7 @@ function Test-IsAdmin {
 
 # Criar tarefa de backup simplificada
 function New-SimpleBackupTask {
-    $taskName = "$ProjectName-Backup-Simple"
+    $taskName = "$ProjectName-Backup-$AppName"
     Write-LogInfo "Criando tarefa de backup simplificada: $taskName"
     
     $backupScript = Join-Path $ProjectDir "scripts\backup_task.ps1"
@@ -77,7 +90,7 @@ function New-SimpleBackupTask {
 
 # Criar tarefa de prune simplificada
 function New-SimplePruneTask {
-    $taskName = "$ProjectName-Prune-Simple"
+    $taskName = "$ProjectName-Prune-$AppName"
     Write-LogInfo "Criando tarefa de prune simplificada: $taskName"
     
     $pruneScript = Join-Path $ProjectDir "scripts\prune_task.ps1"
@@ -139,7 +152,7 @@ function Install-SimpleTasks {
 function Remove-SimpleTasks {
     Write-LogInfo "=== REMOVENDO TAREFAS AGENDADAS SIMPLIFICADAS ==="
     
-    $taskNames = @("$ProjectName-Backup-Simple", "$ProjectName-Prune-Simple")
+    $taskNames = @("$ProjectName-Backup-$AppName", "$ProjectName-Prune-$AppName")
     
     foreach ($taskName in $taskNames) {
         try {
@@ -164,7 +177,7 @@ function Remove-SimpleTasks {
 function Show-SimpleTaskStatus {
     Write-LogInfo "=== STATUS DAS TAREFAS AGENDADAS SIMPLIFICADAS ==="
     
-    $taskNames = @("$ProjectName-Backup-Simple", "$ProjectName-Prune-Simple")
+    $taskNames = @("$ProjectName-Backup-$AppName", "$ProjectName-Prune-$AppName")
     
     foreach ($taskName in $taskNames) {
         Write-Host ""

@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # Script de agendamento simplificado para Linux (crontab)
 # Cria tarefas agendadas usando scripts shell diretos
 # Uso: ./scripts/schedule_simple.sh [install|remove|status]
@@ -9,6 +9,19 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_NAME="Safestic"
 CURRENT_USER=$(whoami)
+
+# Carregar APP_NAME do arquivo .env
+ENV_FILE="$PROJECT_DIR/.env"
+APP_NAME="safestic"  # Valor padrao
+if [[ -f "$ENV_FILE" ]]; then
+    while IFS='=' read -r key value; do
+        if [[ "$key" == "APP_NAME" ]]; then
+            # Remove aspas se existirem
+            APP_NAME=$(echo "$value" | sed 's/^["'"'"']\|["'"'"']$//g')
+            break
+        fi
+    done < "$ENV_FILE"
+fi
 
 # Cores para output
 RED='\033[0;31m'
@@ -70,18 +83,18 @@ install_simple_tasks() {
     crontab -l 2>/dev/null > "$temp_cron" || true
     
     # Remover entradas antigas do Safestic se existirem
-    sed -i '/# Safestic-Backup-Simple/d' "$temp_cron"
-    sed -i '/# Safestic-Prune-Simple/d' "$temp_cron"
+    sed -i "/# Safestic-Backup-$APP_NAME/d" "$temp_cron"
+    sed -i "/# Safestic-Prune-$APP_NAME/d" "$temp_cron"
     grep -v "$backup_script" "$temp_cron" > "${temp_cron}.tmp" || true
     grep -v "$prune_script" "${temp_cron}.tmp" > "$temp_cron" || true
     rm -f "${temp_cron}.tmp"
     
     # Adicionar novas entradas
     echo "" >> "$temp_cron"
-    echo "# Safestic-Backup-Simple - Backup diario as 02:00" >> "$temp_cron"
+    echo "# Safestic-Backup-$APP_NAME - Backup diario as 02:00" >> "$temp_cron"
     echo "0 2 * * * $backup_script >/dev/null 2>&1" >> "$temp_cron"
     echo "" >> "$temp_cron"
-    echo "# Safestic-Prune-Simple - Prune semanal aos domingos as 03:00" >> "$temp_cron"
+    echo "# Safestic-Prune-$APP_NAME - Prune semanal aos domingos as 03:00" >> "$temp_cron"
     echo "0 3 * * 0 $prune_script >/dev/null 2>&1" >> "$temp_cron"
     
     # Instalar novo crontab
@@ -118,8 +131,8 @@ remove_simple_tasks() {
     local backup_script="$PROJECT_DIR/scripts/backup_task.sh"
     local prune_script="$PROJECT_DIR/scripts/prune_task.sh"
     
-    sed -i '/# Safestic-Backup-Simple/d' "$temp_cron"
-    sed -i '/# Safestic-Prune-Simple/d' "$temp_cron"
+    sed -i "/# Safestic-Backup-$APP_NAME/d" "$temp_cron"
+    sed -i "/# Safestic-Prune-$APP_NAME/d" "$temp_cron"
     grep -v "$backup_script" "$temp_cron" > "${temp_cron}.tmp" || true
     grep -v "$prune_script" "${temp_cron}.tmp" > "$temp_cron" || true
     rm -f "${temp_cron}.tmp"
