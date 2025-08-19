@@ -200,16 +200,16 @@ BASIC_PACKAGES="git make python3 python3-pip curl bzip2"
 # Ajustar nomes de pacotes por distribuicao
 case $DISTRO in
     ubuntu|debian)
-        PACKAGES="$BASIC_PACKAGES python3-venv python3-dev libdbus-glib-1-dev gnome-keyring"
+        PACKAGES="$BASIC_PACKAGES python3-venv python3-dev libdbus-glib-1-dev gnome-keyring pkg-config cmake build-essential libdbus-1-dev"
         ;;
     fedora|centos|rhel)
-        PACKAGES="$BASIC_PACKAGES python3-devel dbus-glib-devel gnome-keyring"
+        PACKAGES="$BASIC_PACKAGES python3-devel dbus-glib-devel gnome-keyring pkgconf cmake gcc-c++ dbus-devel"
         ;;
     arch|manjaro)
-        PACKAGES="git make python python-pip curl bzip2 python-devel dbus-glib gnome-keyring"
+        PACKAGES="git make python python-pip curl bzip2 python-devel dbus-glib gnome-keyring pkgconf cmake base-devel dbus"
         ;;
     opensuse*)
-        PACKAGES="$BASIC_PACKAGES python3-devel dbus-1-glib-devel gnome-keyring"
+        PACKAGES="$BASIC_PACKAGES python3-devel dbus-1-glib-devel gnome-keyring pkg-config cmake gcc-c++ dbus-1-devel"
         ;;
     *)
         PACKAGES="$BASIC_PACKAGES"
@@ -376,11 +376,28 @@ if [ -f "pyproject.toml" ]; then
         # Instalar dependencias opcionais de seguranca se ambiente virtual estiver ativo
         if [ "$VENV_ACTIVATED" = true ]; then
             log_info "Instalando dependencias do keyring para Linux..."
-            # Instalar dbus-python e secretstorage primeiro
-            if $PIP_CMD install dbus-python secretstorage; then
-                log_success "Dependencias base do keyring instaladas"
+            # Tentar instalar dbus-python e secretstorage primeiro
+            if $PIP_CMD install secretstorage; then
+                log_success "secretstorage instalado com sucesso"
+                
+                # Tentar instalar dbus-python
+                if $PIP_CMD install dbus-python; then
+                    log_success "dbus-python instalado com sucesso"
+                else
+                    log_warning "Falha ao instalar dbus-python. Tentando alternativa keyrings.alt..."
+                    if $PIP_CMD install keyrings.alt; then
+                        log_success "keyrings.alt instalado como alternativa"
+                    else
+                        log_warning "Falha ao instalar keyrings.alt. Keyring usara backend de fallback"
+                    fi
+                fi
             else
-                log_warning "Falha ao instalar dependencias base do keyring"
+                log_warning "Falha ao instalar secretstorage. Tentando keyrings.alt..."
+                if $PIP_CMD install keyrings.alt; then
+                    log_success "keyrings.alt instalado como alternativa"
+                else
+                    log_warning "Falha ao instalar dependencias base do keyring"
+                fi
             fi
             
             log_info "Instalando dependencias opcionais de seguranca (keyring)..."
