@@ -85,6 +85,13 @@ make setup-credentials
 make first-run
 ```
 
+> **📝 Nota para Debian/Ubuntu 24+:** O script automaticamente detecta ambientes Python gerenciados externamente e cria um ambiente virtual (`.venv`) quando necessário. Para ativar manualmente o ambiente virtual:
+> ```bash
+> source ./activate_venv.sh
+> # OU
+> source .venv/bin/activate
+> ```
+
 ### 📖 Guia Completo
 
 Para instrucoes detalhadas de instalacao e configuracao, consulte:

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Setup script para Linux - FASE 2
 # Detecta distribuicao e instala dependencias necessarias para o Safestic
 # Uso: ./scripts/setup_linux.sh [--assume-yes]
@@ -280,6 +280,53 @@ fi
 # Instalar Restic
 install_restic
 
+# Funcao para detectar ambiente Python gerenciado externamente
+check_externally_managed() {
+    local python_cmd="$1"
+    local pip_cmd="$2"
+    
+    # Tentar uma instalacao de teste para detectar ambiente gerenciado
+    if $pip_cmd --version >/dev/null 2>&1; then
+        # Testar se pip funciona sem restricoes
+        if echo "import sys" | $pip_cmd install --dry-run --quiet - 2>&1 | grep -q "externally-managed-environment"; then
+            return 0  # Ambiente gerenciado
+        fi
+        
+        # Verificar se existe arquivo EXTERNALLY-MANAGED
+        local python_path=$($python_cmd -c "import sys; print(sys.prefix)" 2>/dev/null)
+        if [ -f "$python_path/EXTERNALLY-MANAGED" ] || [ -f "$python_path/pyvenv.cfg" ]; then
+            return 0  # Ambiente gerenciado
+        fi
+    fi
+    
+    return 1  # Nao gerenciado
+}
+
+# Funcao para criar ambiente virtual
+setup_virtual_environment() {
+    local python_cmd="$1"
+    local venv_path=".venv"
+    
+    log_info "Criando ambiente virtual em $venv_path..."
+    
+    if $python_cmd -m venv "$venv_path"; then
+        log_success "Ambiente virtual criado com sucesso"
+        
+        # Ativar ambiente virtual
+        source "$venv_path/bin/activate"
+        
+        # Atualizar pip no ambiente virtual
+        log_info "Atualizando pip no ambiente virtual..."
+        pip install --upgrade pip
+        
+        log_success "Ambiente virtual configurado e ativado"
+        return 0
+    else
+        log_error "Falha ao criar ambiente virtual"
+        return 1
+    fi
+}
+
 # Instalar dependencias Python do projeto
 log_info "Instalando dependencias Python do projeto..."
 
@@ -289,18 +336,55 @@ if ! check_command pip3; then
     PIP_CMD="pip"
 fi
 
+# Verificar se ambiente virtual ja existe
+VENV_ACTIVATED=false
+if [ -f ".venv/bin/activate" ]; then
+    log_info "Ambiente virtual existente encontrado. Ativando..."
+    source ".venv/bin/activate"
+    VENV_ACTIVATED=true
+    PIP_CMD="pip"  # Usar pip do ambiente virtual
+else
+    # Verificar se o ambiente e gerenciado externamente
+    if check_externally_managed "$PYTHON_CMD" "$PIP_CMD"; then
+        log_warning "Ambiente Python gerenciado externamente detectado"
+        log_info "Sera criado um ambiente virtual para evitar conflitos"
+        
+        if setup_virtual_environment "$PYTHON_CMD"; then
+            VENV_ACTIVATED=true
+            PIP_CMD="pip"  # Usar pip do ambiente virtual
+        else
+            log_error "Falha ao configurar ambiente virtual"
+            log_info "Tentando instalacao com --break-system-packages (nao recomendado)"
+            PIP_CMD="$PIP_CMD --break-system-packages"
+        fi
+    fi
+fi
+
 if [ -f "pyproject.toml" ]; then
     log_info "Detectado pyproject.toml. Instalando dependencias..."
     if $PIP_CMD install -e .; then
         log_success "Dependencias do pyproject.toml instaladas"
+        if [ "$VENV_ACTIVATED" = true ]; then
+            log_info "Dependencias instaladas no ambiente virtual .venv"
+            log_warning "Para usar o projeto, ative o ambiente virtual: source .venv/bin/activate"
+        fi
     else
         log_error "Falha ao instalar dependencias do pyproject.toml"
         exit 1
     fi
 elif [ -f "requirements.txt" ]; then
     log_info "Detectado requirements.txt. Instalando dependencias..."
-    if $PIP_CMD install --user -r requirements.txt; then
+    local install_cmd="$PIP_CMD install -r requirements.txt"
+    if [ "$VENV_ACTIVATED" = false ]; then
+        install_cmd="$install_cmd --user"
+    fi
+    
+    if $install_cmd; then
         log_success "Dependencias do requirements.txt instaladas"
+        if [ "$VENV_ACTIVATED" = true ]; then
+            log_info "Dependencias instaladas no ambiente virtual .venv"
+            log_warning "Para usar o projeto, ative o ambiente virtual: source .venv/bin/activate"
+        fi
     else
         log_error "Falha ao instalar dependencias do requirements.txt"
         exit 1
