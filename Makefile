@@ -342,6 +342,16 @@ setup-credentials-keyring:
 	@echo " Configuracao de credenciais no keyring do sistema..."
 	$(PYTHON_CMD) scripts/setup_credentials.py --source keyring
 
+## Diagnostica problemas com keyring no Linux
+debug-keyring:
+	@echo "Executando diagnostico do keyring..."
+	$(PYTHON_CMD) debug_keyring_linux.py
+
+## Detecta automaticamente a melhor fonte de credenciais
+auto-detect-credentials:
+	@echo "Detectando melhor fonte de credenciais..."
+	$(PYTHON_CMD) auto_detect_credential_source.py
+
 ## Mostra ajuda com todos os comandos disponiveis
 help:
 	@echo "SafeStic - Sistema de Backup com Restic"
@@ -351,6 +361,8 @@ help:
 	@echo "  setup-restic-password    - Configurar apenas RESTIC_PASSWORD"
 	@echo "  setup-credentials-env    - Configurar credenciais no arquivo .env"
 	@echo "  setup-credentials-keyring - Configurar credenciais no keyring do sistema"
+	@echo "  auto-detect-credentials  - Detecta automaticamente a melhor fonte de credenciais"
+	@echo "  debug-keyring           - Diagnostica problemas com keyring (Linux)"
 	@echo ""
 	@echo " BACKUP:"
 	@echo "  backup          - Executa backup completo"
