@@ -108,7 +108,7 @@ init:
 	@echo "Inicializando repositorio Restic..."
 	@echo "Verificando credenciais..."
 	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
-	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic_client import ResticClient; from services.restic import load_restic_config; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); config = load_restic_config(credential_source); client = ResticClient(credential_source=credential_source); exec('try:\n    client.check_repository_access()\n    print(\"Repositorio ja existe\")\nexcept:\n    client.init_repository()\n    print(\"Repositorio inicializado\")')"
+	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic_client import ResticClient; from services.restic import load_restic_config; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); config = load_restic_config(credential_source); client = ResticClient(credential_source=credential_source); exec('try:\n    client.check_repository_access()\n    print(\"[OK] Repositorio ja existe e esta acessivel\")\nexcept Exception as e:\n    try:\n        client.init_repository()\n        print(\"[OK] Repositorio inicializado com sucesso\")\n    except Exception as init_error:\n        print(f\"[ERRO] Erro ao inicializar repositorio: {init_error}\")\n        raise')"
 
 ## Simula backup sem executar (dry-run)
 dry-run:
@@ -258,8 +258,29 @@ ifeq ($(OS),Windows_NT)
 		echo "Erro: bootstrap_windows.ps1 nao encontrado" && exit 1 \
 	)
 else
-	@echo "Bootstrap nao implementado para Linux. Use: make setup"
-	@exit 1
+	@if [ -f "scripts/bootstrap_linux.sh" ]; then \
+		chmod +x scripts/bootstrap_linux.sh; \
+		bash scripts/bootstrap_linux.sh; \
+	else \
+		echo "Erro: bootstrap_linux.sh nao encontrado" && exit 1; \
+	fi
+endif
+
+bootstrap-auto:
+	@echo "Executando bootstrap automatico (sem interacao)..."
+ifeq ($(OS),Windows_NT)
+	@if exist "scripts\bootstrap_windows.ps1" ( \
+		powershell -ExecutionPolicy Bypass -File "scripts\bootstrap_windows.ps1" -AssumeYes \
+	) else ( \
+		echo "Erro: bootstrap_windows.ps1 nao encontrado" && exit 1 \
+	)
+else
+	@if [ -f "scripts/bootstrap_linux.sh" ]; then \
+		chmod +x scripts/bootstrap_linux.sh; \
+		bash scripts/bootstrap_linux.sh --assume-yes; \
+	else \
+		echo "Erro: bootstrap_linux.sh nao encontrado" && exit 1; \
+	fi
 endif
 	@echo "Verificando credenciais apos bootstrap..."
 	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
@@ -379,9 +400,10 @@ help:
 	@echo "  repair          - Repara repositorio (CUIDADO!)"
 	@echo "  clean           - Limpa logs e arquivos temporarios"
 	@echo ""
-	@echo "  CONFIGURACAO:"
+	@echo " CONFIGURACAO:"
 	@echo "  setup           - Instala dependencias do sistema"
-	@echo "  bootstrap       - Bootstrap completo (Windows)"
+	@echo "  bootstrap       - Bootstrap completo (Windows/Linux)"
+	@echo "  bootstrap-auto  - Bootstrap automatico sem interacao"
 	@echo "  first-run       - Primeira configuracao do projeto"
 	@echo "  init            - Inicializa novo repositorio"
 	@echo "  verify-env      - Verifica ambiente de desenvolvimento"
