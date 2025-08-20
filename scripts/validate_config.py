@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Script de validacao de configuracao - Safestic
 Verifica se todas as configuracoes necessarias estao presentes e validas
@@ -26,7 +26,6 @@ def validate_required_vars():
     required_vars = [
         'STORAGE_PROVIDER',
         'STORAGE_BUCKET', 
-        'RESTIC_PASSWORD',
         'BACKUP_SOURCE_DIRS'
     ]
     
@@ -35,6 +34,15 @@ def validate_required_vars():
         value = os.getenv(var)
         if not value or value.strip() == '':
             missing_vars.append(var)
+    
+    # Validar RESTIC_PASSWORD considerando credential_source
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
+    restic_password = os.getenv('RESTIC_PASSWORD')
+    
+    if credential_source == 'env' and (not restic_password or restic_password.strip() == ''):
+        missing_vars.append('RESTIC_PASSWORD')
+    elif credential_source != 'env':
+        print(f"OK: RESTIC_PASSWORD sera carregado do {credential_source}")
     
     if missing_vars:
         print("ERRO: Variaveis obrigatorias nao configuradas:")
@@ -61,20 +69,28 @@ def validate_storage_config():
             return False
     
     elif provider == 'aws':
-        aws_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
-        missing = [var for var in aws_vars if not os.getenv(var)]
-        if missing:
-            print(f"❌ Variaveis AWS faltando: {missing}")
-            return False
+        credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
+        if credential_source == 'env':
+            aws_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
+            missing = [var for var in aws_vars if not os.getenv(var)]
+            if missing:
+                print(f"❌ Variaveis AWS faltando: {missing}")
+                return False
+        else:
+            print(f"OK: Credenciais AWS serao carregadas do {credential_source}")
         print("✅ Configuracao AWS valida")
         return True
     
     elif provider == 'azure':
-        azure_vars = ['AZURE_ACCOUNT_NAME', 'AZURE_ACCOUNT_KEY']
-        missing = [var for var in azure_vars if not os.getenv(var)]
-        if missing:
-            print(f"❌ Variaveis Azure faltando: {missing}")
-            return False
+        credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
+        if credential_source == 'env':
+            azure_vars = ['AZURE_ACCOUNT_NAME', 'AZURE_ACCOUNT_KEY']
+            missing = [var for var in azure_vars if not os.getenv(var)]
+            if missing:
+                print(f"❌ Variaveis Azure faltando: {missing}")
+                return False
+        else:
+            print(f"OK: Credenciais Azure serao carregadas do {credential_source}")
         print("✅ Configuracao Azure valida")
         return True
     

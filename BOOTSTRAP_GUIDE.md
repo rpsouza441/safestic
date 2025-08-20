@@ -1,19 +1,26 @@
-﻿# 🚀 Guia de Bootstrap do SafeStic
+# 🚀 Guia de Bootstrap do SafeStic
 
-Este guia explica como configurar o SafeStic do zero usando o sistema de bootstrap automatizado.
+Este guia explica como configurar o SafeStic do zero usando o sistema de bootstrap automatizado para **Windows** e **Linux**.
 
-## 📋 Pre-requisitos
+## 📋 Pré-requisitos
 
+### Windows
 - **Windows 10/11** com PowerShell 5.1+
-- **Permissoes de Administrador** (necessario para instalar dependencias)
-- **Conexao com a Internet** (para download das dependencias)
+- **Permissões de Administrador** (necessário para instalar dependências)
+- **Conexão com a Internet** (para download das dependências)
 
-## 🔧 Instalacao Automatica
+### Linux
+- **Distribuição Linux suportada** (Ubuntu/Debian, Fedora/RHEL, Arch, openSUSE)
+- **Acesso sudo** (necessário para instalar dependências)
+- **Conexão com a Internet** (para download das dependências)
 
-### Opcao 1: Git Clone + Bootstrap (Recomendado)
+## 🔧 Instalação Automática
 
+### Opção 1: Git Clone + Bootstrap (Recomendado)
+
+**Windows:**
 ```powershell
-# 1. Clone o repositorio
+# 1. Clone o repositório
 git clone https://github.com/seu-usuario/safestic.git
 cd safestic
 
@@ -21,13 +28,43 @@ cd safestic
 make bootstrap
 ```
 
-### Opcao 2: Download Manual + Bootstrap
+**Linux:**
+```bash
+# 1. Clone o repositório
+git clone https://github.com/seu-usuario/safestic.git
+cd safestic
 
+# 2. Execute o bootstrap (com sudo)
+make bootstrap
+```
+
+### Opção 2: Bootstrap Automático (Sem Interação)
+
+**Para automação ou CI/CD:**
+```bash
+# Windows (PowerShell) ou Linux (Bash)
+make bootstrap-auto
+```
+
+### Opção 3: Download Manual + Bootstrap
+
+**Windows:**
 ```powershell
 # 1. Baixe e extraia o projeto
 # 2. Abra PowerShell como Administrador
-# 3. Navegue ate o diretorio do projeto
+# 3. Navegue até o diretório do projeto
 cd C:\caminho\para\safestic
+
+# 4. Execute o bootstrap
+make bootstrap
+```
+
+**Linux:**
+```bash
+# 1. Baixe e extraia o projeto
+# 2. Abra terminal
+# 3. Navegue até o diretório do projeto
+cd /caminho/para/safestic
 
 # 4. Execute o bootstrap
 make bootstrap
@@ -37,17 +74,27 @@ make bootstrap
 
 O comando `make bootstrap` executa automaticamente:
 
-### 1. **Instalacao de Dependencias do Sistema**
-- ✅ **Git for Windows** - Controle de versao
+### 1. **Instalação de Dependências do Sistema**
+
+**Windows:**
+- ✅ **Git for Windows** - Controle de versão
 - ✅ **GNU Make** - Sistema de build
-- ✅ **Python 3.12+** - Linguagem de programacao
+- ✅ **Python 3.12+** - Linguagem de programação
 - ✅ **Restic** - Ferramenta de backup
 - ✅ **WinFsp** - Sistema de arquivos para comando `mount`
 
-### 2. **Configuracao do Ambiente Python**
-- ✅ Criacao do ambiente virtual (`.venv`)
-- ✅ Ativacao automatica do ambiente virtual
-- ✅ Atualizacao do `pip` para a versao mais recente
+**Linux:**
+- ✅ **Git** - Controle de versão
+- ✅ **GNU Make** - Sistema de build
+- ✅ **Python 3** - Linguagem de programação
+- ✅ **pip** - Gerenciador de pacotes Python
+- ✅ **python3-venv** - Módulo para ambientes virtuais
+- ✅ **Restic** - Ferramenta de backup
+
+### 2. **Configuração do Ambiente Python**
+- ✅ Criação do ambiente virtual (`.venv`)
+- ✅ Ativação automática do ambiente virtual
+- ✅ Atualização do `pip` para a versão mais recente
 - ✅ Instalacao de todas as dependencias Python
 
 ### 3. **Configuracao do PATH**
