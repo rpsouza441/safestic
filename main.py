@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Exemplo de uso do ResticClient para operacoes de backup e restore.
 
@@ -11,6 +11,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
 
 from services.restic_client import ResticClient, ResticError
 
@@ -29,6 +30,10 @@ def setup_logging():
 
 def main():
     """Funcao principal que demonstra o uso do ResticClient."""
+    # Carregar variaveis de ambiente
+    load_dotenv()
+    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    
     # Configurar logging
     os.makedirs("logs", exist_ok=True)
     setup_logging()
@@ -38,7 +43,7 @@ def main():
     
     try:
         # Criar cliente Restic com retry
-        client = ResticClient(max_attempts=3)
+        client = ResticClient(max_attempts=3, credential_source=credential_source)
         
         # Verificar acesso ao repositorio
         logger.info("Verificando acesso ao repositorio...")

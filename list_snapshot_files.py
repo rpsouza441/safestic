@@ -37,7 +37,7 @@ def main(snapshot_id: str, output_format: str = "text", output_file: str = None,
         
         try:
             # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3)
+            client = ResticClient(max_attempts=3, credential_source=credential_source)
             
             # Listar arquivos do snapshot
             files_output = client.list_snapshot_files(snapshot_id)

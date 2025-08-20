@@ -56,7 +56,7 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
         
         try:
             # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3)
+            client = ResticClient(max_attempts=3, credential_source=credential_source)
             
             # Obter informacoes do snapshot
             ctx.log(f"Buscando informacoes do snapshot '{snapshot_id}'...")
