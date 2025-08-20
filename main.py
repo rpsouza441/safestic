@@ -11,9 +11,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from dotenv import load_dotenv
-
-from services.restic_client import ResticClient, ResticError
+from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
 
 
 def setup_logging():
@@ -31,8 +29,7 @@ def setup_logging():
 def main():
     """Funcao principal que demonstra o uso do ResticClient."""
     # Carregar variaveis de ambiente
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    credential_source = load_env_and_get_credential_source()
     
     # Configurar logging
     os.makedirs("logs", exist_ok=True)

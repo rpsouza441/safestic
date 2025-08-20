@@ -779,3 +779,21 @@ class ResticClient:
         restore_dir = Path(base_dir) / timestamp
         restore_dir.mkdir(parents=True, exist_ok=True)
         return str(restore_dir)
+
+
+def load_env_and_get_credential_source() -> str:
+    """Carrega o arquivo .env e retorna o credential_source configurado.
+    
+    Esta função centraliza o carregamento do ambiente para evitar duplicação
+    de código nos comandos do Makefile.
+    
+    Returns
+    -------
+    str
+        O valor de CREDENTIAL_SOURCE do arquivo .env (padrão: 'env')
+    """
+    import os
+    from dotenv import load_dotenv
+    
+    load_dotenv()
+    return os.getenv('CREDENTIAL_SOURCE', 'env')

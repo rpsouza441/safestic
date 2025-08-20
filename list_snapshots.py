@@ -6,10 +6,8 @@ import os
 import sys
 from datetime import datetime
 import logging
-from dotenv import load_dotenv
-
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError
+from services.restic_client import ResticClient, load_env_and_get_credential_source, ResticError
 
 
 def list_snapshots() -> None:
@@ -17,8 +15,7 @@ def list_snapshots() -> None:
     
     Utiliza o ResticClient para obter a lista de snapshots com retry automatico e tratamento de erros.
     """
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    credential_source = load_env_and_get_credential_source()
 
     with ResticScript("list_snapshots", credential_source=credential_source) as ctx:
         # Configurar logging

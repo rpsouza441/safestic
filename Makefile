@@ -16,6 +16,43 @@ else
 	PYTHON_CMD=$(if $(wildcard .venv/bin/python),$(VENV_PYTHON),$(PYTHON))
 endif
 
+# Macros para verificacao de credenciais
+CHECK_RESTIC_CREDS = @$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
+CHECK_ALL_CREDS = @$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Algumas credenciais nao estao configuradas. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
+CHECK_ALL_CREDS_REQUIRED = @$(PYTHON_CMD) scripts/check_credentials.py || (echo "" && echo "ERRO: Credenciais nao configuradas!" && echo "Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "" && exit 1)
+
+# Helpers para execucao Python com funcao centralizada
+PYTHON_WITH_CREDS = $(PYTHON_CMD) -c "from services.restic_client import ResticClient, load_env_and_get_credential_source; credential_source = load_env_and_get_credential_source(); client = ResticClient(credential_source=credential_source)
+PYTHON_WITH_CONFIG = $(PYTHON_CMD) -c "from services.restic_client import load_env_and_get_credential_source; from services.restic import load_restic_config; credential_source = load_env_and_get_credential_source(); config = load_restic_config(credential_source)
+
+# Macros para comandos específicos do OS
+ifeq ($(OS),Windows_NT)
+	RUN_SCHEDULE_SCRIPT = @powershell -ExecutionPolicy Bypass -File "scripts/schedule.ps1"
+	RUN_BACKUP_TASK = @powershell -ExecutionPolicy Bypass -File "scripts\backup_task.ps1"
+	RUN_PRUNE_TASK = @powershell -ExecutionPolicy Bypass -File "scripts\prune_task.ps1"
+	CREATE_TEST_DIR = @if not exist "temp\safestic-test" mkdir "temp\safestic-test"
+	CREATE_TEST_FILE = @echo Arquivo de teste - %date% %time% > "temp\safestic-test\teste.txt"
+	CLEAN_TEST_DIR = @if exist "temp\safestic-test" rmdir /s /q "temp\safestic-test"
+	CLEAN_LOGS = @if exist "logs" forfiles /p logs /m *.log /d -30 /c "cmd /c del @path" 2>nul || echo "Nenhum log antigo encontrado"
+	CLEAN_TEMP = @if exist "temp" rmdir /s /q "temp" 2>nul || echo "Diretorio temp nao existe"
+else
+	RUN_SCHEDULE_SCRIPT = @bash "scripts/schedule.sh"
+	RUN_BACKUP_TASK = @bash scripts/backup_task.sh
+	RUN_PRUNE_TASK = @bash scripts/prune_task.sh
+	CREATE_TEST_DIR = mkdir -p /tmp/safestic-test
+	CREATE_TEST_FILE = echo "Arquivo de teste - $$(date)" > /tmp/safestic-test/teste.txt
+	CLEAN_TEST_DIR = rm -rf /tmp/safestic-test
+	CLEAN_LOGS = find logs -name "*.log" -mtime +30 -delete 2>/dev/null || true
+	CLEAN_TEMP = rm -rf /tmp/safestic-* 2>/dev/null || true
+endif
+
+# Macros para mensagens comuns
+ECHO_CHECKING_CREDS = @echo "Verificando credenciais..."
+ECHO_CHECKING_CONFIG = @echo "Verificando configuracao..."
+ECHO_CHECKING_INTEGRITY = @echo "Verificando integridade..."
+ECHO_LISTING_SNAPSHOTS = @echo "Listando snapshots..."
+ECHO_OPERATION_COMPLETE = @echo "Operacao concluida"
+
 .PHONY: backup list restore restore-id restore-file list-files manual-prune check help init dry-run stats validate test-backup test-restore clean prune
 
 .DEFAULT_GOAL := help
@@ -23,14 +60,14 @@ endif
 ## Executa o backup com base nas variaveis do .env
 backup:
 	@echo "Executando backup com Restic..."
-	@echo "Verificando credenciais..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
+	$(ECHO_CHECKING_CREDS)
+	$(CHECK_RESTIC_CREDS)
 	$(PYTHON_CMD) restic_backup.py
 
 ## Lista todos os snapshots no repositorio
 list:
-	@echo "Listando snapshots disponiveis..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
+	$(ECHO_LISTING_SNAPSHOTS)
+	$(CHECK_RESTIC_CREDS)
 	$(PYTHON_CMD) list_snapshots.py
 
 ## Lista todos os snapshots com tamanho estimado
@@ -55,7 +92,7 @@ endif
 ## Cria estrutura: C:\Restore\AAAA-MM-DD-HHMMSS\<estrutura_original>
 restore:
 	@echo "Restaurando o ultimo snapshot..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
+	$(CHECK_RESTIC_CREDS)
 	$(PYTHON_CMD) restore_snapshot.py
 
 ## Restaura snapshot especifico (ex: make restore-id ID=abc123)
@@ -65,7 +102,7 @@ ifndef ID
 	$(error Voce precisa passar o ID do snapshot: make restore-id ID=abc123)
 endif
 	@echo "Restaurando snapshot ID=$(ID)..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
+	$(CHECK_RESTIC_CREDS)
 	$(PYTHON_CMD) restore_snapshot.py --id $(ID)
 
 ## Restaura arquivo especifico (ex: make restore-file ID=abc123 FILE="C:\Users\Admin\Documents")
@@ -94,8 +131,8 @@ verify-env:
 
 check:
 	@echo "Executando verificacao da configuracao Restic..."
-	@echo "Verificando credenciais..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Algumas credenciais nao estao configuradas. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
+	$(ECHO_CHECKING_CREDS)
+	$(CHECK_ALL_CREDS)
 	$(PYTHON_CMD) check_restic_access.py
 
 ## Exibe o total de dados unicos armazenados no repositorio
@@ -106,24 +143,24 @@ repo-size:
 ## Inicializa repositorio Restic (apenas se nao existir)
 init:
 	@echo "Inicializando repositorio Restic..."
-	@echo "Verificando credenciais..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
-	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic_client import ResticClient; from services.restic import load_restic_config; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); config = load_restic_config(credential_source); client = ResticClient(credential_source=credential_source); exec('try:\n    client.check_repository_access()\n    print(\"[OK] Repositorio ja existe e esta acessivel\")\nexcept Exception as e:\n    try:\n        client.init_repository()\n        print(\"[OK] Repositorio inicializado com sucesso\")\n    except Exception as init_error:\n        print(f\"[ERRO] Erro ao inicializar repositorio: {init_error}\")\n        raise')"
+	$(ECHO_CHECKING_CREDS)
+	$(CHECK_RESTIC_CREDS)
+	$(PYTHON_WITH_CREDS); exec('try:\n    client.check_repository_access()\n    print("[OK] Repositorio ja existe e esta acessivel")\nexcept Exception as e:\n    try:\n        client.init_repository()\n        print("[OK] Repositorio inicializado com sucesso")\n    except Exception as init_error:\n        print(f"[ERRO] Erro ao inicializar repositorio: {init_error}")\n        raise')"
 
 ## Simula backup sem executar (dry-run)
 dry-run:
 	@echo "Simulando backup (dry-run)..."
-	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic import load_restic_config; from pathlib import Path; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); config = load_restic_config(credential_source); print('Configuracao de backup:'); print(f'Diretorios: {config.backup_source_dirs}'); print(f'Exclusoes: {config.restic_excludes}'); print(f'Tags: {config.restic_tags}'); [print(f'{dir_path} - OK') if Path(dir_path).exists() else print(f'{dir_path} - NAO ENCONTRADO') for dir_path in config.backup_source_dirs]"
+	$(PYTHON_WITH_CONFIG); from pathlib import Path; print('Configuracao de backup:'); print(f'Diretorios: {config.backup_source_dirs}'); print(f'Exclusoes: {config.restic_excludes}'); print(f'Tags: {config.restic_tags}'); [print(f'{dir_path} - OK') if Path(dir_path).exists() else print(f'{dir_path} - NAO ENCONTRADO') for dir_path in config.backup_source_dirs]"
 
 ## Mostra estatisticas detalhadas do repositorio
 stats:
 	@echo "Obtendo estatisticas detalhadas..."
-	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic_client import ResticClient; import json; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); client = ResticClient(credential_source=credential_source); stats = client.get_repository_stats(); print(json.dumps(stats, indent=2))"
+	$(PYTHON_WITH_CREDS); import json; stats = client.get_repository_stats(); print(json.dumps(stats, indent=2))"
 
 ## Aplica politica de retencao (prune)
 prune:
 	@echo "Aplicando politica de retencao..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --restic-only --quiet || (echo "" && echo "ERRO: RESTIC_PASSWORD nao configurado!" && echo "Execute: make setup-restic-password" && echo "" && exit 1)
+	$(CHECK_RESTIC_CREDS)
 	$(PYTHON_CMD) scripts/forget_snapshots.py
 
 ## Executa todos os checks de validacao
@@ -131,26 +168,23 @@ validate:
 	@echo "Executando validacao completa..."
 	@echo "1. Verificando configuracao..."
 	$(PYTHON_CMD) scripts/validate_config.py
-	@echo "2. Verificando integridade..."
-	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic_client import ResticClient; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); client = ResticClient(credential_source=credential_source); result = client.check_repository_access(); print('[OK] Repositorio acessivel' if result else '[ERRO] Repositorio inacessivel')"
+	@echo "2. $(ECHO_CHECKING_INTEGRITY)"
+	$(PYTHON_WITH_CREDS); result = client.check_repository_access(); print('[OK] Repositorio acessivel' if result else '[ERRO] Repositorio inacessivel')"
 	@echo "3. Listando snapshots..."
-	$(PYTHON_CMD) -c "import os; from dotenv import load_dotenv; load_dotenv(); from services.restic_client import ResticClient; credential_source = os.getenv('CREDENTIAL_SOURCE', 'env'); snapshots = ResticClient(credential_source=credential_source).list_snapshots(); print(f'[INFO] Encontrados {len(snapshots)} snapshots no repositorio'); [print(f'  - {s.get(\"short_id\", s.get(\"id\", \"N/A\"))[:8]} ({s.get(\"time\", \"N/A\")}) - {s.get(\"hostname\", \"N/A\")}') for s in snapshots[:5]]; print('  ...') if len(snapshots) > 5 else None"
+	$(PYTHON_WITH_CREDS); snapshots = client.list_snapshots(); print(f'[INFO] Encontrados {len(snapshots)} snapshots no repositorio'); [print(f'  - {s.get(\"short_id\", s.get(\"id\", \"N/A\"))[:8]} ({s.get(\"time\", \"N/A\")}) - {s.get(\"hostname\", \"N/A\")}') for s in snapshots[:5]]; print('  ...') if len(snapshots) > 5 else None"
 	@echo "Validacao concluida"
 
 ## Cria backup de teste em diretorio temporario
 test-backup:
 	@echo "Criando backup de teste..."
+	$(CREATE_TEST_DIR)
+	$(CREATE_TEST_FILE)
 ifeq ($(OS),Windows_NT)
-	@if not exist "temp\safestic-test" mkdir "temp\safestic-test"
-	@echo Arquivo de teste - %date% %time% > "temp\safestic-test\teste.txt"
 	@set BACKUP_SOURCE_DIRS=temp\safestic-test&& set RESTIC_TAGS=teste&& $(PYTHON_CMD) restic_backup.py
-	@if exist "temp\safestic-test" rmdir /s /q "temp\safestic-test"
 else
-	mkdir -p /tmp/safestic-test
-	echo "Arquivo de teste - $$(date)" > /tmp/safestic-test/teste.txt
 	BACKUP_SOURCE_DIRS=/tmp/safestic-test RESTIC_TAGS=teste $(PYTHON_CMD) restic_backup.py
-	rm -rf /tmp/safestic-test
 endif
+	$(CLEAN_TEST_DIR)
 	@echo "Backup de teste concluido"
 
 ## Restaura para diretorio temporario (teste)
@@ -172,60 +206,35 @@ endif
 ## Limpa arquivos temporarios e logs antigos
 clean:
 	@echo "Limpando arquivos temporarios..."
-ifeq ($(OS),Windows_NT)
-	@if exist "logs" forfiles /p logs /m *.log /d -30 /c "cmd /c del @path" 2>nul || echo "Nenhum log antigo encontrado"
-	@if exist "temp" rmdir /s /q "temp" 2>nul || echo "Diretorio temp nao existe"
-else
-	find logs -name "*.log" -mtime +30 -delete 2>/dev/null || true
-	rm -rf /tmp/safestic-* 2>/dev/null || true
-endif
+	$(CLEAN_LOGS)
+	$(CLEAN_TEMP)
 	@echo "Limpeza concluida"
 
 # Agendamento simplificado - FASE 4
 ## Instala tarefas agendadas (versao simplificada)
 schedule-install:
 	@echo "Instalando tarefas agendadas..."
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File "scripts/schedule.ps1" install
-else
-	@bash "scripts/schedule.sh" install
-endif
+	$(RUN_SCHEDULE_SCRIPT) install
 
 ## Remove tarefas agendadas (versao simplificada)
 schedule-remove:
 	@echo "Removendo tarefas agendadas..."
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File "scripts/schedule.ps1" remove
-else
-	@bash "scripts/schedule.sh" remove
-endif
+	$(RUN_SCHEDULE_SCRIPT) remove
 
 ## Mostra status das tarefas agendadas (versao simplificada)
 schedule-status:
 	@echo "Verificando status das tarefas agendadas..."
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File "scripts/schedule.ps1" status
-else
-	@bash "scripts/schedule.sh" status
-endif
+	$(RUN_SCHEDULE_SCRIPT) status
 
 ## Executa backup manualmente (mesmo script das tarefas agendadas)
 backup-task:
 	@echo "Executando backup via script de tarefa..."
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File "scripts\backup_task.ps1"
-else
-	@bash scripts/backup_task.sh
-endif
+	$(RUN_BACKUP_TASK)
 
 ## Executa prune manualmente (mesmo script das tarefas agendadas)
 prune-task:
 	@echo "Executando prune via script de tarefa..."
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File "scripts\prune_task.ps1"
-else
-	@bash scripts/prune_task.sh
-endif
+	$(RUN_PRUNE_TASK)
 
 # Novos targets - FASE 4
 setup:
@@ -247,7 +256,7 @@ else
 	fi
 endif
 	@echo "Verificando credenciais apos setup..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
+	$(CHECK_ALL_CREDS)
 
 bootstrap:
 	@echo "Executando bootstrap completo..."
@@ -283,15 +292,15 @@ else
 	fi
 endif
 	@echo "Verificando credenciais apos bootstrap..."
-	@$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "" && echo "AVISO: Configure as credenciais. Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "")
+	$(CHECK_ALL_CREDS)
 
 first-run:
 	@echo "Executando primeira configuracao..."
 	@echo "1. Verificando arquivo .env..."
 	@powershell -Command "if (-not (Test-Path '.env')) { Write-Host 'Copiando .env.example para .env...'; Copy-Item '.env.example' '.env'; Write-Host 'ATENCAO: Configure o arquivo .env antes de continuar!' } else { Write-Host '.env ja existe' }"
-	@echo "2. Verificando credenciais..."
-	@$(PYTHON_CMD) scripts/check_credentials.py || (echo "" && echo "ERRO: Credenciais nao configuradas!" && echo "Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "" && exit 1)
-	@echo "3. Validando configuracao..."
+	@echo "2. $(ECHO_CHECKING_CREDS)"
+	$(CHECK_ALL_CREDS_REQUIRED)
+	@echo "3. $(ECHO_CHECKING_CONFIG)"
 	$(PYTHON_CMD) scripts/validate_config.py
 	@echo "4. Inicializando repositorio (se necessario)..."
 	@$(MAKE) init || echo "Repositorio ja existe ou erro na inicializacao"
@@ -363,6 +372,32 @@ setup-credentials-keyring:
 	@echo " Configuracao de credenciais no keyring do sistema..."
 	$(PYTHON_CMD) scripts/setup_credentials.py --source keyring
 
+# Comandos de diagnóstico e troubleshooting
+diagnose:
+	@echo "Executando diagnostico completo..."
+	$(ECHO_CHECKING_CONFIG)
+	$(PYTHON_CMD) validate_config.py
+	@echo "Verificando acesso ao repositorio..."
+	$(PYTHON_CMD) check_restic_access.py
+
+diagnose-azure-linux:
+	@echo "Executando diagnostico Azure para Linux..."
+	$(PYTHON_CMD) scripts/diagnose_azure_linux.py
+
+generate-config-report:
+	@echo "Gerando relatorio de configuracao do sistema atual..."
+	$(PYTHON_CMD) scripts/compare_configs.py --generate
+
+compare-configs:
+	@echo "Para comparar configuracoes, use:"
+	@echo "  make generate-config-report  # Gerar relatorio atual"
+	@echo "  python scripts/compare_configs.py --compare arquivo1.json arquivo2.json"
+	@echo ""
+	@echo "Exemplo de uso:"
+	@echo "  1. No Windows: make generate-config-report"
+	@echo "  2. No Linux: make generate-config-report"
+	@echo "  3. Comparar: python scripts/compare_configs.py --compare config_report_windows_*.json config_report_linux_*.json"
+
 ## Mostra ajuda com todos os comandos disponiveis
 help:
 	@echo "SafeStic - Sistema de Backup com Restic"
@@ -415,6 +450,12 @@ help:
 	@echo "  schedule-install - Instala agendamento automatico"
 	@echo "  schedule-remove  - Remove agendamento automatico"
 	@echo "  schedule-status  - Status do agendamento"
+	@echo ""
+	@echo " DIAGNOSTICO E TROUBLESHOOTING:"
+	@echo "  diagnose              - Diagnostico completo do sistema"
+	@echo "  diagnose-azure-linux  - Diagnostico especifico Azure no Linux"
+	@echo "  generate-config-report - Gera relatorio de configuracao"
+	@echo "  compare-configs       - Instrucoes para comparar configuracoes"
 	@echo ""
 	@echo "  AVANCADO:"
 	@echo "  mount           - Monta repositorio como filesystem"

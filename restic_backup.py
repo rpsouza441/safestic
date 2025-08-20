@@ -2,10 +2,9 @@ import os
 import sys
 import logging
 from typing import List
-from dotenv import load_dotenv
 
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError
+from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
 
 
 def build_args(prefix, items):
@@ -18,8 +17,7 @@ def run_backup():
     
     Utiliza o ResticClient para executar o backup com retry automatico e tratamento de erros.
     """
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    credential_source = load_env_and_get_credential_source()
     
     with ResticScript("backup", credential_source=credential_source) as ctx:
         # Configurar logging
