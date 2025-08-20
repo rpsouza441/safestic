@@ -53,7 +53,8 @@ def run_restore_snapshot(snapshot_id: str) -> None:
                 max_attempts=3,
                 repository=ctx.repository,
                 env=ctx.env,
-                provider=ctx.provider
+                provider=ctx.provider,
+                credential_source=credential_source
             )
             
             # Obter informacoes do snapshot

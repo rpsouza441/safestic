@@ -36,7 +36,8 @@ def list_snapshots() -> None:
                 max_attempts=3,
                 repository=ctx.repository,
                 env=ctx.env,
-                provider=ctx.provider
+                provider=ctx.provider,
+                credential_source=credential_source
             )
             
             # Obter lista de snapshots

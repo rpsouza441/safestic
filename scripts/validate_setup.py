@@ -245,7 +245,8 @@ class SetupValidator:
             client = ResticClient(
                 repository=repository,
                 env=env,
-                provider=provider
+                provider=provider,
+                credential_source=credential_source
             )
             
             # Verificar se repositorio existe e e acessivel

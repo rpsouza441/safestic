@@ -165,7 +165,8 @@ class HealthChecker:
             client = ResticClient(
                 repository=repository,
                 env=env,
-                provider=provider
+                provider=provider,
+                credential_source=credential_source
             )
             client.check_repository_access()
             self.add_result("Repositorio", "Acesso", "OK", "Repositorio acessivel")

@@ -41,7 +41,8 @@ def main() -> None:
                 max_attempts=3,
                 repository=ctx.repository,
                 env=ctx.env,
-                provider=ctx.provider
+                provider=ctx.provider,
+                credential_source=credential_source
             )
             
             # Aplicar politica de retencao
