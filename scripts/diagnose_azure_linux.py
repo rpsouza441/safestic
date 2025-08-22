@@ -11,7 +11,8 @@ import sys
 import subprocess
 import json
 from pathlib import Path
-from dotenv import load_dotenv
+
+from services.restic_client import load_env_and_get_credential_source
 
 # Importar load_restic_env para carregar configurações como no Windows
 try:
@@ -103,9 +104,7 @@ def check_azure_credentials():
     
     if HAS_RESTIC_SERVICE:
         try:
-            # Carregar .env primeiro para obter CREDENTIAL_SOURCE
-            load_dotenv()
-            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
+            credential_source = load_env_and_get_credential_source()
             
             print(f"🔧 Usando load_restic_env com credential_source='{credential_source}' (como no Windows)")
             repository, env_vars, provider = load_restic_env(credential_source)
@@ -117,7 +116,7 @@ def check_azure_credentials():
     
     if not HAS_RESTIC_SERVICE or not repository:
         # Fallback para carregamento manual
-        load_dotenv()
+        load_env_and_get_credential_source()
         env_vars = dict(os.environ)
         repository = os.getenv("RESTIC_REPOSITORY")
         provider = os.getenv("STORAGE_PROVIDER")
@@ -168,15 +167,14 @@ def test_azure_connectivity():
     
     if HAS_RESTIC_SERVICE:
         try:
-            load_dotenv()
-            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
+            credential_source = load_env_and_get_credential_source()
             repository, env_vars, provider = load_restic_env(credential_source)
         except Exception:
-            load_dotenv()
+            load_env_and_get_credential_source()
             env_vars = dict(os.environ)
             repository = os.getenv("RESTIC_REPOSITORY")
     else:
-        load_dotenv()
+        load_env_and_get_credential_source()
         env_vars = dict(os.environ)
         repository = os.getenv("RESTIC_REPOSITORY")
     

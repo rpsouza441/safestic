@@ -10,12 +10,11 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime
-from dotenv import load_dotenv
 
 # Adicionar o diretório pai ao path para importar os módulos
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from services.restic_client import ResticClient, ResticError
+from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
 from services.restore_utils import (
     create_timestamped_restore_path,
     create_full_restore_structure,
@@ -32,10 +31,8 @@ def demonstrate_timestamped_restore():
     print("=" * 70)
     
     try:
-        # Carregar configurações do ambiente
-        load_dotenv()
-        credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
-        
+        credential_source = load_env_and_get_credential_source()
+
         # Criar cliente Restic
         client = ResticClient(credential_source=credential_source)
         

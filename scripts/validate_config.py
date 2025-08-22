@@ -7,17 +7,21 @@ Verifica se todas as configuracoes necessarias estao presentes e validas
 import os
 import sys
 from pathlib import Path
-from dotenv import load_dotenv
+
+from services.restic_client import load_env_and_get_credential_source
+
+credential_source = "env"
 
 def load_env_file():
     """Carrega arquivo .env"""
+    global credential_source
     env_path = Path('.env')
     if not env_path.exists():
         print("ERRO: Arquivo .env nao encontrado")
         print("DICA: Execute: cp .env.example .env")
         return False
-    
-    load_dotenv(env_path)
+
+    credential_source = load_env_and_get_credential_source().lower()
     print("OK: Arquivo .env carregado")
     return True
 
@@ -36,7 +40,6 @@ def validate_required_vars():
             missing_vars.append(var)
     
     # Validar RESTIC_PASSWORD considerando credential_source
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
     restic_password = os.getenv('RESTIC_PASSWORD')
     
     if credential_source == 'env' and (not restic_password or restic_password.strip() == ''):
@@ -69,7 +72,6 @@ def validate_storage_config():
             return False
     
     elif provider == 'aws':
-        credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
         if credential_source == 'env':
             aws_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
             missing = [var for var in aws_vars if not os.getenv(var)]
@@ -80,9 +82,8 @@ def validate_storage_config():
             print(f"OK: Credenciais AWS serao carregadas do {credential_source}")
         print("✅ Configuracao AWS valida")
         return True
-    
+
     elif provider == 'azure':
-        credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
         if credential_source == 'env':
             azure_vars = ['AZURE_ACCOUNT_NAME', 'AZURE_ACCOUNT_KEY']
             missing = [var for var in azure_vars if not os.getenv(var)]
