@@ -16,10 +16,8 @@ def show_repository_stats() -> None:
     
     Utiliza o ResticClient para obter estatisticas com retry automatico e tratamento de erros.
     """
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
-    
-    with ResticScript("repository_stats", credential_source=credential_source) as ctx:
+    # Usar ResticScript que já carrega as credenciais corretamente
+    with ResticScript("repository_stats") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

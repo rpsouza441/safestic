@@ -22,8 +22,8 @@ CHECK_ALL_CREDS = @$(PYTHON_CMD) scripts/check_credentials.py --quiet || (echo "
 CHECK_ALL_CREDS_REQUIRED = @$(PYTHON_CMD) scripts/check_credentials.py || (echo "" && echo "ERRO: Credenciais nao configuradas!" && echo "Opcoes disponiveis:" && echo "  make setup-credentials        - Configuracao interativa (escolha keyring ou .env)" && echo "  make setup-credentials-keyring - Keyring do sistema (mais seguro)" && echo "  make setup-credentials-env    - Arquivo .env (menos seguro)" && echo "" && exit 1)
 
 # Helpers para execucao Python com funcao centralizada
-PYTHON_WITH_CREDS = $(PYTHON_CMD) -c "from services.restic_client import ResticClient, load_env_and_get_credential_source; credential_source = load_env_and_get_credential_source(); client = ResticClient(credential_source=credential_source)
-PYTHON_WITH_CONFIG = $(PYTHON_CMD) -c "from services.restic_client import load_env_and_get_credential_source; from services.restic import load_restic_config; credential_source = load_env_and_get_credential_source(); config = load_restic_config(credential_source)
+PYTHON_WITH_CREDS = $(PYTHON_CMD) -c "from services.restic_client import ResticClient, load_env_and_get_credential_source; credential_source = load_env_and_get_credential_source(); client = ResticClient(credential_source=credential_source)"
+PYTHON_WITH_CONFIG = $(PYTHON_CMD) -c "from services.restic_client import load_env_and_get_credential_source; from services.restic import load_restic_config; credential_source = load_env_and_get_credential_source(); config = load_restic_config(credential_source)"
 
 # Macros para comandos específicos do OS
 ifeq ($(OS),Windows_NT)

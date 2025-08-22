@@ -13,6 +13,13 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Importar load_restic_env para carregar configurações como no Windows
+try:
+    from services.restic import load_restic_env
+    HAS_RESTIC_SERVICE = True
+except ImportError:
+    HAS_RESTIC_SERVICE = False
+
 def print_section(title: str):
     """Imprime uma seção com formatação."""
     print(f"\n{'='*60}")
@@ -89,18 +96,42 @@ def check_azure_credentials():
     """Verifica as credenciais Azure."""
     print_section("VERIFICAÇÃO DAS CREDENCIAIS AZURE")
     
-    # Carregar .env
-    load_dotenv()
+    # Tentar usar load_restic_env como no Windows, com fallback para load_dotenv
+    repository = None
+    env_vars = {}
+    provider = None
+    
+    if HAS_RESTIC_SERVICE:
+        try:
+            # Carregar .env primeiro para obter CREDENTIAL_SOURCE
+            load_dotenv()
+            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
+            
+            print(f"🔧 Usando load_restic_env com credential_source='{credential_source}' (como no Windows)")
+            repository, env_vars, provider = load_restic_env(credential_source)
+            print(f"✅ Configurações carregadas via load_restic_env: provider={provider}")
+        except Exception as e:
+            print(f"⚠️  Falha ao usar load_restic_env: {e}")
+            print("🔄 Fallback para carregamento manual...")
+            HAS_RESTIC_SERVICE = False
+    
+    if not HAS_RESTIC_SERVICE or not repository:
+        # Fallback para carregamento manual
+        load_dotenv()
+        env_vars = dict(os.environ)
+        repository = os.getenv("RESTIC_REPOSITORY")
+        provider = os.getenv("STORAGE_PROVIDER")
+        print("🔧 Usando carregamento manual de .env (modo Linux antigo)")
     
     # Verificar variáveis essenciais
     required_vars = {
-        "RESTIC_REPOSITORY": os.getenv("RESTIC_REPOSITORY"),
-        "RESTIC_PASSWORD": os.getenv("RESTIC_PASSWORD"),
-        "AZURE_ACCOUNT_NAME": os.getenv("AZURE_ACCOUNT_NAME"),
-        "AZURE_ACCOUNT_KEY": os.getenv("AZURE_ACCOUNT_KEY"),
-        "STORAGE_PROVIDER": os.getenv("STORAGE_PROVIDER"),
-        "STORAGE_BUCKET": os.getenv("STORAGE_BUCKET"),
-        "CREDENTIAL_SOURCE": os.getenv("CREDENTIAL_SOURCE", "env")
+        "RESTIC_REPOSITORY": repository or env_vars.get("RESTIC_REPOSITORY"),
+        "RESTIC_PASSWORD": env_vars.get("RESTIC_PASSWORD"),
+        "AZURE_ACCOUNT_NAME": env_vars.get("AZURE_ACCOUNT_NAME"),
+        "AZURE_ACCOUNT_KEY": env_vars.get("AZURE_ACCOUNT_KEY"),
+        "STORAGE_PROVIDER": provider or env_vars.get("STORAGE_PROVIDER"),
+        "STORAGE_BUCKET": env_vars.get("STORAGE_BUCKET"),
+        "CREDENTIAL_SOURCE": env_vars.get("CREDENTIAL_SOURCE", "env")
     }
     
     print("Variáveis de ambiente:")
@@ -130,11 +161,28 @@ def test_azure_connectivity():
     """Testa conectividade específica com Azure."""
     print_section("TESTE DE CONECTIVIDADE AZURE")
     
-    load_dotenv()
+    # Usar a mesma lógica de carregamento da função anterior
+    repository = None
+    env_vars = {}
+    provider = None
     
-    account_name = os.getenv("AZURE_ACCOUNT_NAME")
-    account_key = os.getenv("AZURE_ACCOUNT_KEY")
-    storage_bucket = os.getenv("STORAGE_BUCKET")
+    if HAS_RESTIC_SERVICE:
+        try:
+            load_dotenv()
+            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
+            repository, env_vars, provider = load_restic_env(credential_source)
+        except Exception:
+            load_dotenv()
+            env_vars = dict(os.environ)
+            repository = os.getenv("RESTIC_REPOSITORY")
+    else:
+        load_dotenv()
+        env_vars = dict(os.environ)
+        repository = os.getenv("RESTIC_REPOSITORY")
+    
+    account_name = env_vars.get("AZURE_ACCOUNT_NAME")
+    account_key = env_vars.get("AZURE_ACCOUNT_KEY")
+    storage_bucket = env_vars.get("STORAGE_BUCKET")
     
     if not all([account_name, account_key, storage_bucket]):
         print("❌ Credenciais Azure incompletas")
@@ -147,9 +195,15 @@ def test_azure_connectivity():
     env = os.environ.copy()
     env["AZURE_ACCOUNT_NAME"] = account_name
     env["AZURE_ACCOUNT_KEY"] = account_key
-    env["RESTIC_PASSWORD"] = os.getenv("RESTIC_PASSWORD", "test")
+    env["RESTIC_PASSWORD"] = env_vars.get("RESTIC_PASSWORD", "test")
     
-    repo = f"azure:{storage_bucket}:restic"
+    # Usar o repositório construído pelo load_restic_env se disponível
+    repo = repository if repository else f"azure:{storage_bucket}:restic"
+    print(f"📍 Repositório a ser testado: {repo}")
+    if repository:
+        print("✅ Repositório construído via load_restic_env (como Windows)")
+    else:
+        print("⚠️  Repositório construído manualmente (modo Linux antigo)")
     
     # Teste 1: Listar snapshots (deve falhar se repo não existe)
     print(f"\nTeste 1: Tentando listar snapshots em {repo}")

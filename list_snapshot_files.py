@@ -22,10 +22,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main(snapshot_id: str, output_format: str = "text", output_file: str = None, pretty: bool = False) -> None:
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
-    
-    with ResticScript("list_snapshot_files", credential_source=credential_source) as ctx:
+    # Usar ResticScript que já carrega as credenciais corretamente
+    with ResticScript("list_snapshot_files") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

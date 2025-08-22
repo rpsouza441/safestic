@@ -12,10 +12,8 @@ def main() -> None:
     
     Utiliza o ResticClient para aplicar politicas de retencao com retry automatico e tratamento de erros.
     """
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
-    
-    with ResticScript("manual_prune", credential_source=credential_source) as ctx:
+    # Usar ResticScript que já carrega as credenciais corretamente
+    with ResticScript("manual_prune") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

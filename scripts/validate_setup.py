@@ -237,8 +237,6 @@ class SetupValidator:
         
         try:
             # Carregar ambiente com credential_source correto
-            from dotenv import load_dotenv
-            load_dotenv()
             credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
             repository, env, provider = load_restic_env(credential_source)
             

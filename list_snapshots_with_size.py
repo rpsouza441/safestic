@@ -17,10 +17,8 @@ def list_snapshots_with_size() -> None:
     
     Utiliza o ResticClient para obter snapshots e seus tamanhos com retry automatico e tratamento de erros.
     """
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
-    
-    with ResticScript("list_snapshots_with_size", credential_source=credential_source) as ctx:
+    # Usar ResticScript que já carrega as credenciais corretamente
+    with ResticScript("list_snapshots_with_size") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

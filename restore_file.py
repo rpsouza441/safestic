@@ -40,10 +40,8 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
     include_path : str
         Caminho do arquivo ou diretorio a ser restaurado
     """
-    load_dotenv()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
-    
-    with ResticScript("restore_file", credential_source=credential_source) as ctx:
+    # Usar ResticScript que já carrega as credenciais corretamente
+    with ResticScript("restore_file") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

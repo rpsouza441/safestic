@@ -11,12 +11,8 @@ def check_restic_access() -> None:
     
     Utiliza o ResticClient para verificar acesso ao repositorio com retry automatico e tratamento de erros.
     """
-    # Obter fonte de credenciais do .env
-    from dotenv import load_dotenv
-    load_dotenv()
-    credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
-    
-    with ResticScript("check_restic_access", credential_source=credential_source) as ctx:
+    # Usar ResticScript que já carrega as credenciais corretamente
+    with ResticScript("check_restic_access") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -65,7 +61,7 @@ def check_restic_access() -> None:
                 repository=ctx.repository,
                 env=ctx.env,
                 provider=ctx.provider,
-                credential_source=credential_source
+                credential_source=ctx.credential_source
             )
             
             # Verificar se o Restic esta disponivel

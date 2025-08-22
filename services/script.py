@@ -1,4 +1,4 @@
-﻿"""Gerenciador de contexto compartilhado para scripts CLI.
+"""Gerenciador de contexto compartilhado para scripts CLI.
 
 Este modulo expoe a classe :class:`ResticScript` que centraliza o codigo
 boilerplate necessario para todos os utilitarios de linha de comando:
@@ -38,11 +38,16 @@ class ResticScript:
         self, 
         log_prefix: str, 
         log_dir: Optional[str] = None,
-        credential_source: str = "env",
+        credential_source: Optional[str] = None,
         log_level: str = "INFO",
     ):
         self.log_prefix = log_prefix
         self.log_dir = log_dir or os.getenv("LOG_DIR", "logs")
+        # Se credential_source não for especificado, obter do .env
+        if credential_source is None:
+            from dotenv import load_dotenv
+            load_dotenv()
+            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
         self.credential_source = credential_source
         self.log_level = log_level
         self.repository: str = ""
