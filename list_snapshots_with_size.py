@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 import logging
-from dotenv import load_dotenv
 
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError
+from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
 
 
 def list_snapshots_with_size() -> None:
@@ -17,8 +15,8 @@ def list_snapshots_with_size() -> None:
     
     Utiliza o ResticClient para obter snapshots e seus tamanhos com retry automatico e tratamento de erros.
     """
-    # Usar ResticScript que já carrega as credenciais corretamente
-    with ResticScript("list_snapshots_with_size") as ctx:
+    credential_source = load_env_and_get_credential_source()
+    with ResticScript("list_snapshots_with_size", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

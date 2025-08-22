@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
-from dotenv import load_dotenv
 
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError
+from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
 
 
 def show_repository_stats() -> None:
@@ -16,8 +14,8 @@ def show_repository_stats() -> None:
     
     Utiliza o ResticClient para obter estatisticas com retry automatico e tratamento de erros.
     """
-    # Usar ResticScript que já carrega as credenciais corretamente
-    with ResticScript("repository_stats") as ctx:
+    credential_source = load_env_and_get_credential_source()
+    with ResticScript("repository_stats", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

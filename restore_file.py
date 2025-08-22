@@ -4,10 +4,9 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from dotenv import load_dotenv
 
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError
+from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
 from services.restore_utils import (
     create_full_restore_structure,
     format_restore_info,
@@ -40,8 +39,8 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
     include_path : str
         Caminho do arquivo ou diretorio a ser restaurado
     """
-    # Usar ResticScript que já carrega as credenciais corretamente
-    with ResticScript("restore_file") as ctx:
+    credential_source = load_env_and_get_credential_source()
+    with ResticScript("restore_file", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,

@@ -20,11 +20,9 @@ try:
 except ImportError:
     get_credential = None
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+from services.restic_client import load_env_and_get_credential_source
+
+credential_source = load_env_and_get_credential_source().lower()
 
 
 def check_restic_password() -> Tuple[bool, str]:
@@ -33,9 +31,6 @@ def check_restic_password() -> Tuple[bool, str]:
     Returns:
         Tuple[bool, str]: (configurado, mensagem)
     """
-    # Obter CREDENTIAL_SOURCE do .env
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
-    
     # Tentar obter da fonte configurada
     if get_credential:
         try:
@@ -67,7 +62,6 @@ def check_cloud_credentials() -> Tuple[bool, List[str]]:
         Tuple[bool, List[str]]: (todas_configuradas, lista_de_mensagens)
     """
     provider = os.getenv('STORAGE_PROVIDER', '').lower()
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env').lower()
     messages = []
     all_configured = True
     
