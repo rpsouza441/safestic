@@ -251,23 +251,29 @@ class SetupValidator:
                 self.add_result("Repositorio", "Acesso", "OK", "Repositorio acessivel")
                 
                 # Tentar operacao basica (listar snapshots)
-                result = subprocess.run(
-                    ["restic", "-r", client.repository, "snapshots", "--json", "--last", "1"], 
-                    capture_output=True, text=True, timeout=30,
-                    env=dict(os.environ, **client.env)
-                )
-                
-                if result.returncode == 0:
-                    snapshots = json.loads(result.stdout) if result.stdout.strip() else []
+                try:
+                    snapshots = client.list_snapshots()
                     if snapshots:
-                        self.add_result("Repositorio", "Snapshots", "OK", 
-                                      f"Repositorio funcional com {len(snapshots)} snapshot(s)")
+                        self.add_result(
+                            "Repositorio",
+                            "Snapshots",
+                            "OK",
+                            f"Repositorio funcional com {len(snapshots)} snapshot(s)",
+                        )
                     else:
-                        self.add_result("Repositorio", "Snapshots", "OK", 
-                                      "Repositorio vazio (pronto para primeiro backup)")
-                else:
-                    self.add_result("Repositorio", "Operacao", "WARNING", 
-                                  "Repositorio acessivel mas com problemas em operacoes")
+                        self.add_result(
+                            "Repositorio",
+                            "Snapshots",
+                            "OK",
+                            "Repositorio vazio (pronto para primeiro backup)",
+                        )
+                except Exception:
+                    self.add_result(
+                        "Repositorio",
+                        "Operacao",
+                        "WARNING",
+                        "Repositorio acessivel mas com problemas em operacoes",
+                    )
                 
             except Exception as e:
                 if "repository does not exist" in str(e).lower():
