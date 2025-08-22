@@ -221,18 +221,26 @@ def check_python_dependencies():
     """Verifica dependências Python."""
     print_section("VERIFICAÇÃO DAS DEPENDÊNCIAS PYTHON")
     
-    required_packages = [
-        "python-dotenv",
-        "keyring",
-        "pythonjsonlogger"
-    ]
+    # Verificar python-dotenv
+    try:
+        from dotenv import load_dotenv
+        print("[OK] python-dotenv: OK")
+    except ImportError:
+        print("[X] python-dotenv: NÃO INSTALADO")
     
-    for package in required_packages:
-        try:
-            __import__(package.replace("-", "_"))
-            print(f"✅ {package}: OK")
-        except ImportError:
-            print(f"❌ {package}: NÃO INSTALADO")
+    # Verificar keyring
+    try:
+        import keyring
+        print("[OK] keyring: OK")
+    except ImportError:
+        print("[X] keyring: NÃO INSTALADO")
+    
+    # Verificar pythonjsonlogger
+    try:
+        import pythonjsonlogger
+        print("[OK] pythonjsonlogger: OK")
+    except ImportError:
+        print("[X] pythonjsonlogger: NÃO INSTALADO")
 
 def main():
     """Função principal."""

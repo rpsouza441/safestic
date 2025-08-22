@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Script para reparar repositorio Restic - Safestic
 Repara snapshots e dados corrompidos no repositorio
@@ -40,8 +40,7 @@ def build_restic_env():
         if os.getenv('AWS_DEFAULT_REGION'):
             env['AWS_DEFAULT_REGION'] = os.getenv('AWS_DEFAULT_REGION')
     elif provider == 'azure':
-        account = os.getenv('AZURE_ACCOUNT_NAME')
-        env['RESTIC_REPOSITORY'] = f'azure:{account}:{bucket}'
+        env['RESTIC_REPOSITORY'] = f'azure:{bucket}:restic'
         # Credenciais Azure
         if os.getenv('AZURE_ACCOUNT_KEY'):
             env['AZURE_ACCOUNT_KEY'] = os.getenv('AZURE_ACCOUNT_KEY')

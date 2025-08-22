@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Script para montar repositorio Restic como sistema de arquivos - Safestic
 Permite navegar pelos snapshots como diretorios normais
@@ -34,8 +34,7 @@ def build_restic_env():
     elif provider == 'aws':
         env['RESTIC_REPOSITORY'] = f's3:{bucket}'
     elif provider == 'azure':
-        account = os.getenv('AZURE_ACCOUNT_NAME')
-        env['RESTIC_REPOSITORY'] = f'azure:{account}:{bucket}'
+        env['RESTIC_REPOSITORY'] = f'azure:{bucket}:restic'
     elif provider == 'gcp':
         env['RESTIC_REPOSITORY'] = f'gs:{bucket}'
     
