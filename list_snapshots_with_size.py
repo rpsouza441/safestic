@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 import logging
-from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -27,12 +24,11 @@ def list_snapshots_with_size() -> None:
         )
         
         try:
-            # Criar cliente Restic com retry usando o ambiente já carregado
             client = ResticClient(
                 repository=ctx.repository,
                 env=ctx.env,
                 provider=ctx.provider,
-                credential_source=credential_source
+                credential_source=ctx.credential_source,
             )
             
             # Obter lista de snapshots

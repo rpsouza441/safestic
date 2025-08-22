@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from datetime import datetime
 import logging
 from services.script import ResticScript
-from services.restic_client import ResticClient, load_env_and_get_credential_source, ResticError
+from services.restic_client import ResticClient, ResticError
 
 
 def list_snapshots() -> None:
-    """Fetch and print all snapshots from the repository.
-    
-    Utiliza o ResticClient para obter a lista de snapshots com retry automatico e tratamento de erros.
-    """
-    credential_source = load_env_and_get_credential_source()
-
-    with ResticScript("list_snapshots", credential_source=credential_source) as ctx:
+    """Fetch and print all snapshots from the repository."""
+    with ResticScript("list_snapshots") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -34,7 +28,7 @@ def list_snapshots() -> None:
                 repository=ctx.repository,
                 env=ctx.env,
                 provider=ctx.provider,
-                credential_source=credential_source
+                credential_source=ctx.credential_source,
             )
             
             # Obter lista de snapshots

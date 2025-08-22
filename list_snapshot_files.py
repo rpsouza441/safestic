@@ -1,10 +1,8 @@
 import argparse
 import json
 import logging
-import os
 import sys
 from pathlib import Path
-from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -34,8 +32,13 @@ def main(snapshot_id: str, output_format: str = "text", output_file: str = None,
         ctx.log(f"Listando arquivos do snapshot '{snapshot_id}'...")
         
         try:
-            # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3, credential_source=credential_source)
+            client = ResticClient(
+                max_attempts=3,
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider,
+                credential_source=ctx.credential_source,
+            )
             
             # Listar arquivos do snapshot
             files_output = client.list_snapshot_files(snapshot_id)

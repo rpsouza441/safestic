@@ -1,55 +1,46 @@
 import logging
-import os
 import sys
-from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
 
 
 def main() -> None:
-    """Executa a limpeza manual de snapshots antigos.
-    
-    Utiliza o ResticClient para aplicar politicas de retencao com retry automatico e tratamento de erros.
-    """
-    # Usar ResticScript que já carrega as credenciais corretamente
+    """Executa a limpeza manual de snapshots antigos."""
     with ResticScript("manual_prune") as ctx:
-        # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler()],
         )
-        
+
+        config = ctx.config
+        if not config:
+            ctx.log("[FATAL] Configuracao do Restic nao carregada")
+            sys.exit(1)
+
         ctx.log("=== Iniciando limpeza manual de snapshots com Restic ===")
 
         try:
-            # Obter configuracoes de retencao
-            keep_daily = int(os.getenv("RETENTION_KEEP_DAILY", "7"))
-            keep_weekly = int(os.getenv("RETENTION_KEEP_WEEKLY", "4"))
-            keep_monthly = int(os.getenv("RETENTION_KEEP_MONTHLY", "6"))
+            ctx.log("Aplicando politica de retencao:")
+            ctx.log(f"- Manter backups diarios: {config.keep_daily}")
+            ctx.log(f"- Manter backups semanais: {config.keep_weekly}")
+            ctx.log(f"- Manter backups mensais: {config.keep_monthly}")
 
-            ctx.log(f"Aplicando politica de retencao:")
-            ctx.log(f"- Manter backups diarios: {keep_daily}")
-            ctx.log(f"- Manter backups semanais: {keep_weekly}")
-            ctx.log(f"- Manter backups mensais: {keep_monthly}")
-
-            # Criar cliente Restic com retry usando o ambiente já carregado
             client = ResticClient(
                 max_attempts=3,
                 repository=ctx.repository,
                 env=ctx.env,
                 provider=ctx.provider,
-                credential_source=credential_source
+                credential_source=ctx.credential_source,
             )
-            
-            # Aplicar politica de retencao
+
             success = client.apply_retention_policy(
-                keep_daily=keep_daily,
-                keep_weekly=keep_weekly,
-                keep_monthly=keep_monthly
+                keep_daily=config.keep_daily,
+                keep_weekly=config.keep_weekly,
+                keep_monthly=config.keep_monthly,
             )
-            
+
             if success:
                 ctx.log("✅ Limpeza de snapshots concluida com sucesso.")
             else:

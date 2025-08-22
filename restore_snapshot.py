@@ -1,15 +1,12 @@
 import argparse
-import datetime
 import logging
-import os
-from pathlib import Path
+import sys
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
+from services.restic_client import ResticClient, ResticError
 from services.restore_utils import (
     create_timestamped_restore_path,
-    create_full_restore_structure,
     format_restore_info,
-    get_snapshot_paths_from_data
+    get_snapshot_paths_from_data,
 )
 
 
@@ -22,18 +19,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_restore_snapshot(snapshot_id: str) -> None:
-    """Restaura um snapshot inteiro para o diretorio alvo.
-    
-    Utiliza o ResticClient para executar a restauracao com retry automatico e tratamento de erros.
-    
-    Parameters
-    ----------
-    snapshot_id : str
-        ID do snapshot a ser restaurado ou "latest" para o mais recente
-    """
-    credential_source = load_env_and_get_credential_source()
-    
-    with ResticScript("restore_snapshot", credential_source=credential_source) as ctx:
+    """Restaura um snapshot inteiro para o diretorio alvo."""
+    with ResticScript("restore_snapshot") as ctx:
         # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
@@ -41,7 +28,11 @@ def run_restore_snapshot(snapshot_id: str) -> None:
             handlers=[logging.StreamHandler()],
         )
         
-        base_restore_target = os.getenv("RESTORE_TARGET_DIR", "C:\\Restore")
+        config = ctx.config
+        if not config or not config.restore_target_dir:
+            ctx.log("[FATAL] Diretório de restauração não configurado")
+            sys.exit(1)
+        base_restore_target = config.restore_target_dir
         ctx.log("=== Iniciando restauracao de snapshot com Restic ===")
 
         try:
@@ -51,7 +42,7 @@ def run_restore_snapshot(snapshot_id: str) -> None:
                 repository=ctx.repository,
                 env=ctx.env,
                 provider=ctx.provider,
-                credential_source=credential_source
+                credential_source=ctx.credential_source,
             )
             
             # Obter informacoes do snapshot

@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
-from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -34,7 +32,7 @@ def show_repository_stats() -> None:
                 repository=ctx.repository,
                 env=ctx.env,
                 provider=ctx.provider,
-                credential_source=credential_source
+                credential_source=ctx.credential_source,
             )
             
             # Obter estatisticas do repositorio

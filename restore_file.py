@@ -1,17 +1,12 @@
 import argparse
-import json
 import logging
-import os
-from datetime import datetime
-from pathlib import Path
-from dotenv import load_dotenv
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
 from services.restore_utils import (
     create_full_restore_structure,
     format_restore_info,
-    get_snapshot_paths_from_data
+    get_snapshot_paths_from_data,
 )
 
 
@@ -29,32 +24,29 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_restore_file(snapshot_id: str, include_path: str) -> None:
-    """Restaura arquivo ou diretorio especifico do snapshot.
-    
-    Utiliza o ResticClient para executar a restauracao com retry automatico e tratamento de erros.
-    
-    Parameters
-    ----------
-    snapshot_id : str
-        ID do snapshot a ser restaurado ou "latest" para o mais recente
-    include_path : str
-        Caminho do arquivo ou diretorio a ser restaurado
-    """
-    # Usar ResticScript que já carrega as credenciais corretamente
+    """Restaura arquivo ou diretorio especifico do snapshot."""
     with ResticScript("restore_file") as ctx:
-        # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler()],
         )
-        
-        base_restore_target = os.getenv("RESTORE_TARGET_DIR", "C:\\Restore")
+
+        config = ctx.config
+        if not config or not config.restore_target_dir:
+            ctx.log("[FATAL] Diretório de restauração não configurado")
+            return
+        base_restore_target = config.restore_target_dir
         ctx.log("=== Iniciando restauracao de arquivo com Restic ===")
-        
+
         try:
-            # Criar cliente Restic com retry
-            client = ResticClient(max_attempts=3, credential_source=credential_source)
+            client = ResticClient(
+                max_attempts=3,
+                repository=ctx.repository,
+                env=ctx.env,
+                provider=ctx.provider,
+                credential_source=ctx.credential_source,
+            )
             
             # Obter informacoes do snapshot
             ctx.log(f"Buscando informacoes do snapshot '{snapshot_id}'...")
