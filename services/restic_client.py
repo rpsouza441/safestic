@@ -448,6 +448,39 @@ class ResticClient:
             self.logger.error("Erro ao verificar instalacao do Restic: %s", exc)
             return False
 
+    def supports_mount(self) -> bool:
+        """Verifica se o comando ``mount`` esta disponivel no Restic."""
+        self.logger.info("Verificando suporte ao comando mount")
+        success, result, _ = self._run_command(["restic", "help"], check=False)
+        return success and result is not None and "mount" in result.stdout
+
+    @with_retry()
+    def check_repository(self, read_data_subset: Optional[str] = None) -> bool:
+        """Executa ``restic check`` para validar o repositorio.
+
+        Parameters
+        ----------
+        read_data_subset : Optional[str], optional
+            Percentual de dados a serem lidos para verificacao, por padrao None
+
+        Returns
+        -------
+        bool
+            True se o repositorio passou na verificacao
+
+        Raises
+        ------
+        ResticError
+            Se ocorrer um erro durante a verificacao
+        """
+        cmd = ["restic", "-r", self.repository, "check"]
+        if read_data_subset:
+            cmd.extend(["--read-data-subset", read_data_subset])
+
+        self.logger.info("Verificando integridade do repositorio")
+        success, _, _ = self._run_command(cmd)
+        return success
+
     @with_retry()
     def backup(
         self,
@@ -585,6 +618,81 @@ class ResticClient:
         return success
 
     @with_retry()
+    def forget_snapshots(
+        self,
+        keep_hourly: int = 0,
+        keep_daily: int = 7,
+        keep_weekly: int = 4,
+        keep_monthly: int = 6,
+        tags: Optional[List[str]] = None,
+        prune: bool = True,
+    ) -> bool:
+        """Esquece snapshots antigos aplicando politica de retencao.
+
+        Parameters
+        ----------
+        keep_hourly : int, optional
+            Numero de snapshots horarios a manter, por padrao 0
+        keep_daily : int, optional
+            Numero de snapshots diarios a manter, por padrao 7
+        keep_weekly : int, optional
+            Numero de snapshots semanais a manter, por padrao 4
+        keep_monthly : int, optional
+            Numero de snapshots mensais a manter, por padrao 6
+        tags : Optional[List[str]], optional
+            Lista de tags usadas para filtrar snapshots, por padrao None
+        prune : bool, optional
+            Se True, executa prune apos forget, por padrao True
+
+        Returns
+        -------
+        bool
+            True se a politica foi aplicada com sucesso
+
+        Raises
+        ------
+        ResticError
+            Se ocorrer um erro ao aplicar a politica
+        """
+        cmd = [
+            "restic",
+            "-r",
+            self.repository,
+            "forget",
+            "--keep-hourly",
+            str(keep_hourly),
+            "--keep-daily",
+            str(keep_daily),
+            "--keep-weekly",
+            str(keep_weekly),
+            "--keep-monthly",
+            str(keep_monthly),
+        ]
+
+        if tags:
+            for tag in tags:
+                if tag.strip():
+                    cmd.extend(["--tag", tag.strip()])
+
+        if prune:
+            cmd.append("--prune")
+
+        cmd.append("--verbose")
+
+        self.logger.info(
+            "Esquecendo snapshots com politica de retencao (h:%d, d:%d, w:%d, m:%d, tags:%s, prune:%s)",
+            keep_hourly,
+            keep_daily,
+            keep_weekly,
+            keep_monthly,
+            tags,
+            prune,
+        )
+
+        success, _, _ = self._run_command(cmd)
+        return success
+
+    @with_retry()
     def list_snapshots(self) -> List[Dict[str, Any]]:
         """Lista todos os snapshots no repositorio.
 
@@ -672,6 +780,93 @@ class ResticClient:
             return files
 
         return []
+
+    @with_retry()
+    def rebuild_index(self, read_all_packs: bool = False) -> bool:
+        """Reconstrói o indice do repositorio.
+
+        Parameters
+        ----------
+        read_all_packs : bool, optional
+            Se True, usa ``--read-all-packs`` para verificacao completa
+
+        Returns
+        -------
+        bool
+            True se a reconstrucao foi bem-sucedida
+
+        Raises
+        ------
+        ResticError
+            Se ocorrer um erro durante a reconstrucao
+        """
+        cmd = ["restic", "-r", self.repository, "rebuild-index"]
+        if read_all_packs:
+            cmd.append("--read-all-packs")
+
+        self.logger.info("Reconstruindo indice do repositorio")
+        success, _, _ = self._run_command(cmd)
+        return success
+
+    @with_retry()
+    def repair_snapshots(self) -> bool:
+        """Repara snapshots corrompidos no repositorio."""
+        self.logger.info("Reparando snapshots do repositorio")
+        success, _, _ = self._run_command(
+            ["restic", "-r", self.repository, "repair", "snapshots"]
+        )
+        return success
+
+    @with_retry()
+    def repair_index(self) -> bool:
+        """Repara o indice do repositorio."""
+        self.logger.info("Reparando indice do repositorio")
+        success, _, _ = self._run_command(
+            ["restic", "-r", self.repository, "repair", "index"]
+        )
+        return success
+
+    @with_retry()
+    def repair_packs(self) -> bool:
+        """Repara packs corrompidos no repositorio."""
+        self.logger.info("Reparando packs do repositorio")
+        success, _, _ = self._run_command(
+            ["restic", "-r", self.repository, "repair", "packs"]
+        )
+        return success
+
+    def mount_repository(self, mount_path: str, extra_args: Optional[List[str]] = None) -> subprocess.Popen[str]:
+        """Monta o repositorio utilizando ``restic mount``.
+
+        Esta operacao e bloqueante e retorna o processo iniciado para que o
+        chamador possa gerenciar seu ciclo de vida.
+
+        Parameters
+        ----------
+        mount_path : str
+            Caminho onde o repositorio sera montado
+        extra_args : Optional[List[str]], optional
+            Lista de argumentos adicionais a serem passados para ``restic mount``
+
+        Returns
+        -------
+        subprocess.Popen[str]
+            Processo em execucao do comando ``restic mount``
+        """
+        cmd = ["restic", "-r", self.repository, "mount", mount_path]
+        if extra_args:
+            cmd.extend(extra_args)
+
+        self.logger.info("Montando repositorio em %s", mount_path)
+        process = subprocess.Popen(
+            cmd,
+            env=self.env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        return process
 
     @with_retry()
     def restore_snapshot(

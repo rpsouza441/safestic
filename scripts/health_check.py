@@ -169,16 +169,15 @@ class HealthChecker:
             client.check_repository_access()
             self.add_result("Repositorio", "Acesso", "OK", "Repositorio acessivel")
             
-            # Tentar listar snapshots
+            # Tentar listar snapshots usando ResticClient
             try:
-                result = subprocess.run(["restic", "-r", client.repository, "snapshots", "--json"], 
-                                      capture_output=True, text=True, timeout=30,
-                                      env=dict(os.environ, **client.env))
-                if result.returncode == 0:
-                    snapshots = json.loads(result.stdout) if result.stdout.strip() else []
-                    self.add_result("Repositorio", "Snapshots", "OK", f"{len(snapshots)} snapshots encontrados")
-                else:
-                    self.add_result("Repositorio", "Snapshots", "WARNING", "Erro ao listar snapshots")
+                snapshots = client.list_snapshots()
+                self.add_result(
+                    "Repositorio",
+                    "Snapshots",
+                    "OK",
+                    f"{len(snapshots)} snapshots encontrados",
+                )
             except Exception as e:
                 self.add_result("Repositorio", "Snapshots", "WARNING", f"Erro: {e}")
                 
