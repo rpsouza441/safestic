@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 import logging
 
 from services.script import ResticScript
@@ -62,10 +61,10 @@ def list_snapshots_with_size() -> None:
 
         except ResticError as exc:
             ctx.log(f"[ERRO] {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
         except Exception as exc:
             ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":

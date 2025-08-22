@@ -6,7 +6,6 @@ from services.restic_client import ResticClient, ResticError
 from services.restore_utils import (
     create_full_restore_structure,
     format_restore_info,
-    get_snapshot_paths_from_data,
 )
 
 

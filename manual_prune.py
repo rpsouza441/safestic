@@ -1,5 +1,4 @@
 import logging
-import sys
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -17,7 +16,7 @@ def main() -> None:
         config = ctx.config
         if not config:
             ctx.log("[FATAL] Configuracao do Restic nao carregada")
-            sys.exit(1)
+            raise SystemExit(1)
 
         ctx.log("=== Iniciando limpeza manual de snapshots com Restic ===")
 
@@ -45,14 +44,14 @@ def main() -> None:
                 ctx.log("✅ Limpeza de snapshots concluida com sucesso.")
             else:
                 ctx.log("Erro durante a limpeza de snapshots")
-                sys.exit(1)
+                raise SystemExit(1)
 
         except ResticError as exc:
             ctx.log(f"[ERRO] {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
         except Exception as exc:
             ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
         finally:
             ctx.log("=== Fim do processo de limpeza de snapshots ===")
 
