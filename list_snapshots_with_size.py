@@ -53,7 +53,7 @@ def list_snapshots_with_size() -> None:
 
             # Mostrar estatisticas gerais do repositorio
             try:
-                repo_stats = client.get_repository_stats()
+                repo_stats = client.get_stats()
                 if repo_stats and "total_size" in repo_stats:
                     total_repo_bytes = repo_stats.get("total_size", 0)
                     total_repo_gib = total_repo_bytes / (1024 ** 3)

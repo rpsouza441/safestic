@@ -155,7 +155,7 @@ dry-run:
 ## Mostra estatisticas detalhadas do repositorio
 stats:
 	@echo "Obtendo estatisticas detalhadas..."
-	$(PYTHON_WITH_CREDS); import json; stats = client.get_repository_stats(); print(json.dumps(stats, indent=2))"
+    $(PYTHON_WITH_CREDS); import json; stats = client.get_stats(); print(json.dumps(stats, indent=2))"
 
 ## Aplica politica de retencao (prune)
 prune:

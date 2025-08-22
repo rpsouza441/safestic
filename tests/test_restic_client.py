@@ -163,10 +163,10 @@ class TestResticClient:
         client.restore_snapshot(snapshot_id="abc123", target_dir="/restore/path")
         mock_successful_subprocess.assert_called_once()
 
-    def test_get_repository_stats_success(self, mock_successful_subprocess) -> None:
+    def test_get_stats_success(self, mock_successful_subprocess) -> None:
         """Testa obtencao de estatisticas do repositorio com sucesso."""
         mock_successful_subprocess.return_value.stdout = json.dumps({"total_size": 1024, "total_file_count": 100})
         client = ResticClient()
-        stats = client.get_repository_stats()
+        stats = client.get_stats()
         assert stats["total_size"] == 1024
         assert stats["total_file_count"] == 100

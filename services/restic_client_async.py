@@ -19,12 +19,16 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
 
-from .restic_client import (
-    ResticError, 
-    ResticNetworkError, 
-    ResticRepositoryError, 
+from .restic_common import (
     ResticAuthenticationError,
-    redact_secrets
+    ResticCommandError,
+    ResticError,
+    ResticNetworkError,
+    ResticPermissionError,
+    ResticRepositoryError,
+    build_command,
+    handle_command_error,
+    redact_secrets,
 )
 
 # Configuracao de logger
@@ -133,16 +137,16 @@ class ResticClientAsync:
     
     async def _run_command(
         self,
-        args: Sequence[str],
+        cmd: Sequence[str],
         timeout: Optional[int] = None,
         capture_json: bool = False,
     ) -> Tuple[int, str, str]:
         """Executa um comando Restic de forma assincrona.
-        
+
         Parameters
         ----------
-        args : Sequence[str]
-            Argumentos para o comando Restic
+        cmd : Sequence[str]
+            Comando completo a ser executado
         timeout : Optional[int]
             Tempo limite em segundos
         capture_json : bool
@@ -161,9 +165,6 @@ class ResticClientAsync:
         # Verificar se o Restic esta instalado
         if not shutil.which("restic"):
             raise ResticError("Restic nao esta instalado ou nao esta no PATH")
-        
-        # Construir comando completo
-        cmd = ["restic"] + list(args)
         
         # Redigir segredos para logging
         safe_cmd = [redact_secrets(str(arg)) for arg in cmd]
@@ -199,30 +200,20 @@ class ResticClientAsync:
             
             # Obter codigo de retorno
             returncode = process.returncode
-            
-            # Redigir segredos na saida
+
             safe_stdout = redact_secrets(stdout)
             safe_stderr = redact_secrets(stderr)
-            
-            # Analisar saida
+
             if returncode != 0:
-                # Identificar tipo de erro
-                if "network" in safe_stderr.lower() or "connection" in safe_stderr.lower():
-                    raise ResticNetworkError(f"Erro de rede: {safe_stderr}")
-                elif "repository" in safe_stderr.lower():
-                    raise ResticRepositoryError(f"Erro no repositorio: {safe_stderr}")
-                elif "password" in safe_stderr.lower() or "authentication" in safe_stderr.lower():
-                    raise ResticAuthenticationError(f"Erro de autenticacao: {safe_stderr}")
-                else:
-                    raise ResticError(f"Comando falhou com codigo {returncode}: {safe_stderr}")
-            
-            # Capturar JSON se solicitado
+                result = subprocess.CompletedProcess(cmd, returncode, stdout, stderr)
+                handle_command_error(cmd, result)
+
             if capture_json and safe_stdout:
                 try:
                     json.loads(safe_stdout)
                 except json.JSONDecodeError:
                     logger.warning("Falha ao analisar saida como JSON")
-            
+
             return returncode, safe_stdout, safe_stderr
             
         except ResticError:
@@ -233,21 +224,15 @@ class ResticClientAsync:
             raise ResticError(f"Erro ao executar comando: {str(e)}")
     
     @with_async_retry()
-    async def check_repository(self) -> bool:
-        """Verifica se o repositorio esta acessivel e integro.
-        
-        Returns
-        -------
-        bool
-            True se o repositorio esta acessivel e integro
-            
-        Raises
-        ------
-        ResticError
-            Se ocorrer um erro ao verificar o repositorio
-        """
+    async def check_repository(self, read_data_subset: Optional[str] = None) -> bool:
+        """Executa ``restic check`` para validar o repositorio."""
         try:
-            _, stdout, _ = await self._run_command(["check", "--read-data=false"])
+            cmd = build_command(None, "check")
+            if read_data_subset:
+                cmd.extend(["--read-data-subset", read_data_subset])
+            else:
+                cmd.append("--read-data=false")
+            _, stdout, _ = await self._run_command(cmd)
             return "no errors were found" in stdout.lower()
         except ResticError as e:
             logger.error(f"Erro ao verificar repositorio: {str(e)}")
@@ -257,16 +242,16 @@ class ResticClientAsync:
     async def backup(
         self,
         paths: List[str],
-        exclude_patterns: Optional[List[str]] = None,
+        excludes: Optional[List[str]] = None,
         tags: Optional[List[str]] = None,
     ) -> str:
         """Realiza backup dos caminhos especificados.
-        
+
         Parameters
         ----------
         paths : List[str]
             Caminhos a serem incluidos no backup
-        exclude_patterns : Optional[List[str]]
+        excludes : Optional[List[str]]
             Padroes a serem excluidos do backup
         tags : Optional[List[str]]
             Tags a serem associadas ao snapshot
@@ -286,20 +271,16 @@ class ResticClientAsync:
             if not Path(path).exists():
                 raise ResticError(f"Caminho nao encontrado: {path}")
         
-        # Construir comando
-        cmd = ["backup"]
-        
-        # Adicionar tags
+        cmd = build_command(None, "backup")
+
         if tags:
             for tag in tags:
                 cmd.extend(["--tag", tag])
-        
-        # Adicionar exclusoes
-        if exclude_patterns:
-            for pattern in exclude_patterns:
+
+        if excludes:
+            for pattern in excludes:
                 cmd.extend(["--exclude", pattern])
-        
-        # Adicionar caminhos
+
         cmd.extend(paths)
         
         try:
@@ -335,10 +316,7 @@ class ResticClientAsync:
         ResticError
             Se ocorrer um erro ao listar snapshots
         """
-        # Construir comando
-        cmd = ["snapshots", "--json"]
-        
-        # Adicionar filtro por tag
+        cmd = build_command(None, "snapshots", "--json")
         if tag:
             cmd.extend(["--tag", tag])
         
@@ -375,11 +353,8 @@ class ResticClientAsync:
             Se ocorrer um erro ao listar arquivos
         """
         try:
-            # Executar comando
-            _, stdout, _ = await self._run_command(
-                ["ls", snapshot_id, "--json"],
-                capture_json=True,
-            )
+            cmd = build_command(None, "ls", snapshot_id, "--json")
+            _, stdout, _ = await self._run_command(cmd, capture_json=True)
             
             # Analisar saida JSON
             files = json.loads(stdout)
@@ -394,16 +369,16 @@ class ResticClientAsync:
     async def restore_snapshot(
         self,
         snapshot_id: str = "latest",
-        target_dir: Optional[str] = None,
+        target_dir: str = ".",
         include_patterns: Optional[List[str]] = None,
     ) -> bool:
         """Restaura um snapshot.
-        
+
         Parameters
         ----------
         snapshot_id : str
             ID do snapshot ou "latest"
-        target_dir : Optional[str]
+        target_dir : str
             Diretorio de destino para restauracao
         include_patterns : Optional[List[str]]
             Padroes a serem incluidos na restauracao
@@ -418,15 +393,9 @@ class ResticClientAsync:
         ResticError
             Se ocorrer um erro ao restaurar snapshot
         """
-        # Construir comando
-        cmd = ["restore", snapshot_id]
-        
-        # Adicionar diretorio de destino
-        if target_dir:
-            cmd.extend(["--target", target_dir])
-            
-            # Criar diretorio de destino se nao existir
-            Path(target_dir).mkdir(parents=True, exist_ok=True)
+        cmd = build_command(None, "restore", snapshot_id, "--target", target_dir)
+
+        Path(target_dir).mkdir(parents=True, exist_ok=True)
         
         # Adicionar padroes de inclusao
         if include_patterns:
@@ -469,9 +438,10 @@ class ResticClientAsync:
         ResticError
             Se ocorrer um erro ao restaurar arquivo
         """
+        target = target_dir or "."
         return await self.restore_snapshot(
             snapshot_id=snapshot_id,
-            target_dir=target_dir,
+            target_dir=target,
             include_patterns=[path],
         )
     
@@ -484,6 +454,7 @@ class ResticClientAsync:
         keep_monthly: Optional[int] = None,
         keep_yearly: Optional[int] = None,
         keep_tags: Optional[List[str]] = None,
+        prune: bool = True,
     ) -> bool:
         """Aplica politica de retencao ao repositorio.
         
@@ -501,6 +472,8 @@ class ResticClientAsync:
             Numero de snapshots anuais a manter
         keep_tags : Optional[List[str]]
             Tags de snapshots a manter
+        prune : bool, optional
+            Se True, executa prune apos forget, por padrao True
             
         Returns
         -------
@@ -512,8 +485,8 @@ class ResticClientAsync:
         ResticError
             Se ocorrer um erro ao aplicar politica de retencao
         """
-        # Construir comando
-        cmd = ["forget", "--prune"]
+        cmd = build_command(None, "forget", "--prune" if prune else "")
+        cmd = [c for c in cmd if c]
         
         # Adicionar politicas de retencao
         if keep_last is not None:
@@ -541,25 +514,11 @@ class ResticClientAsync:
             raise
     
     @with_async_retry()
-    async def get_stats(self) -> Dict[str, Any]:
-        """Obtem estatisticas do repositorio.
-        
-        Returns
-        -------
-        Dict[str, Any]
-            Estatisticas do repositorio
-            
-        Raises
-        ------
-        ResticError
-            Se ocorrer um erro ao obter estatisticas
-        """
+    async def get_stats(self, mode: str = "raw-data") -> Dict[str, Any]:
+        """Obtem estatisticas do repositorio."""
         try:
-            # Executar comando
-            _, stdout, _ = await self._run_command(
-                ["stats", "--json"],
-                capture_json=True,
-            )
+            cmd = build_command(None, "stats", "--mode", mode, "--json")
+            _, stdout, _ = await self._run_command(cmd, capture_json=True)
             
             # Analisar saida JSON
             stats = json.loads(stdout)

@@ -36,7 +36,7 @@ def main(snapshot_id: str, output_format: str = "text", output_file: str = None,
             client = ResticClient(max_attempts=3, credential_source=credential_source)
             
             # Listar arquivos do snapshot
-            files_output = client.list_snapshot_files(snapshot_id)
+            files_output = client.list_files(snapshot_id)
             
             if not files_output:
                 ctx.log("Nenhum arquivo encontrado no snapshot.")
@@ -44,11 +44,10 @@ def main(snapshot_id: str, output_format: str = "text", output_file: str = None,
             
             # Processar saida baseado no formato
             if output_format == "json":
-                # files_output ja e uma lista de strings
                 result = {
                     "snapshot_id": snapshot_id,
                     "total_files": len(files_output),
-                    "files": files_output
+                    "files": files_output,
                 }
                 
                 if pretty:
@@ -61,9 +60,9 @@ def main(snapshot_id: str, output_format: str = "text", output_file: str = None,
                     output_content = f"Snapshot ID: {snapshot_id}\n"
                     output_content += f"Total de arquivos: {len(files_output)}\n"
                     output_content += "\nArquivos:\n"
-                    output_content += "\n".join(f"  {file}" for file in files_output)
+                    output_content += "\n".join(f"  {file['path']}" for file in files_output)
                 else:
-                    output_content = "\n".join(files_output)
+                    output_content = "\n".join(f["path"] for f in files_output)
             
             # Salvar em arquivo ou exibir na tela
             if output_file:

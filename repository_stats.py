@@ -36,7 +36,7 @@ def show_repository_stats() -> None:
             )
             
             # Obter estatisticas do repositorio
-            stats = client.get_repository_stats()
+            stats = client.get_stats()
             
             if stats:
                 size_bytes = stats.get("total_size", 0)

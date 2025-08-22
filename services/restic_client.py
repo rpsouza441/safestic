@@ -13,53 +13,25 @@ import random
 import re
 import subprocess
 import time
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 from .restic import load_restic_env
+from .restic_common import (
+    ResticAuthenticationError,
+    ResticCommandError,
+    ResticError,
+    ResticNetworkError,
+    ResticPermissionError,
+    ResticRepositoryError,
+    build_command,
+    handle_command_error,
+    redact_secrets,
+)
 
 # Tipo generico para o resultado de funcoes com retry
 T = TypeVar("T")
-
-
-@dataclass
-class ResticError(Exception):
-    """Excecao base para erros relacionados ao Restic."""
-    message: str
-    command: List[str]
-    returncode: Optional[int] = None
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
-
-    def __str__(self) -> str:
-        return f"{self.message} (codigo: {self.returncode})"
-
-
-class ResticNetworkError(ResticError):
-    """Erro de rede ao acessar o repositorio Restic."""
-    pass
-
-
-class ResticRepositoryError(ResticError):
-    """Erro relacionado ao repositorio Restic (nao encontrado, corrompido, etc.)."""
-    pass
-
-
-class ResticAuthenticationError(ResticError):
-    """Erro de autenticacao (senha incorreta, credenciais invalidas, etc.)."""
-    pass
-
-
-class ResticPermissionError(ResticError):
-    """Erro de permissao ao acessar arquivos ou o repositorio."""
-    pass
-
-
-class ResticCommandError(ResticError):
-    """Erro generico na execucao de um comando Restic."""
-    pass
 
 
 def with_retry(
@@ -132,42 +104,6 @@ def with_retry(
         return wrapper
 
     return decorator
-
-
-def redact_secrets(text: str) -> str:
-    """Redaciona senhas e chaves de acesso em strings de texto.
-
-    Parameters
-    ----------
-    text : str
-        Texto a ser redacionado
-
-    Returns
-    -------
-    str
-        Texto com senhas e chaves substituidas por ***
-    """
-    # Padroes para redacao de segredos
-    patterns = [
-        # Senha do Restic
-        (r"(RESTIC_PASSWORD=)[^\s,]+", r"\1***"),
-        # Chaves AWS
-        (r"(AWS_[^=]+=)[^\s,]+", r"\1***"),
-        # Chaves Azure
-        (r"(AZURE_[^=]+=)[^\s,]+", r"\1***"),
-        # Chaves GCP
-        (r"(GOOGLE_[^=]+=)[^\s,]+", r"\1***"),
-        # Argumentos de senha na linha de comando
-        (r"(-p|--password) [^\s]+", r"\1 ***"),
-        # Argumentos de senha em arquivos
-        (r"(-p|--password-file) [^\s]+", r"\1 ***"),
-    ]
-
-    result = text
-    for pattern, replacement in patterns:
-        result = re.sub(pattern, replacement, result)
-
-    return result
 
 
 class ResticClient:
@@ -291,7 +227,7 @@ class ResticClient:
 
             # Verificar erros
             if check and result.returncode != 0:
-                self._handle_command_error(cmd, result)
+                handle_command_error(cmd, result)
 
             # Processar JSON se solicitado
             json_data = None
@@ -311,87 +247,6 @@ class ResticClient:
                 command=cmd,
             )
 
-    def _handle_command_error(
-        self, cmd: Sequence[str], result: subprocess.CompletedProcess[str]
-    ) -> None:
-        """Analisa o erro de um comando e levanta a excecao apropriada.
-
-        Parameters
-        ----------
-        cmd : Sequence[str]
-            Comando executado
-        result : subprocess.CompletedProcess[str]
-            Resultado da execucao do comando
-
-        Raises
-        ------
-        ResticNetworkError
-            Erro de rede
-        ResticRepositoryError
-            Erro de repositorio
-        ResticAuthenticationError
-            Erro de autenticacao
-        ResticPermissionError
-            Erro de permissao
-        ResticCommandError
-            Outro erro de comando
-        """
-        stderr = result.stderr or ""
-        stdout = result.stdout or ""
-
-        # Analisar o erro para determinar o tipo
-        if any(
-            msg in stderr.lower() or msg in stdout.lower()
-            for msg in ["network", "connection", "timeout", "dial tcp"]
-        ):
-            raise ResticNetworkError(
-                message="Erro de rede ao acessar o repositorio",
-                command=cmd,
-                returncode=result.returncode,
-                stdout=stdout,
-                stderr=stderr,
-            )
-        elif any(
-            msg in stderr.lower() or msg in stdout.lower()
-            for msg in ["repository not found", "invalid repository", "corrupted"]
-        ):
-            raise ResticRepositoryError(
-                message="Erro no repositorio Restic",
-                command=cmd,
-                returncode=result.returncode,
-                stdout=stdout,
-                stderr=stderr,
-            )
-        elif any(
-            msg in stderr.lower() or msg in stdout.lower()
-            for msg in ["authentication", "access denied", "wrong password"]
-        ):
-            raise ResticAuthenticationError(
-                message="Erro de autenticacao",
-                command=cmd,
-                returncode=result.returncode,
-                stdout=stdout,
-                stderr=stderr,
-            )
-        elif any(
-            msg in stderr.lower() or msg in stdout.lower()
-            for msg in ["permission", "access is denied", "not permitted"]
-        ):
-            raise ResticPermissionError(
-                message="Erro de permissao",
-                command=cmd,
-                returncode=result.returncode,
-                stdout=stdout,
-                stderr=stderr,
-            )
-        else:
-            raise ResticCommandError(
-                message=f"Comando Restic falhou com codigo {result.returncode}",
-                command=cmd,
-                returncode=result.returncode,
-                stdout=stdout,
-                stderr=stderr,
-            )
 
     @with_retry()
     def check_repository_access(self) -> bool:
@@ -408,10 +263,8 @@ class ResticClient:
             Se ocorrer um erro ao acessar o repositorio
         """
         self.logger.info("Verificando acesso ao repositorio: %s", self.repository)
-        success, _, _ = self._run_command(
-            ["restic", "-r", self.repository, "snapshots"],
-            check=False,
-        )
+        cmd = build_command(self.repository, "snapshots")
+        success, _, _ = self._run_command(cmd, check=False)
         return success
 
     def init_repository(self) -> bool:
@@ -423,10 +276,8 @@ class ResticClient:
             True se o repositorio foi inicializado com sucesso, False caso contrario
         """
         self.logger.info("Inicializando repositorio: %s", self.repository)
-        success, _, _ = self._run_command(
-            ["restic", "-r", self.repository, "init"],
-            check=False,
-        )
+        cmd = build_command(self.repository, "init")
+        success, _, _ = self._run_command(cmd, check=False)
         return success
 
     def check_restic_installed(self) -> bool:
@@ -439,10 +290,8 @@ class ResticClient:
         """
         self.logger.info("Verificando se o Restic esta instalado...")
         try:
-            success, _, _ = self._run_command(
-                ["restic", "version"],
-                check=False,
-            )
+            cmd = build_command(None, "version")
+            success, _, _ = self._run_command(cmd, check=False)
             return success
         except Exception as exc:
             self.logger.error("Erro ao verificar instalacao do Restic: %s", exc)
@@ -451,7 +300,8 @@ class ResticClient:
     def supports_mount(self) -> bool:
         """Verifica se o comando ``mount`` esta disponivel no Restic."""
         self.logger.info("Verificando suporte ao comando mount")
-        success, result, _ = self._run_command(["restic", "help"], check=False)
+        cmd = build_command(None, "help")
+        success, result, _ = self._run_command(cmd, check=False)
         return success and result is not None and "mount" in result.stdout
 
     @with_retry()
@@ -473,7 +323,7 @@ class ResticClient:
         ResticError
             Se ocorrer um erro durante a verificacao
         """
-        cmd = ["restic", "-r", self.repository, "check"]
+        cmd = build_command(self.repository, "check")
         if read_data_subset:
             cmd.extend(["--read-data-subset", read_data_subset])
 
@@ -512,7 +362,7 @@ class ResticClient:
         if not paths:
             raise ValueError("Pelo menos um caminho deve ser especificado para backup")
 
-        cmd = ["restic", "-r", self.repository, "backup"]
+        cmd = build_command(self.repository, "backup")
         cmd.extend(paths)
 
         # Adicionar exclusoes
@@ -556,24 +406,30 @@ class ResticClient:
     @with_retry()
     def apply_retention_policy(
         self,
-        keep_hourly: int = 0,
-        keep_daily: int = 7,
-        keep_weekly: int = 4,
-        keep_monthly: int = 6,
+        keep_last: Optional[int] = None,
+        keep_daily: Optional[int] = None,
+        keep_weekly: Optional[int] = None,
+        keep_monthly: Optional[int] = None,
+        keep_yearly: Optional[int] = None,
+        keep_tags: Optional[List[str]] = None,
         prune: bool = True,
     ) -> bool:
         """Aplica politica de retencao aos snapshots.
 
         Parameters
         ----------
-        keep_hourly : int, optional
-            Numero de snapshots horarios a manter, por padrao 0
-        keep_daily : int, optional
-            Numero de snapshots diarios a manter, por padrao 7
-        keep_weekly : int, optional
-            Numero de snapshots semanais a manter, por padrao 4
-        keep_monthly : int, optional
-            Numero de snapshots mensais a manter, por padrao 6
+        keep_last : Optional[int]
+            Numero de snapshots recentes a manter
+        keep_daily : Optional[int]
+            Numero de snapshots diarios a manter
+        keep_weekly : Optional[int]
+            Numero de snapshots semanais a manter
+        keep_monthly : Optional[int]
+            Numero de snapshots mensais a manter
+        keep_yearly : Optional[int]
+            Numero de snapshots anuais a manter
+        keep_tags : Optional[List[str]]
+            Tags de snapshots a manter
         prune : bool, optional
             Se True, executa prune apos forget, por padrao True
 
@@ -587,33 +443,25 @@ class ResticClient:
         ResticError
             Se ocorrer um erro ao aplicar a politica
         """
-        cmd = [
-            "restic",
-            "-r",
-            self.repository,
-            "forget",
-            "--keep-hourly",
-            str(keep_hourly),
-            "--keep-daily",
-            str(keep_daily),
-            "--keep-weekly",
-            str(keep_weekly),
-            "--keep-monthly",
-            str(keep_monthly),
-        ]
+        cmd = build_command(self.repository, "forget", "--prune" if prune else "")
+        # remove empty string if prune False
+        cmd = [c for c in cmd if c]
 
-        if prune:
-            cmd.append("--prune")
+        if keep_last is not None:
+            cmd.extend(["--keep-last", str(keep_last)])
+        if keep_daily is not None:
+            cmd.extend(["--keep-daily", str(keep_daily)])
+        if keep_weekly is not None:
+            cmd.extend(["--keep-weekly", str(keep_weekly)])
+        if keep_monthly is not None:
+            cmd.extend(["--keep-monthly", str(keep_monthly)])
+        if keep_yearly is not None:
+            cmd.extend(["--keep-yearly", str(keep_yearly)])
+        if keep_tags:
+            for tag in keep_tags:
+                cmd.extend(["--keep-tag", tag])
 
-        self.logger.info(
-            "Aplicando politica de retencao (h:%d, d:%d, w:%d, m:%d, prune:%s)",
-            keep_hourly,
-            keep_daily,
-            keep_weekly,
-            keep_monthly,
-            prune,
-        )
-
+        self.logger.info("Aplicando politica de retencao")
         success, _, _ = self._run_command(cmd)
         return success
 
@@ -654,9 +502,7 @@ class ResticClient:
         ResticError
             Se ocorrer um erro ao aplicar a politica
         """
-        cmd = [
-            "restic",
-            "-r",
+        cmd = build_command(
             self.repository,
             "forget",
             "--keep-hourly",
@@ -667,7 +513,7 @@ class ResticClient:
             str(keep_weekly),
             "--keep-monthly",
             str(keep_monthly),
-        ]
+        )
 
         if tags:
             for tag in tags:
@@ -693,8 +539,13 @@ class ResticClient:
         return success
 
     @with_retry()
-    def list_snapshots(self) -> List[Dict[str, Any]]:
-        """Lista todos os snapshots no repositorio.
+    def list_snapshots(self, tag: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Lista snapshots no repositorio.
+
+        Parameters
+        ----------
+        tag : Optional[str]
+            Filtrar snapshots por tag
 
         Returns
         -------
@@ -707,10 +558,10 @@ class ResticClient:
             Se ocorrer um erro ao listar os snapshots
         """
         self.logger.info("Listando snapshots do repositorio")
-        _, _, json_data = self._run_command(
-            ["restic", "-r", self.repository, "snapshots", "--json"],
-            capture_json=True,
-        )
+        cmd = build_command(self.repository, "snapshots", "--json")
+        if tag:
+            cmd.extend(["--tag", tag])
+        _, _, json_data = self._run_command(cmd, capture_json=True)
 
         if json_data is None:
             return []
@@ -737,49 +588,26 @@ class ResticClient:
             Se ocorrer um erro ao obter as informacoes
         """
         self.logger.info("Obtendo informacoes do snapshot: %s", snapshot_id)
-        _, _, json_data = self._run_command(
-            ["restic", "-r", self.repository, "snapshots", snapshot_id, "--json"],
-            capture_json=True,
-        )
+        cmd = build_command(self.repository, "snapshots", snapshot_id, "--json")
+        _, _, json_data = self._run_command(cmd, capture_json=True)
 
         if not json_data or not isinstance(json_data, list) or not json_data:
             raise ResticCommandError(
                 message=f"Nao foi possivel obter informacoes do snapshot {snapshot_id}",
-                command=["restic", "-r", self.repository, "snapshots", snapshot_id, "--json"],
+                command=cmd,
             )
 
         return cast(Dict[str, Any], json_data[0])
 
     @with_retry()
-    def list_snapshot_files(self, snapshot_id: str = "latest") -> List[str]:
-        """Lista os arquivos contidos em um snapshot.
-
-        Parameters
-        ----------
-        snapshot_id : str, optional
-            ID do snapshot ou "latest", por padrao "latest"
-
-        Returns
-        -------
-        List[str]
-            Lista de caminhos de arquivos no snapshot
-
-        Raises
-        ------
-        ResticError
-            Se ocorrer um erro ao listar os arquivos
-        """
+    def list_files(self, snapshot_id: str = "latest") -> List[Dict[str, Any]]:
+        """Lista os arquivos contidos em um snapshot."""
         self.logger.info("Listando arquivos do snapshot: %s", snapshot_id)
-        success, result, _ = self._run_command(
-            ["restic", "-r", self.repository, "ls", snapshot_id],
-        )
-
-        if success and result and result.stdout:
-            # Processar a saida para extrair os caminhos dos arquivos
-            files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-            return files
-
-        return []
+        cmd = build_command(self.repository, "ls", snapshot_id, "--json")
+        _, _, json_data = self._run_command(cmd, capture_json=True)
+        if json_data is None:
+            return []
+        return cast(List[Dict[str, Any]], json_data)
 
     @with_retry()
     def rebuild_index(self, read_all_packs: bool = False) -> bool:
@@ -800,7 +628,7 @@ class ResticClient:
         ResticError
             Se ocorrer um erro durante a reconstrucao
         """
-        cmd = ["restic", "-r", self.repository, "rebuild-index"]
+        cmd = build_command(self.repository, "rebuild-index")
         if read_all_packs:
             cmd.append("--read-all-packs")
 
@@ -812,27 +640,24 @@ class ResticClient:
     def repair_snapshots(self) -> bool:
         """Repara snapshots corrompidos no repositorio."""
         self.logger.info("Reparando snapshots do repositorio")
-        success, _, _ = self._run_command(
-            ["restic", "-r", self.repository, "repair", "snapshots"]
-        )
+        cmd = build_command(self.repository, "repair", "snapshots")
+        success, _, _ = self._run_command(cmd)
         return success
 
     @with_retry()
     def repair_index(self) -> bool:
         """Repara o indice do repositorio."""
         self.logger.info("Reparando indice do repositorio")
-        success, _, _ = self._run_command(
-            ["restic", "-r", self.repository, "repair", "index"]
-        )
+        cmd = build_command(self.repository, "repair", "index")
+        success, _, _ = self._run_command(cmd)
         return success
 
     @with_retry()
     def repair_packs(self) -> bool:
         """Repara packs corrompidos no repositorio."""
         self.logger.info("Reparando packs do repositorio")
-        success, _, _ = self._run_command(
-            ["restic", "-r", self.repository, "repair", "packs"]
-        )
+        cmd = build_command(self.repository, "repair", "packs")
+        success, _, _ = self._run_command(cmd)
         return success
 
     def mount_repository(self, mount_path: str, extra_args: Optional[List[str]] = None) -> subprocess.Popen[str]:
@@ -853,7 +678,7 @@ class ResticClient:
         subprocess.Popen[str]
             Processo em execucao do comando ``restic mount``
         """
-        cmd = ["restic", "-r", self.repository, "mount", mount_path]
+        cmd = build_command(self.repository, "mount", mount_path)
         if extra_args:
             cmd.extend(extra_args)
 
@@ -870,18 +695,21 @@ class ResticClient:
 
     @with_retry()
     def restore_snapshot(
-        self, target_dir: str, snapshot_id: str = "latest", include_paths: Optional[List[str]] = None
+        self,
+        snapshot_id: str = "latest",
+        target_dir: str = ".",
+        include_patterns: Optional[List[str]] = None,
     ) -> bool:
         """Restaura um snapshot completo ou arquivos especificos.
 
         Parameters
         ----------
+        snapshot_id : str
+            ID do snapshot ou "latest"
         target_dir : str
             Diretorio de destino para a restauracao
-        snapshot_id : str, optional
-            ID do snapshot ou "latest", por padrao "latest"
-        include_paths : Optional[List[str]], optional
-            Lista de caminhos especificos a restaurar, por padrao None (restaura tudo)
+        include_patterns : Optional[List[str]]
+            Padroes a serem incluidos na restauracao
 
         Returns
         -------
@@ -896,20 +724,11 @@ class ResticClient:
         # Garantir que o diretorio de destino existe
         Path(target_dir).mkdir(parents=True, exist_ok=True)
 
-        cmd = [
-            "restic",
-            "-r",
-            self.repository,
-            "restore",
-            snapshot_id,
-            "--target",
-            target_dir,
-        ]
+        cmd = build_command(self.repository, "restore", snapshot_id, "--target", target_dir)
 
-        # Adicionar caminhos especificos se fornecidos
-        if include_paths:
-            for path in include_paths:
-                cmd.extend(["--include", path])
+        if include_patterns:
+            for pattern in include_patterns:
+                cmd.extend(["--include", pattern])
 
         self.logger.info(
             "Restaurando snapshot %s para %s", snapshot_id, target_dir
@@ -919,7 +738,18 @@ class ResticClient:
         return success
 
     @with_retry()
-    def get_repository_stats(self, mode: str = "raw-data") -> Dict[str, Any]:
+    def restore_file(
+        self,
+        path: str,
+        snapshot_id: str = "latest",
+        target_dir: Optional[str] = None,
+    ) -> bool:
+        """Restaura um unico arquivo de um snapshot."""
+        target = target_dir or Path(path).parent.as_posix()
+        return self.restore_snapshot(snapshot_id=snapshot_id, target_dir=target, include_patterns=[path])
+
+    @with_retry()
+    def get_stats(self, mode: str = "raw-data") -> Dict[str, Any]:
         """Obtem estatisticas do repositorio.
 
         Parameters
@@ -939,18 +769,8 @@ class ResticClient:
             Se ocorrer um erro ao obter as estatisticas
         """
         self.logger.info("Obtendo estatisticas do repositorio (modo: %s)", mode)
-        _, _, json_data = self._run_command(
-            [
-                "restic",
-                "-r",
-                self.repository,
-                "stats",
-                "--mode",
-                mode,
-                "--json",
-            ],
-            capture_json=True,
-        )
+        cmd = build_command(self.repository, "stats", "--mode", mode, "--json")
+        _, _, json_data = self._run_command(cmd, capture_json=True)
 
         if json_data is None:
             return {}
