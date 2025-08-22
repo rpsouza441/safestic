@@ -1,7 +1,6 @@
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 
 from services.script import ResticScript
@@ -81,10 +80,10 @@ def main(snapshot_id: str, output_format: str = "text", output_file: str = None,
                 
         except ResticError as exc:
             ctx.log(f"[ERRO] {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
         except Exception as exc:
             ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":

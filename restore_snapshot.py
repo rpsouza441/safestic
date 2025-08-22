@@ -1,6 +1,5 @@
 import argparse
 import logging
-import sys
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
 from services.restore_utils import (
@@ -31,7 +30,7 @@ def run_restore_snapshot(snapshot_id: str) -> None:
         config = ctx.config
         if not config or not config.restore_target_dir:
             ctx.log("[FATAL] Diretório de restauração não configurado")
-            sys.exit(1)
+            raise SystemExit(1)
         base_restore_target = config.restore_target_dir
         ctx.log("=== Iniciando restauracao de snapshot com Restic ===")
 

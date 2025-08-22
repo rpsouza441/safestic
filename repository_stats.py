@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -46,14 +45,14 @@ def show_repository_stats() -> None:
                 )
             else:
                 ctx.log("Nao foi possivel obter estatisticas do repositorio.")
-                sys.exit(1)
+                raise SystemExit(1)
                 
         except ResticError as exc:
             ctx.log(f"[ERRO] {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
         except Exception as exc:
             ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,4 @@
 import logging
-import sys
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -17,7 +16,7 @@ def run_backup() -> None:
         config = ctx.config
         if not config or not config.backup_source_dirs:
             ctx.log("[FATAL] Variaveis obrigatorias ausentes na configuracao")
-            sys.exit(1)
+            raise SystemExit(1)
 
         ctx.log("=== Iniciando backup com Restic ===")
 
@@ -58,10 +57,10 @@ def run_backup() -> None:
 
         except ResticError as exc:
             ctx.log(f"[ERRO] {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
         except Exception as exc:
             ctx.log(f"[FATAL] Erro inesperado: {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
 
         ctx.log("=== Fim do backup ===")
 

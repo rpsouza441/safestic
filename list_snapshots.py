@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime
 import logging
 from services.script import ResticScript
@@ -36,7 +35,7 @@ def list_snapshots() -> None:
             
             if not snapshots:
                 ctx.log("Nenhum snapshot encontrado no repositorio.")
-                sys.exit(0)
+                raise SystemExit(0)
 
             print("{:<12} {:<20} {:<15} {}".format("ID", "Data", "Host", "Caminhos"))
             print("-" * 80)
@@ -58,10 +57,10 @@ def list_snapshots() -> None:
 
         except ResticError as exc:
             ctx.log(f"[ERRO] {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
         except Exception as exc:
             ctx.log(f"[ERRO] Uma falha inesperada ocorreu: {exc}")
-            sys.exit(1)
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":
