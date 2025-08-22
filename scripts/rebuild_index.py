@@ -10,6 +10,9 @@ import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
 
+from services.restic import load_restic_env
+from services.restic_client import load_env_and_get_credential_source
+
 def load_config():
     """Carrega configuracoes do .env"""
     env_path = Path('.env')
@@ -21,40 +24,10 @@ def load_config():
     return True
 
 def build_restic_env():
-    """Constroi variaveis de ambiente para o Restic"""
-    env = os.environ.copy()
-    
-    # Configurar repositorio baseado no provedor
-    provider = os.getenv('STORAGE_PROVIDER', '').lower()
-    bucket = os.getenv('STORAGE_BUCKET', '')
-    
-    if provider == 'local':
-        env['RESTIC_REPOSITORY'] = bucket
-    elif provider == 'aws':
-        env['RESTIC_REPOSITORY'] = f's3:{bucket}'
-        # Credenciais AWS
-        if os.getenv('AWS_ACCESS_KEY_ID'):
-            env['AWS_ACCESS_KEY_ID'] = os.getenv('AWS_ACCESS_KEY_ID')
-        if os.getenv('AWS_SECRET_ACCESS_KEY'):
-            env['AWS_SECRET_ACCESS_KEY'] = os.getenv('AWS_SECRET_ACCESS_KEY')
-        if os.getenv('AWS_DEFAULT_REGION'):
-            env['AWS_DEFAULT_REGION'] = os.getenv('AWS_DEFAULT_REGION')
-    elif provider == 'azure':
-        env['RESTIC_REPOSITORY'] = f'azure:{bucket}:restic'
-        # Credenciais Azure
-        if os.getenv('AZURE_ACCOUNT_KEY'):
-            env['AZURE_ACCOUNT_KEY'] = os.getenv('AZURE_ACCOUNT_KEY')
-    elif provider == 'gcp':
-        env['RESTIC_REPOSITORY'] = f'gs:{bucket}'
-        # Credenciais GCP
-        if os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
-            env['GOOGLE_APPLICATION_CREDENTIALS'] = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        if os.getenv('GOOGLE_PROJECT_ID'):
-            env['GOOGLE_PROJECT_ID'] = os.getenv('GOOGLE_PROJECT_ID')
-    
-    # Senha do repositorio
-    env['RESTIC_PASSWORD'] = os.getenv('RESTIC_PASSWORD', '')
-    
+    """Constroi variaveis de ambiente usando o carregamento centralizado."""
+    credential_source = load_env_and_get_credential_source()
+    repository, env, _ = load_restic_env(credential_source)
+    env["RESTIC_REPOSITORY"] = repository
     return env
 
 def check_repository_access():
