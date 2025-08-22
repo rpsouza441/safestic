@@ -103,3 +103,4 @@ stats_*.json
 stats_*.txt
 report_*.json
 report_*.txt
+config_report_*.json

@@ -240,13 +240,7 @@ prune-task:
 setup:
 	@echo "Executando setup do ambiente..."
 ifeq ($(OS),Windows_NT)
-	@if exist "scripts\bootstrap_windows.ps1" ( \
-		powershell -ExecutionPolicy Bypass -File "scripts\bootstrap_windows.ps1" \
-	) else if exist "scripts\setup_windows.sh" ( \
-		bash "scripts\setup_windows.sh" --assume-yes \
-	) else ( \
-		echo "Erro: Scripts de setup nao encontrados" && exit 1 \
-	)
+	@powershell -Command "if (Test-Path 'scripts\bootstrap_windows.ps1') { powershell -ExecutionPolicy Bypass -File 'scripts\bootstrap_windows.ps1' } elseif (Test-Path 'scripts\setup_windows.sh') { bash 'scripts\setup_windows.sh' --assume-yes } else { Write-Host 'Erro: Scripts de setup nao encontrados'; exit 1 }"
 else
 	@if [ -f "scripts/setup_linux.sh" ]; then \
 		bash "scripts/setup_linux.sh" --assume-yes; \
@@ -376,13 +370,17 @@ setup-credentials-keyring:
 diagnose:
 	@echo "Executando diagnostico completo..."
 	$(ECHO_CHECKING_CONFIG)
-	$(PYTHON_CMD) validate_config.py
+	$(PYTHON_CMD) scripts/validate_config.py
 	@echo "Verificando acesso ao repositorio..."
 	$(PYTHON_CMD) check_restic_access.py
 
 diagnose-azure-linux:
 	@echo "Executando diagnostico Azure para Linux..."
 	$(PYTHON_CMD) scripts/diagnose_azure_linux.py
+
+test-azure-keyring:
+	@echo "Testando credenciais Azure no keyring..."
+	$(PYTHON_CMD) tests/test_azure_keyring.py
 
 generate-config-report:
 	@echo "Gerando relatorio de configuracao do sistema atual..."
@@ -454,6 +452,7 @@ help:
 	@echo " DIAGNOSTICO E TROUBLESHOOTING:"
 	@echo "  diagnose              - Diagnostico completo do sistema"
 	@echo "  diagnose-azure-linux  - Diagnostico especifico Azure no Linux"
+	@echo "  test-azure-keyring    - Testa credenciais Azure no keyring"
 	@echo "  generate-config-report - Gera relatorio de configuracao"
 	@echo "  compare-configs       - Instrucoes para comparar configuracoes"
 	@echo ""
