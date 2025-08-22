@@ -19,12 +19,16 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
 
-from .restic_client import (
-    ResticError, 
-    ResticNetworkError, 
-    ResticRepositoryError, 
+from .restic_common import (
     ResticAuthenticationError,
-    redact_secrets
+    ResticCommandError,
+    ResticError,
+    ResticNetworkError,
+    ResticPermissionError,
+    ResticRepositoryError,
+    build_restic_command,
+    redact_secrets,
+    raise_for_command_error,
 )
 
 # Configuracao de logger
@@ -163,12 +167,12 @@ class ResticClientAsync:
             raise ResticError("Restic nao esta instalado ou nao esta no PATH")
         
         # Construir comando completo
-        cmd = ["restic"] + list(args)
-        
+        cmd = build_restic_command(*args)
+
         # Redigir segredos para logging
         safe_cmd = [redact_secrets(str(arg)) for arg in cmd]
         safe_env = {k: redact_secrets(str(v)) for k, v in self.env.items()}
-        
+
         logger.debug(f"Executando: {' '.join(safe_cmd)}")
         
         try:
@@ -199,30 +203,19 @@ class ResticClientAsync:
             
             # Obter codigo de retorno
             returncode = process.returncode
-            
-            # Redigir segredos na saida
+
+            if returncode != 0:
+                raise_for_command_error(cmd, returncode, stdout, stderr)
+
             safe_stdout = redact_secrets(stdout)
             safe_stderr = redact_secrets(stderr)
-            
-            # Analisar saida
-            if returncode != 0:
-                # Identificar tipo de erro
-                if "network" in safe_stderr.lower() or "connection" in safe_stderr.lower():
-                    raise ResticNetworkError(f"Erro de rede: {safe_stderr}")
-                elif "repository" in safe_stderr.lower():
-                    raise ResticRepositoryError(f"Erro no repositorio: {safe_stderr}")
-                elif "password" in safe_stderr.lower() or "authentication" in safe_stderr.lower():
-                    raise ResticAuthenticationError(f"Erro de autenticacao: {safe_stderr}")
-                else:
-                    raise ResticError(f"Comando falhou com codigo {returncode}: {safe_stderr}")
-            
-            # Capturar JSON se solicitado
+
             if capture_json and safe_stdout:
                 try:
                     json.loads(safe_stdout)
                 except json.JSONDecodeError:
                     logger.warning("Falha ao analisar saida como JSON")
-            
+
             return returncode, safe_stdout, safe_stderr
             
         except ResticError:
@@ -479,11 +472,13 @@ class ResticClientAsync:
     async def apply_retention_policy(
         self,
         keep_last: Optional[int] = None,
+        keep_hourly: Optional[int] = None,
         keep_daily: Optional[int] = None,
         keep_weekly: Optional[int] = None,
         keep_monthly: Optional[int] = None,
         keep_yearly: Optional[int] = None,
         keep_tags: Optional[List[str]] = None,
+        prune: bool = True,
     ) -> bool:
         """Aplica politica de retencao ao repositorio.
         
@@ -491,6 +486,8 @@ class ResticClientAsync:
         ----------
         keep_last : Optional[int]
             Numero de snapshots recentes a manter
+        keep_hourly : Optional[int]
+            Numero de snapshots horarios a manter
         keep_daily : Optional[int]
             Numero de snapshots diarios a manter
         keep_weekly : Optional[int]
@@ -501,6 +498,8 @@ class ResticClientAsync:
             Numero de snapshots anuais a manter
         keep_tags : Optional[List[str]]
             Tags de snapshots a manter
+        prune : bool
+            Se True executa prune apos forget
             
         Returns
         -------
@@ -513,11 +512,13 @@ class ResticClientAsync:
             Se ocorrer um erro ao aplicar politica de retencao
         """
         # Construir comando
-        cmd = ["forget", "--prune"]
+        cmd = ["forget"]
         
         # Adicionar politicas de retencao
         if keep_last is not None:
             cmd.extend(["--keep-last", str(keep_last)])
+        if keep_hourly is not None:
+            cmd.extend(["--keep-hourly", str(keep_hourly)])
         if keep_daily is not None:
             cmd.extend(["--keep-daily", str(keep_daily)])
         if keep_weekly is not None:
@@ -527,10 +528,11 @@ class ResticClientAsync:
         if keep_yearly is not None:
             cmd.extend(["--keep-yearly", str(keep_yearly)])
         
-        # Adicionar tags a manter
         if keep_tags:
             for tag in keep_tags:
                 cmd.extend(["--keep-tag", tag])
+        if prune:
+            cmd.append("--prune")
         
         try:
             # Executar comando
@@ -541,27 +543,13 @@ class ResticClientAsync:
             raise
     
     @with_async_retry()
-    async def get_stats(self) -> Dict[str, Any]:
-        """Obtem estatisticas do repositorio.
-        
-        Returns
-        -------
-        Dict[str, Any]
-            Estatisticas do repositorio
-            
-        Raises
-        ------
-        ResticError
-            Se ocorrer um erro ao obter estatisticas
-        """
+    async def get_stats(self, mode: str = "raw-data") -> Dict[str, Any]:
+        """Obtem estatisticas do repositorio."""
         try:
-            # Executar comando
             _, stdout, _ = await self._run_command(
-                ["stats", "--json"],
+                ["stats", "--mode", mode, "--json"],
                 capture_json=True,
             )
-            
-            # Analisar saida JSON
             stats = json.loads(stdout)
             return stats
         except ResticError as e:
