@@ -26,7 +26,7 @@ security = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["services*"]
+include = ["services*", "safestic*"]
 exclude = ["tests*", "examples*", "scripts*", "logs*", "temp*", "mount*", ".venv*", "__pycache__*"]
 
 [tool.pytest.ini_options]
