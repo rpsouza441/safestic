@@ -1,16 +1,16 @@
 import argparse
-import json
 import logging
-import os
-from datetime import datetime
-from pathlib import Path
 
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
+from services.restic_client import (
+    ResticClient,
+    ResticError,
+    load_env_and_get_credential_source,
+)
 from services.restore_utils import (
     create_full_restore_structure,
     format_restore_info,
-    get_snapshot_paths_from_data
+    get_snapshot_paths_from_data,
 )
 
 
@@ -41,14 +41,17 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
     """
     credential_source = load_env_and_get_credential_source()
     with ResticScript("restore_file", credential_source=credential_source) as ctx:
-        # Configurar logging
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler()],
         )
-        
-        base_restore_target = os.getenv("RESTORE_TARGET_DIR", "C:\\Restore")
+
+        base_restore_target = (
+            ctx.config.restore_target_dir
+            if ctx.config and ctx.config.restore_target_dir
+            else "C:\\Restore"
+        )
         ctx.log("=== Iniciando restauracao de arquivo com Restic ===")
         
         try:
