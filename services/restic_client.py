@@ -254,6 +254,41 @@ class ResticClient:
                 command=cmd,
             )
 
+    def run_raw(
+        self,
+        args: Sequence[str],
+        capture_json: bool = False,
+        check: bool = True,
+    ) -> Tuple[bool, Optional[subprocess.CompletedProcess[str]], Optional[Any]]:
+        """Executa um comando Restic arbitrário.
+
+        Parameters
+        ----------
+        args : Sequence[str]
+            Argumentos do comando Restic, sem incluir a palavra ``restic``.
+        capture_json : bool, optional
+            Se True, tenta fazer parse do output como JSON, por padrao False
+        check : bool, optional
+            Se True, verifica o codigo de retorno e levanta excecao em caso de erro,
+            por padrao True
+
+        Returns
+        -------
+        Tuple[bool, Optional[subprocess.CompletedProcess[str]], Optional[Any]]
+            Resultado da execucao do comando.
+        """
+
+        cmd = build_restic_command(*args)
+        return self._run_command(cmd, capture_json=capture_json, check=check)
+
+    def get_version(self) -> str:
+        """Obtém a versão instalada do Restic."""
+
+        success, result, _ = self.run_raw(["version"])
+        if result is None:
+            return ""
+        return result.stdout.strip()
+
     @with_retry()
     def check_repository_access(self) -> bool:
         """Verifica se o repositorio Restic esta acessivel.

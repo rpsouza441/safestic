@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 from services.env import get_credential_source
+from services.restic_client import ResticClient
 
 # Importar load_restic_env para carregar configurações como no Windows
 try:
@@ -78,20 +79,23 @@ def check_restic_installation():
     else:
         print("❌ Restic não encontrado no PATH")
         return
-    
+
+    client = ResticClient(repository="dummy", env=dict(os.environ), provider="dummy")
+
     # Versão do Restic
-    code, out, err = run_command("restic version")
-    if code == 0:
-        print(f"✅ Versão: {out.strip()}")
-    else:
+    try:
+        version = client.get_version()
+        print(f"✅ Versão: {version.strip()}")
+    except Exception as err:
         print(f"❌ Erro ao obter versão: {err}")
-    
+
     # Testar comando básico
-    code, out, err = run_command("restic help")
-    if code == 0:
+    success, result, _ = client.run_raw(["help"], check=False)
+    if success:
         print("✅ Comando restic funciona corretamente")
     else:
-        print(f"❌ Erro ao executar restic: {err}")
+        stderr = result.stderr if result else ""
+        print(f"❌ Erro ao executar restic: {stderr}")
 
 def check_azure_credentials():
     """Verifica as credenciais Azure."""
