@@ -63,6 +63,17 @@ check_command() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Determinar comando sudo (ou vazio se rodando como root)
+SUDO="sudo"
+if ! check_command sudo; then
+    if [ "$EUID" -eq 0 ]; then
+        SUDO=""
+    else
+        log_error "sudo nao encontrado. Instale o sudo ou execute como root"
+        exit 1
+    fi
+fi
+
 install_packages() {
     local packages="$1"
     local install_cmd=""
@@ -70,30 +81,30 @@ install_packages() {
     case $DISTRO in
         ubuntu|debian)
             log_info "Atualizando lista de pacotes..."
-            sudo apt update
-            install_cmd="sudo apt install"
+            $SUDO apt update
+            install_cmd="$SUDO apt install"
             if [ "$ASSUME_YES" = true ]; then
                 install_cmd="$install_cmd -y"
             fi
             ;;
         fedora|centos|rhel)
             if check_command dnf; then
-                install_cmd="sudo dnf install"
+                install_cmd="$SUDO dnf install"
             elif check_command yum; then
-                install_cmd="sudo yum install"
+                install_cmd="$SUDO yum install"
             fi
             if [ "$ASSUME_YES" = true ]; then
                 install_cmd="$install_cmd -y"
             fi
             ;;
         arch|manjaro)
-            install_cmd="sudo pacman -S"
+            install_cmd="$SUDO pacman -S"
             if [ "$ASSUME_YES" = true ]; then
                 install_cmd="$install_cmd --noconfirm"
             fi
             ;;
         opensuse*)
-            install_cmd="sudo zypper install"
+            install_cmd="$SUDO zypper install"
             if [ "$ASSUME_YES" = true ]; then
                 install_cmd="$install_cmd -y"
             fi
@@ -125,7 +136,7 @@ install_restic() {
     case $DISTRO in
         ubuntu|debian)
             if apt-cache search restic | grep -q "^restic "; then
-                local cmd="sudo apt install restic"
+                local cmd="$SUDO apt install restic"
                 if [ "$ASSUME_YES" = true ]; then
                     cmd="$cmd -y"
                 fi
@@ -136,7 +147,7 @@ install_restic() {
             ;;
         fedora)
             if dnf search restic 2>/dev/null | grep -q restic; then
-                local cmd="sudo dnf install restic"
+                local cmd="$SUDO dnf install restic"
                 if [ "$ASSUME_YES" = true ]; then
                     cmd="$cmd -y"
                 fi
@@ -147,7 +158,7 @@ install_restic() {
             ;;
         arch|manjaro)
             if pacman -Ss restic | grep -q restic; then
-                local cmd="sudo pacman -S restic"
+                local cmd="$SUDO pacman -S restic"
                 if [ "$ASSUME_YES" = true ]; then
                     cmd="$cmd --noconfirm"
                 fi
@@ -177,7 +188,7 @@ install_restic() {
     log_info "Baixando Restic v$RESTIC_VERSION para $RESTIC_ARCH..."
     if curl -L "$RESTIC_URL" | bunzip2 > /tmp/restic; then
         chmod +x /tmp/restic
-        sudo mv /tmp/restic /usr/local/bin/restic
+        $SUDO mv /tmp/restic /usr/local/bin/restic
         log_success "Restic instalado: $(restic version)"
     else
         log_error "Falha ao baixar/instalar Restic"
