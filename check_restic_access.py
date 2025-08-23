@@ -1,4 +1,3 @@
-import logging
 import sys
 
 from services.script import ResticScript
@@ -13,13 +12,6 @@ def check_restic_access() -> None:
     """
     credential_source = get_credential_source()
     with ResticScript("check_restic_access", credential_source=credential_source) as ctx:
-        # Configurar logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-        
         ctx.log("=== Verificando acesso ao repositorio Restic ===")
         restic_password = ctx.env.get("RESTIC_PASSWORD")
 

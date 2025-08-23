@@ -9,14 +9,13 @@ e execucao de comandos externos.
 
 from __future__ import annotations
 
-import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, TextIO, Union, cast
 
 from .restic import load_restic_env, load_restic_config, ResticConfig
 from .env import get_credential_source
-from .logger import create_log_file, log as _log, run_cmd as _run_cmd, setup_logger, redact_secrets
+from .logger import create_log_file, log as _log, run_cmd as _run_cmd, redact_secrets
 
 
 class ResticScript:
@@ -31,8 +30,6 @@ class ResticScript:
         de ambiente ``LOG_DIR`` ou ``"logs"`` quando nao definida.
     credential_source: str
         Fonte para obtencao de credenciais (env, keyring, aws_secrets, azure_keyvault, gcp_secrets, sops).
-    log_level: str
-        Nivel de log (DEBUG, INFO, WARNING, ERROR, CRITICAL).
     """
 
     def __init__(
@@ -40,7 +37,6 @@ class ResticScript:
         log_prefix: str, 
         log_dir: Optional[str] = None,
         credential_source: Optional[str] = None,
-        log_level: str = "INFO",
     ):
         self.log_prefix = log_prefix
         self.log_dir = log_dir or os.getenv("LOG_DIR", "logs")
@@ -48,14 +44,12 @@ class ResticScript:
         if credential_source is None:
             credential_source = get_credential_source()
         self.credential_source = credential_source
-        self.log_level = log_level
         self.repository: str = ""
         self.env: Dict[str, str] = {}
         self.provider: str = ""
         self.log_filename: str = ""
         self.log_file: Optional[TextIO] = None
         self.config: Optional[ResticConfig] = None
-        self.logger: Optional[logging.Logger] = None
         self.start_time = None
 
     def __enter__(self) -> "ResticScript":
@@ -81,16 +75,9 @@ class ResticScript:
             self.log_filename = create_log_file(self.log_prefix, self.log_dir)
             self.log_file = open(self.log_filename, "w", encoding="utf-8")
             
-            # Configurar logger estruturado
-            self.logger = setup_logger(
-                name=f"safestic.{self.log_prefix}",
-                log_level=self.log_level,
-                log_file=self.log_filename,
-            )
-            
             # Registrar inicio da execucao
             self.log(
-                f"Iniciando {self.log_prefix}", 
+                f"Iniciando {self.log_prefix}",
                 level="INFO",
                 extra={
                     "repository": redact_secrets(self.repository),

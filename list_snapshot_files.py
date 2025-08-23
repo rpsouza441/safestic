@@ -1,6 +1,5 @@
 import argparse
 import json
-import logging
 import sys
 from pathlib import Path
 
@@ -23,13 +22,6 @@ def parse_args() -> argparse.Namespace:
 def main(snapshot_id: str, output_format: str = "text", output_file: str = None, pretty: bool = False) -> None:
     credential_source = get_credential_source()
     with ResticScript("list_snapshot_files", credential_source=credential_source) as ctx:
-        # Configurar logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-        
         ctx.log(f"Listando arquivos do snapshot '{snapshot_id}'...")
         
         try:

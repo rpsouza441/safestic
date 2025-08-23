@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import sys
 
 from services.script import ResticScript
@@ -17,13 +16,6 @@ def show_repository_stats() -> None:
     """
     credential_source = get_credential_source()
     with ResticScript("repository_stats", credential_source=credential_source) as ctx:
-        # Configurar logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-        
         ctx.log(f"Obtendo estatisticas gerais do repositorio: {ctx.repository}\n")
 
         try:

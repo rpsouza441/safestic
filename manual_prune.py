@@ -1,4 +1,3 @@
-import logging
 import sys
 
 from services.script import ResticScript
@@ -16,13 +15,6 @@ def main() -> None:
     """
     credential_source = get_credential_source()
     with ResticScript("manual_prune", credential_source=credential_source) as ctx:
-        # Configurar logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-        
         ctx.log("=== Iniciando limpeza manual de snapshots com Restic ===")
 
         try:
