@@ -56,11 +56,13 @@ class TestLoadResticEnv:
             load_restic_env()
 
     def test_load_restic_env_missing_password(self, mock_env) -> None:
-        """Testa erro com senha ausente."""
+        """Permite ausencia de senha sem levantar excecao."""
         os.environ["STORAGE_PROVIDER"] = "aws"
         os.environ["STORAGE_BUCKET"] = "test-bucket"
         if "RESTIC_PASSWORD" in os.environ:
             del os.environ["RESTIC_PASSWORD"]
 
-        with pytest.raises(ValueError, match="RESTIC_REPOSITORY e RESTIC_PASSWORD"):
-            load_restic_env()
+        repository, env, provider = load_restic_env()
+        assert repository == "s3:s3.amazonaws.com/test-bucket"
+        assert "RESTIC_PASSWORD" not in env
+        assert provider == "aws"
