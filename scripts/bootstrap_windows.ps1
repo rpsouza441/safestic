@@ -34,6 +34,23 @@ function Test-Command {
     }
 }
 
+# Verifica se o Python real esta instalado e nao apenas o alias da Microsoft Store
+function Test-PythonInstalled {
+    if (-not (Test-Command "python")) {
+        return $false
+    }
+    try {
+        $cmd = Get-Command "python" -ErrorAction Stop
+        if ($cmd.Source -like "*Microsoft\\WindowsApps*") {
+            return $false
+        }
+        python --version 2>$null | Out-Null
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 function Install-WithWinget {
     param([string]$Package, [string]$Name)
     try {
@@ -207,7 +224,7 @@ if (-not (Test-Command "make")) {
 }
 
 # Instalar Python 3.10+
-if (-not (Test-Command "python")) {
+if (-not (Test-PythonInstalled)) {
     Write-Status "Python nao encontrado. Instalando..."
     $installed = $false
     if ($hasWinget) {
@@ -220,6 +237,8 @@ if (-not (Test-Command "python")) {
         Write-Status "Falha ao instalar Python" "ERROR"
         exit 1
     }
+    $pythonVersion = (python --version 2>&1 | Select-String '^Python' | Select-Object -First 1).Line.Trim()
+    Write-Status "Python instalado: $pythonVersion" "SUCCESS"
 } else {
     $pythonVersion = (python --version 2>&1 | Select-String '^Python' | Select-Object -First 1).Line.Trim()
     Write-Status "Python ja instalado: $pythonVersion" "SUCCESS"
