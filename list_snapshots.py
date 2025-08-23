@@ -6,7 +6,8 @@ import sys
 from datetime import datetime
 import logging
 from services.script import ResticScript
-from services.restic_client import ResticClient, load_env_and_get_credential_source, ResticError
+from services.restic_client import ResticClient, ResticError
+from services.env import get_credential_source
 
 
 def list_snapshots() -> None:
@@ -14,7 +15,7 @@ def list_snapshots() -> None:
     
     Utiliza o ResticClient para obter a lista de snapshots com retry automatico e tratamento de erros.
     """
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
 
     with ResticScript("list_snapshots", credential_source=credential_source) as ctx:
         # Configurar logging

@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.logger import setup_logger
 from services.restic import load_restic_config, load_restic_env
-from services.restic_client import ResticClient, load_env_and_get_credential_source
+from services.restic_client import ResticClient
+from services.env import get_credential_source
 
 logger = setup_logger(__name__)
 
@@ -122,7 +123,7 @@ class HealthChecker:
     def check_restic_config(self):
         """Verifica configuracao do Restic"""
         try:
-            credential_source = load_env_and_get_credential_source()
+            credential_source = get_credential_source()
             config = load_restic_config(credential_source)
             
             # Verificar variaveis essenciais
@@ -155,7 +156,7 @@ class HealthChecker:
     def check_restic_repository(self):
         """Verifica acesso ao repositorio Restic"""
         try:
-            credential_source = load_env_and_get_credential_source()
+            credential_source = get_credential_source()
             repository, env, provider = load_restic_env(credential_source)
             
             client = ResticClient(

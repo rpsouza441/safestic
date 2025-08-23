@@ -12,8 +12,8 @@ from services.script import ResticScript
 from services.restic_client import (
     ResticClient,
     ResticError,
-    load_env_and_get_credential_source,
 )
+from services.env import get_credential_source
 
 
 def check_fuse_support() -> tuple[bool, str | None]:
@@ -53,7 +53,7 @@ def create_mount_point(mount_path: str) -> bool:
 
 
 def main() -> int:
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
 
     with ResticScript("mount_repo", credential_source=credential_source) as ctx:
         try:

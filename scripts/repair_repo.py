@@ -9,8 +9,8 @@ from services.script import ResticScript
 from services.restic_client import (
     ResticClient,
     ResticError,
-    load_env_and_get_credential_source,
 )
+from services.env import get_credential_source
 
 
 def main() -> int:
@@ -22,7 +22,7 @@ def main() -> int:
     elif "--packs" in sys.argv:
         repair_type = "packs"
 
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
 
     with ResticScript("repair_repo", credential_source=credential_source) as ctx:
         try:

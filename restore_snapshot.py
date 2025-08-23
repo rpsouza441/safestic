@@ -5,8 +5,8 @@ from services.script import ResticScript
 from services.restic_client import (
     ResticClient,
     ResticError,
-    load_env_and_get_credential_source,
 )
+from services.env import get_credential_source
 from services.restore_utils import (
     create_timestamped_restore_path,
     format_restore_info,
@@ -32,7 +32,7 @@ def run_restore_snapshot(snapshot_id: str) -> None:
     snapshot_id : str
         ID do snapshot a ser restaurado ou "latest" para o mais recente
     """
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
     
     with ResticScript("restore_snapshot", credential_source=credential_source) as ctx:
         logging.basicConfig(

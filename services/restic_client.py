@@ -29,6 +29,7 @@ from .restic_common import (
     build_restic_command,
     redact_secrets,
 )
+from .env import get_credential_source
 
 # Tipo generico para o resultado de funcoes com retry
 T = TypeVar("T")
@@ -845,18 +846,5 @@ class ResticClient:
 
 
 def load_env_and_get_credential_source() -> str:
-    """Carrega o arquivo .env e retorna o credential_source configurado.
-    
-    Esta função centraliza o carregamento do ambiente para evitar duplicação
-    de código nos comandos do Makefile.
-    
-    Returns
-    -------
-    str
-        O valor de CREDENTIAL_SOURCE do arquivo .env (padrão: 'env')
-    """
-    import os
-    from dotenv import load_dotenv
-    
-    load_dotenv()
-    return os.getenv('CREDENTIAL_SOURCE', 'env')
+    """Backward compatible wrapper for :func:`get_credential_source`."""
+    return get_credential_source()

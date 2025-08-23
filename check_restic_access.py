@@ -2,7 +2,8 @@ import logging
 import sys
 
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
+from services.restic_client import ResticClient, ResticError
+from services.env import get_credential_source
 
 
 def check_restic_access() -> None:
@@ -10,7 +11,7 @@ def check_restic_access() -> None:
     
     Utiliza o ResticClient para verificar acesso ao repositorio com retry automatico e tratamento de erros.
     """
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
     with ResticScript("check_restic_access", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(

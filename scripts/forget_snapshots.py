@@ -10,12 +10,12 @@ from services.script import ResticScript
 from services.restic_client import (
     ResticClient,
     ResticError,
-    load_env_and_get_credential_source,
 )
+from services.env import get_credential_source
 
 
 def main() -> int:
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
 
     with ResticScript("forget_snapshots", credential_source=credential_source) as ctx:
         try:

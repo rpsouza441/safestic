@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, TextIO, Union, cast
 
 from .restic import load_restic_env, load_restic_config, ResticConfig
+from .env import get_credential_source
 from .logger import create_log_file, log as _log, run_cmd as _run_cmd, setup_logger, redact_secrets
 
 
@@ -45,9 +46,7 @@ class ResticScript:
         self.log_dir = log_dir or os.getenv("LOG_DIR", "logs")
         # Se credential_source não for especificado, obter do .env
         if credential_source is None:
-            from dotenv import load_dotenv
-            load_dotenv()
-            credential_source = os.getenv("CREDENTIAL_SOURCE", "env")
+            credential_source = get_credential_source()
         self.credential_source = credential_source
         self.log_level = log_level
         self.repository: str = ""

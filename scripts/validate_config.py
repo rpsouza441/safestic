@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from services.credentials import get_credential
-from services.restic_client import load_env_and_get_credential_source
+from services.env import get_credential_source
 
 credential_source = "env"
 
@@ -22,7 +22,7 @@ def load_env_file():
         print("DICA: Execute: cp .env.example .env")
         return False
 
-    credential_source = load_env_and_get_credential_source().lower()
+    credential_source = get_credential_source().lower()
     print("OK: Arquivo .env carregado")
     return True
 

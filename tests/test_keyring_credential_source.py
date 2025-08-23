@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 from services.restic import load_restic_config
 from services.credentials import get_credential
+from services.env import get_credential_source
 
 def test_credential_source():
     """Testa se o CREDENTIAL_SOURCE está sendo lido corretamente"""
@@ -17,7 +18,7 @@ def test_credential_source():
     load_dotenv()
     
     # Verificar CREDENTIAL_SOURCE
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    credential_source = get_credential_source()
     print(f"✓ CREDENTIAL_SOURCE detectado: {credential_source}")
     
     # Testar carregamento da senha
