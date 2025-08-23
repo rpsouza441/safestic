@@ -128,9 +128,12 @@ def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str]
     if not bucket:
         raise ValueError("STORAGE_BUCKET nao definido")
 
-    # Validar senha
+    # A senha pode estar ausente em alguns fluxos (ex: apenas listagem)
+    # Nesses casos, o Restic solicitara a senha interativamente se necessario.
     if not password:
-        raise ValueError("RESTIC_REPOSITORY e RESTIC_PASSWORD sao obrigatorios")
+        logger.warning(
+            "RESTIC_PASSWORD nao configurado; algumas operacoes podem falhar"
+        )
 
     # Construir URL do repositorio
     if provider_enum == StorageProvider.AWS:
@@ -147,7 +150,8 @@ def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str]
 
     # Preparar variaveis de ambiente
     env = os.environ.copy()
-    env["RESTIC_PASSWORD"] = password
+    if password:
+        env["RESTIC_PASSWORD"] = password
     
     # Carregar credenciais especificas do provedor
     if provider_enum == StorageProvider.AWS:
