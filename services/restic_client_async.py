@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import re
 import shutil
 from functools import wraps
@@ -109,28 +108,33 @@ class ResticClientAsync:
     
     Parameters
     ----------
-    repository : str
-        URL do repositorio Restic
-    password : str
-        Senha do repositorio
+    credential_source : str
+        Fonte para obtencao de credenciais (env, keyring, etc.)
+    repository : Optional[str]
+        URL do repositorio Restic (se fornecido, evita carregar do ambiente)
     env : Optional[Dict[str, str]]
         Variaveis de ambiente adicionais
+    provider : Optional[str]
+        Provedor de armazenamento (somente informativo)
     """
-    
+
     def __init__(
         self,
-        repository: str,
-        password: str,
+        credential_source: str = "env",
+        repository: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
+        provider: Optional[str] = None,
     ) -> None:
-        self.repository = repository
-        self.password = password
-        
-        # Preparar variaveis de ambiente
-        self.env = os.environ.copy()
-        self.env["RESTIC_REPOSITORY"] = repository
-        self.env["RESTIC_PASSWORD"] = password
-        
+        # Usar valores fornecidos ou carregar do ambiente
+        if repository and env:
+            self.repository = repository
+            self.env = env
+            self.provider = provider or ""
+        else:
+            from .restic import load_restic_env
+
+            self.repository, self.env, self.provider = load_restic_env(credential_source)
+
         # Adicionar variaveis de ambiente extras
         if env:
             self.env.update(env)

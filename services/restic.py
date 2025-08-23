@@ -129,7 +129,7 @@ def load_restic_env(credential_source: str = "env") -> tuple[str, dict[str, str]
 
     # Validar senha
     if not password:
-        raise ValueError("RESTIC_PASSWORD nao definido ou nao encontrado")
+        raise ValueError("RESTIC_REPOSITORY e RESTIC_PASSWORD sao obrigatorios")
 
     # Construir URL do repositorio
     if provider_enum == StorageProvider.AWS:
