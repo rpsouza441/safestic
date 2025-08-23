@@ -267,7 +267,7 @@ if ($env:PATH -notlike "*$pythonDir*") {
 
 $pythonVersion = & $pythonExe --version 2>&1 | Select-String '^Python' | Select-Object -First 1
 $pythonVersion = $pythonVersion.Line.Trim()
-Write-Status "Python $pythonStatus: $pythonVersion" "SUCCESS"
+Write-Status "Python ${pythonStatus}: ${pythonVersion}" "SUCCESS"
 
 # Verificar versao minima
 $versionString = $pythonVersion -replace '^Python\s+', ''
@@ -367,21 +367,48 @@ if (Test-Path $makePath) {
 }
 
 # Garantir que Restic esteja no PATH permanentemente
-$resticPath = "C:\Users\$env:USERNAME\OneDrive - A7 Technology Business and Service Ltda\Documentos\Restic - Azure\bin"
-if (Test-Path $resticPath) {
-    # Atualizar PATH da sessao atual
-    if ($env:PATH -notlike "*$resticPath*") {
-        $env:PATH += ";$resticPath"
-        Write-Status "PATH da sessao atualizado com Restic" "SUCCESS"
+# Procurar pelo Restic instalado pelo winget
+$resticPaths = @(
+    "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\restic.restic_Microsoft.Winget.Source_8wekyb3d8bbwe",
+    "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+)
+
+$resticFound = $false
+foreach ($path in $resticPaths) {
+    if (Test-Path $path) {
+        $resticExe = Get-ChildItem -Path $path -Name "restic*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+         if ($resticExe) {
+             $resticPath = $path
+             
+             # Se o executavel nao e 'restic.exe', criar uma copia com o nome correto
+             $resticExePath = Join-Path $path "restic.exe"
+             if (-not (Test-Path $resticExePath)) {
+                 $originalExe = Get-ChildItem -Path $path -Name "restic_*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                 if ($originalExe) {
+                     Copy-Item (Join-Path $path $originalExe) $resticExePath -ErrorAction SilentlyContinue
+                 }
+             }
+            # Atualizar PATH da sessao atual
+            if ($env:PATH -notlike "*$resticPath*") {
+                $env:PATH += ";$resticPath"
+                Write-Status "PATH da sessao atualizado com Restic" "SUCCESS"
+            }
+            
+            # Atualizar PATH do usuario permanentemente
+            $currentUserPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+            if ($currentUserPath -notlike "*$resticPath*") {
+                $newUserPath = if ($currentUserPath) { $currentUserPath + ";$resticPath" } else { $resticPath }
+                [System.Environment]::SetEnvironmentVariable("PATH", $newUserPath, "User")
+                Write-Status "PATH do usuario atualizado permanentemente com Restic" "SUCCESS"
+            }
+            $resticFound = $true
+            break
+        }
     }
-    
-    # Atualizar PATH do usuario permanentemente
-    $currentUserPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
-    if ($currentUserPath -notlike "*$resticPath*") {
-        $newUserPath = if ($currentUserPath) { $currentUserPath + ";$resticPath" } else { $resticPath }
-        [System.Environment]::SetEnvironmentVariable("PATH", $newUserPath, "User")
-        Write-Status "PATH do usuario atualizado permanentemente com Restic" "SUCCESS"
-    }
+}
+
+if (-not $resticFound) {
+    Write-Status "Restic instalado mas nao encontrado no PATH" "WARNING"
 }
 
 # Verificar instalacoes finais
