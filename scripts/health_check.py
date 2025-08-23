@@ -47,20 +47,20 @@ class HealthChecker:
     def check_command(self, command: str, name: str) -> bool:
         """Verifica se um comando esta disponivel"""
         try:
-            # Restic usa 'version' ao inves de '--version'
+            # Restic usa método dedicado para obter versão
             if command == "restic":
-                result = subprocess.run([command, "version"], 
-                                      capture_output=True, text=True, timeout=10)
-            else:
-                result = subprocess.run([command, "--version"], 
-                                      capture_output=True, text=True, timeout=10)
+                client = ResticClient(repository="dummy", env=dict(os.environ), provider="dummy")
+                version = client.get_version().split('\n')[0]
+                self.add_result("Dependencias", name, "OK", version)
+                return True
+            result = subprocess.run([command, "--version"],
+                                    capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
                 version = result.stdout.strip().split('\n')[0]
                 self.add_result("Dependencias", name, "OK", version)
                 return True
-            else:
-                self.add_result("Dependencias", name, "ERROR", "Comando falhou")
-                return False
+            self.add_result("Dependencias", name, "ERROR", "Comando falhou")
+            return False
         except FileNotFoundError:
             self.add_result("Dependencias", name, "ERROR", "Comando nao encontrado")
             return False
