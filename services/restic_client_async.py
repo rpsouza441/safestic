@@ -10,10 +10,8 @@ import asyncio
 import json
 import logging
 import re
-import shutil
-from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 from .restic_common import (
     ResticAuthenticationError,
@@ -23,81 +21,15 @@ from .restic_common import (
     ResticPermissionError,
     ResticRepositoryError,
     analyze_command_error,
+)
+from .restic_base import (
     build_restic_command,
     redact_secrets,
+    with_async_retry,
 )
 
 # Configuracao de logger
 logger = logging.getLogger(__name__)
-
-# Tipos para anotacoes
-T = TypeVar('T')
-AsyncCallable = Callable[..., T]
-
-
-def with_async_retry(
-    max_attempts: int = 3,
-    retry_delay: float = 1.0,
-    backoff_factor: float = 2.0,
-    retriable_errors: Tuple[type[Exception], ...] = (
-        ResticNetworkError,
-        ResticRepositoryError,
-    ),
-) -> Callable[[AsyncCallable], AsyncCallable]:
-    """Decorador para funcoes assincronas com retry automatico.
-    
-    Parameters
-    ----------
-    max_attempts : int
-        Numero maximo de tentativas
-    retry_delay : float
-        Tempo de espera inicial entre tentativas (segundos)
-    backoff_factor : float
-        Fator de multiplicacao do tempo de espera a cada tentativa
-    retriable_errors : Tuple[type[Exception], ...]
-        Tipos de excecoes que devem ser retentadas
-        
-    Returns
-    -------
-    Callable
-        Funcao decorada com retry
-    """
-    def decorator(func: AsyncCallable) -> AsyncCallable:
-        @wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            current_delay = retry_delay
-            
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    return await func(*args, **kwargs)
-                except retriable_errors as e:
-                    last_exception = e
-                    if attempt < max_attempts:
-                        logger.warning(
-                            f"Tentativa {attempt}/{max_attempts} falhou: {str(e)}. "
-                            f"Tentando novamente em {current_delay:.1f}s."
-                        )
-                        await asyncio.sleep(current_delay)
-                        current_delay *= backoff_factor
-                    else:
-                        logger.error(
-                            f"Todas as {max_attempts} tentativas falharam. "
-                            f"ultimo erro: {str(e)}"
-                        )
-                        raise
-                except Exception as e:
-                    # Nao retentar para outros tipos de excecao
-                    logger.error(f"Erro nao-retentavel: {str(e)}")
-                    raise
-            
-            # Nunca deve chegar aqui, mas para satisfazer o type checker
-            assert last_exception is not None
-            raise last_exception
-        
-        return wrapper
-    
-    return decorator
 
 
 class ResticClientAsync:
@@ -166,10 +98,6 @@ class ResticClientAsync:
         ResticError
             Se ocorrer um erro ao executar o comando
         """
-        # Verificar se o Restic esta instalado
-        if not shutil.which("restic"):
-            raise ResticError("Restic nao esta instalado ou nao esta no PATH")
-        
         # Construir comando completo
         cmd = build_restic_command(*args)
         

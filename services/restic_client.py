@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import json
 import logging
-import random
 import re
 import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 from .restic import load_restic_env
 from .restic_common import (
@@ -26,89 +25,15 @@ from .restic_common import (
     ResticPermissionError,
     ResticRepositoryError,
     analyze_command_error,
+)
+from .restic_base import (
     build_restic_command,
     redact_secrets,
+    with_retry,
+    check_restic_installed as base_check_restic_installed,
 )
 from .env import get_credential_source
 
-# Tipo generico para o resultado de funcoes com retry
-T = TypeVar("T")
-
-
-def with_retry(
-    max_attempts: int = 3,
-    initial_backoff: float = 1.0,
-    max_backoff: float = 30.0,
-    backoff_factor: float = 2.0,
-    jitter: float = 0.1,
-    retriable_errors: Sequence[type[Exception]] | Tuple[type[Exception], ...] = (
-        ResticNetworkError,
-        ResticRepositoryError,
-    ),
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Decorator para adicionar retry com backoff exponencial a uma funcao.
-
-    Parameters
-    ----------
-    max_attempts : int, optional
-        Numero maximo de tentativas, por padrao 3
-    initial_backoff : float, optional
-        Tempo inicial de espera em segundos, por padrao 1.0
-    max_backoff : float, optional
-        Tempo maximo de espera em segundos, por padrao 30.0
-    backoff_factor : float, optional
-        Fator multiplicativo para backoff exponencial, por padrao 2.0
-    jitter : float, optional
-        Fator de aleatoriedade para evitar thundering herd, por padrao 0.1
-
-    Returns
-    -------
-    Callable
-        Funcao decorada com retry
-    """
-
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        def wrapper(*args: Any, **kwargs: Any) -> T:
-            last_exception = None
-            attempt = 1
-
-            while attempt <= max_attempts:
-                try:
-                    return func(*args, **kwargs)
-                except tuple(retriable_errors) as exc:
-                    last_exception = exc
-                    if attempt == max_attempts:
-                        break
-
-                    # Calcular tempo de espera com backoff exponencial e jitter
-                    backoff = min(
-                        max_backoff,
-                        initial_backoff * (backoff_factor ** (attempt - 1)),
-                    )
-                    # Adicionar jitter (variacao aleatoria)
-                    backoff = backoff * (1 + random.uniform(-jitter, jitter))
-
-                    logging.warning(
-                        "Tentativa %d/%d falhou: %s. Tentando novamente em %.2f segundos.",
-                        attempt,
-                        max_attempts,
-                        exc,
-                        backoff,
-                    )
-
-                    time.sleep(backoff)
-                    attempt += 1
-                except Exception as exc:
-                    # Outros tipos de excecao nao sao retentados
-                    raise exc
-
-            # Se chegamos aqui, todas as tentativas falharam
-            assert last_exception is not None
-            raise last_exception
-
-        return wrapper
-
-    return decorator
 
 
 class ResticClient:
@@ -157,7 +82,12 @@ class ResticClient:
             self.env = env
             self.provider = provider
         else:
-            self.repository, self.env, self.provider = load_restic_env(credential_source)
+            try:
+                self.repository, self.env, self.provider = load_restic_env(credential_source)
+            except ValueError:
+                self.repository = ""
+                self.env = {}
+                self.provider = ""
         
         self.log_file = log_file
         self.logger = logging.getLogger("restic_client")
@@ -326,14 +256,10 @@ class ResticClient:
         return success
 
     def check_restic_installed(self) -> bool:
-        """Verifica se o Restic esta instalado e acessivel.
-
-        Returns
-        -------
-        bool
-            True se o Restic esta instalado e acessivel, False caso contrario
-        """
+        """Verifica se o Restic esta instalado e acessivel."""
         self.logger.info("Verificando se o Restic esta instalado...")
+        if not base_check_restic_installed():
+            self.logger.debug("Restic nao encontrado no PATH, tentando executar para confirmar")
         try:
             success, _, _ = self._run_command(
                 build_restic_command("version"),
