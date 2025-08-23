@@ -6,7 +6,7 @@ import importlib
 import subprocess
 from pathlib import Path
 
-def test_import(module_name, package_name=None):
+def check_import(module_name, package_name=None):
     """Testa se um módulo pode ser importado."""
     try:
         importlib.import_module(module_name)
@@ -68,13 +68,13 @@ def main():
     # Testar dependências principais
     failed_main = []
     for module, package in dependencies:
-        if not test_import(module, package):
+        if not check_import(module, package):
             failed_main.append((module, package))
     
     print("\n=== TESTANDO DEPENDÊNCIAS OPCIONAIS ===")
     failed_optional = []
     for module, package in optional_dependencies:
-        if not test_import(module, package):
+        if not check_import(module, package):
             failed_optional.append((module, package))
     
     # Testar importações específicas do projeto
@@ -88,7 +88,7 @@ def main():
     
     failed_project = []
     for module in project_modules:
-        if not test_import(module):
+        if not check_import(module):
             failed_project.append(module)
     
     # Verificar pip list

@@ -25,7 +25,7 @@ except ImportError:
     KEYRING_AVAILABLE = False
 
 try:
-    from services.credentials import get_credential, CredentialManager
+    from services.credentials import get_manager, CredentialManager
     from services.restic import load_restic_config
     from services.env import get_credential_source
 except ImportError as e:
@@ -141,9 +141,10 @@ def test_azure_credentials():
     ]
     
     success = True
+    manager = get_manager(credential_source)
     for cred in azure_creds:
         try:
-            value = get_credential(cred, credential_source)
+            value = manager.get_credential(cred)
             if value:
                 print(f"✅ {cred}: Carregada (***mascarada***)")
             else:

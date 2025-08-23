@@ -22,8 +22,6 @@ from typing import Any, Dict, List, Optional, Sequence, TextIO, Union, cast
 
 from pythonjsonlogger import jsonlogger
 
-from .credentials import get_credential
-
 # Padroes para redacao de segredos
 SECRET_PATTERNS = [
     # Senhas

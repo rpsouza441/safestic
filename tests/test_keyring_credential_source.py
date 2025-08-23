@@ -7,7 +7,7 @@ e se a RESTIC_PASSWORD está sendo carregada do keyring.
 import os
 from dotenv import load_dotenv
 from services.restic import load_restic_config
-from services.credentials import get_credential
+from services.credentials import get_manager
 from services.env import get_credential_source
 
 def test_credential_source():
@@ -23,7 +23,7 @@ def test_credential_source():
     
     # Testar carregamento da senha
     try:
-        password = get_credential('RESTIC_PASSWORD', credential_source)
+        password = get_manager(credential_source).get_credential('RESTIC_PASSWORD')
         if password:
             print(f"✓ RESTIC_PASSWORD carregada com sucesso do {credential_source}")
             print(f"  Senha: {'*' * len(password)} (mascarada)")

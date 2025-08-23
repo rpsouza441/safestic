@@ -16,13 +16,14 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
-    from services.credentials import get_credential
+    from services.credentials import get_manager
 except ImportError:
-    get_credential = None
+    get_manager = None
 
 from services.env import get_credential_source
 
 credential_source = get_credential_source().lower()
+manager = get_manager(credential_source) if get_manager else None
 
 
 def check_restic_password() -> Tuple[bool, str]:
@@ -32,9 +33,9 @@ def check_restic_password() -> Tuple[bool, str]:
         Tuple[bool, str]: (configurado, mensagem)
     """
     # Tentar obter da fonte configurada
-    if get_credential:
+    if manager:
         try:
-            password = get_credential('RESTIC_PASSWORD', credential_source)
+            password = manager.get_credential('RESTIC_PASSWORD')
             if password:
                 if credential_source == 'keyring':
                     return True, "RESTIC_PASSWORD configurado no keyring do sistema"
@@ -69,14 +70,14 @@ def check_cloud_credentials() -> Tuple[bool, List[str]]:
         # Tentar obter da fonte configurada primeiro
         aws_key = None
         aws_secret = None
-        
-        if get_credential:
+
+        if manager:
             try:
-                aws_key = get_credential('AWS_ACCESS_KEY_ID', credential_source)
-                aws_secret = get_credential('AWS_SECRET_ACCESS_KEY', credential_source)
+                aws_key = manager.get_credential('AWS_ACCESS_KEY_ID')
+                aws_secret = manager.get_credential('AWS_SECRET_ACCESS_KEY')
             except Exception:
                 pass
-        
+
         # Fallback para variáveis de ambiente
         if not aws_key:
             aws_key = os.getenv('AWS_ACCESS_KEY_ID')
@@ -105,10 +106,10 @@ def check_cloud_credentials() -> Tuple[bool, List[str]]:
         azure_name = None
         azure_key = None
 
-        if get_credential:
+        if manager:
             try:
-                azure_name = get_credential('AZURE_ACCOUNT_NAME', credential_source)
-                azure_key = get_credential('AZURE_ACCOUNT_KEY', credential_source)
+                azure_name = manager.get_credential('AZURE_ACCOUNT_NAME')
+                azure_key = manager.get_credential('AZURE_ACCOUNT_KEY')
             except Exception:
                 pass
 
@@ -133,10 +134,10 @@ def check_cloud_credentials() -> Tuple[bool, List[str]]:
         gcp_project = None
         gcp_creds = None
 
-        if get_credential:
+        if manager:
             try:
-                gcp_project = get_credential('GOOGLE_PROJECT_ID', credential_source)
-                gcp_creds = get_credential('GOOGLE_APPLICATION_CREDENTIALS', credential_source)
+                gcp_project = manager.get_credential('GOOGLE_PROJECT_ID')
+                gcp_creds = manager.get_credential('GOOGLE_APPLICATION_CREDENTIALS')
             except Exception:
                 pass
 

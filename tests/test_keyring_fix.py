@@ -3,7 +3,7 @@
 
 import sys
 import logging
-from services.credentials import CredentialManager, get_credential
+from services.credentials import CredentialManager, get_manager
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -13,7 +13,8 @@ def test_keyring_import():
     """Testa se o keyring pode ser importado."""
     try:
         import keyring
-        logger.info(f"✅ Keyring importado com sucesso: {keyring.__version__}")
+        version = getattr(keyring, "__version__", "unknown")
+        logger.info(f"✅ Keyring importado com sucesso: {version}")
         return True
     except ImportError as e:
         logger.error(f"❌ Falha ao importar keyring: {e}")
@@ -63,20 +64,20 @@ def test_credential_manager():
         logger.error(f"❌ Erro ao testar CredentialManager KEYRING: {e}")
         return False
 
-def test_get_credential_function():
-    """Testa a função get_credential."""
+def test_get_manager_function():
+    """Testa a obtenção de credenciais via get_manager."""
     try:
         # Teste com fonte ENV
-        cred = get_credential("PATH", "env")  # PATH deve existir
-        logger.info(f"✅ get_credential ENV funciona: {cred is not None}")
-        
+        cred = get_manager("env").get_credential("PATH")  # PATH deve existir
+        logger.info(f"✅ get_manager ENV funciona: {cred is not None}")
+
         # Teste com fonte KEYRING
-        cred = get_credential("TEST_KEY", "keyring")
-        logger.info(f"✅ get_credential KEYRING funciona: {cred is None}")
-        
+        cred = get_manager("keyring").get_credential("TEST_KEY")
+        logger.info(f"✅ get_manager KEYRING funciona: {cred is None}")
+
         return True
     except Exception as e:
-        logger.error(f"❌ Erro ao testar get_credential: {e}")
+        logger.error(f"❌ Erro ao testar get_manager/get_credential: {e}")
         return False
 
 def main():
@@ -89,7 +90,7 @@ def main():
         ("Importação do keyring", test_keyring_import),
         ("Backend do keyring", test_keyring_backend),
         ("CredentialManager", test_credential_manager),
-        ("Função get_credential", test_get_credential_function),
+        ("Função get_manager", test_get_manager_function),
     ]
     
     results = []
