@@ -1,15 +1,3 @@
-ifeq ($(OS),Windows_NT)
-PYTHON=python
-VENV_ACTIVATE=.venv\Scripts\Activate.ps1
-VENV_PYTHON=.venv\Scripts\python.exe
-else
-PYTHON=python3
-VENV_ACTIVATE=.venv/bin/activate
-VENV_PYTHON=.venv/bin/python
-endif
-
-.RECIPEPREFIX := >
-
 # Verificar se ambiente virtual existe e usar se disponivel
 ifeq ($(OS),Windows_NT)
 PYTHON_CMD=$(if $(wildcard .venv\Scripts\python.exe),$(VENV_PYTHON),$(PYTHON))
