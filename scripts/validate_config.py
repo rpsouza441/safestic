@@ -8,7 +8,7 @@ import os
 import sys
 from pathlib import Path
 
-from services.credentials import get_credential
+from services.credentials import get_manager
 from services.env import get_credential_source
 
 credential_source = "env"
@@ -41,7 +41,7 @@ def validate_required_vars():
             missing_vars.append(var)
     
     # Validar RESTIC_PASSWORD usando API de credenciais
-    restic_password = get_credential('RESTIC_PASSWORD', credential_source)
+    restic_password = get_manager(credential_source).get_credential('RESTIC_PASSWORD')
     if not restic_password or restic_password.strip() == '':
         missing_vars.append('RESTIC_PASSWORD')
     
@@ -71,7 +71,8 @@ def validate_storage_config():
     
     elif provider == 'aws':
         aws_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
-        missing = [var for var in aws_vars if not get_credential(var, credential_source)]
+        manager = get_manager(credential_source)
+        missing = [var for var in aws_vars if not manager.get_credential(var)]
         if missing:
             print(f"❌ Variaveis AWS faltando: {missing}")
             return False
@@ -80,7 +81,8 @@ def validate_storage_config():
 
     elif provider == 'azure':
         azure_vars = ['AZURE_ACCOUNT_NAME', 'AZURE_ACCOUNT_KEY']
-        missing = [var for var in azure_vars if not get_credential(var, credential_source)]
+        manager = get_manager(credential_source)
+        missing = [var for var in azure_vars if not manager.get_credential(var)]
         if missing:
             print(f"❌ Variaveis Azure faltando: {missing}")
             return False
@@ -88,8 +90,9 @@ def validate_storage_config():
         return True
 
     elif provider == 'gcp':
-        gcp_project = get_credential('GOOGLE_PROJECT_ID', credential_source)
-        gcp_creds = get_credential('GOOGLE_APPLICATION_CREDENTIALS', credential_source)
+        manager = get_manager(credential_source)
+        gcp_project = manager.get_credential('GOOGLE_PROJECT_ID')
+        gcp_creds = manager.get_credential('GOOGLE_APPLICATION_CREDENTIALS')
         if not gcp_project or not gcp_creds or not Path(gcp_creds).exists():
             print("❌ Credenciais GCP nao encontradas")
             return False

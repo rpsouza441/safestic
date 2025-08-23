@@ -302,6 +302,40 @@ class CredentialManager:
             return False
 
 
+# Instância global do gerenciador de credenciais
+_manager: Optional[CredentialManager] = None
+
+
+def get_manager(credential_source: str = "env") -> CredentialManager:
+    """Retorna uma instância singleton de :class:`CredentialManager`.
+
+    Parameters
+    ----------
+    credential_source : str
+        Fonte para obtenção de credenciais.
+
+    Returns
+    -------
+    CredentialManager
+        Instância global configurada do gerenciador de credenciais.
+    """
+    global _manager
+    source = credential_source.lower()
+
+    if _manager is None or _manager.credential_source.value != source:
+        # Carregar .env para obter APP_NAME se disponível
+        load_dotenv()
+        app_name = os.getenv("APP_NAME", "safestic")
+
+        _manager = CredentialManager(
+            app_name=app_name,
+            credential_source=source,
+            sops_file=os.getenv("SOPS_FILE"),
+        )
+
+    return _manager
+
+
 def load_credentials(credential_source: str = "env") -> Dict[str, str]:
     """Carrega todas as credenciais necessarias para o Restic.
     
@@ -328,15 +362,9 @@ def load_credentials(credential_source: str = "env") -> Dict[str, str]:
     
     # Carregar .env para obter APP_NAME se disponivel
     load_dotenv()
-    app_name = os.getenv("APP_NAME", "safestic")
-    
+
     # Inicializar gerenciador de credenciais
-    manager = CredentialManager(
-        app_name=app_name,
-        credential_source=credential_source,
-        fallback_to_env=True,
-        sops_file=os.getenv("SOPS_FILE"),
-    )
+    manager = get_manager(credential_source)
     
     # Carregar credenciais
     credentials = {}
@@ -349,26 +377,6 @@ def load_credentials(credential_source: str = "env") -> Dict[str, str]:
 
 
 def get_credential(key: str, credential_source: str = "env") -> Optional[str]:
-    """Obtem uma credencial especifica de forma segura.
-    
-    Parameters
-    ----------
-    key : str
-        Nome da credencial a ser obtida
-    credential_source : str
-        Fonte para obtencao de credenciais
-        
-    Returns
-    -------
-    Optional[str]
-        Valor da credencial ou None se nao encontrada
-    """
-    # Carregar .env para obter APP_NAME se disponivel
-    load_dotenv()
-    app_name = os.getenv("APP_NAME", "safestic")
-    
-    manager = CredentialManager(
-        app_name=app_name,
-        credential_source=credential_source
-    )
+    """Obtem uma credencial especifica delegando para o gerenciador global."""
+    manager = get_manager(credential_source)
     return manager.get_credential(key)
