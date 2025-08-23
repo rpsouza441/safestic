@@ -93,7 +93,7 @@ async def main():
     # Verificar repositorio
     try:
         logger.info("Verificando repositorio...")
-        repo_ok = await client.check_repository()
+        repo_ok = await client.check_repository_access()
         if not repo_ok:
             logger.error("Repositorio nao esta integro.")
             return 1

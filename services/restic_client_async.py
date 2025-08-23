@@ -12,19 +12,20 @@ import logging
 import os
 import re
 import shutil
-import subprocess
-import time
-from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
 
-from .restic_client import (
-    ResticError, 
-    ResticNetworkError, 
-    ResticRepositoryError, 
+from .restic_common import (
     ResticAuthenticationError,
-    redact_secrets
+    ResticCommandError,
+    ResticError,
+    ResticNetworkError,
+    ResticPermissionError,
+    ResticRepositoryError,
+    analyze_command_error,
+    build_restic_command,
+    redact_secrets,
 )
 
 # Configuracao de logger
@@ -39,7 +40,10 @@ def with_async_retry(
     max_attempts: int = 3,
     retry_delay: float = 1.0,
     backoff_factor: float = 2.0,
-    retriable_errors: Tuple[type[Exception], ...] = (ResticNetworkError,),
+    retriable_errors: Tuple[type[Exception], ...] = (
+        ResticNetworkError,
+        ResticRepositoryError,
+    ),
 ) -> Callable[[AsyncCallable], AsyncCallable]:
     """Decorador para funcoes assincronas com retry automatico.
     
@@ -163,12 +167,11 @@ class ResticClientAsync:
             raise ResticError("Restic nao esta instalado ou nao esta no PATH")
         
         # Construir comando completo
-        cmd = ["restic"] + list(args)
+        cmd = build_restic_command(*args)
         
         # Redigir segredos para logging
         safe_cmd = [redact_secrets(str(arg)) for arg in cmd]
-        safe_env = {k: redact_secrets(str(v)) for k, v in self.env.items()}
-        
+
         logger.debug(f"Executando: {' '.join(safe_cmd)}")
         
         try:
@@ -206,15 +209,7 @@ class ResticClientAsync:
             
             # Analisar saida
             if returncode != 0:
-                # Identificar tipo de erro
-                if "network" in safe_stderr.lower() or "connection" in safe_stderr.lower():
-                    raise ResticNetworkError(f"Erro de rede: {safe_stderr}")
-                elif "repository" in safe_stderr.lower():
-                    raise ResticRepositoryError(f"Erro no repositorio: {safe_stderr}")
-                elif "password" in safe_stderr.lower() or "authentication" in safe_stderr.lower():
-                    raise ResticAuthenticationError(f"Erro de autenticacao: {safe_stderr}")
-                else:
-                    raise ResticError(f"Comando falhou com codigo {returncode}: {safe_stderr}")
+                analyze_command_error(cmd, returncode, safe_stdout, safe_stderr)
             
             # Capturar JSON se solicitado
             if capture_json and safe_stdout:
@@ -233,7 +228,7 @@ class ResticClientAsync:
             raise ResticError(f"Erro ao executar comando: {str(e)}")
     
     @with_async_retry()
-    async def check_repository(self) -> bool:
+    async def check_repository_access(self) -> bool:
         """Verifica se o repositorio esta acessivel e integro.
         
         Returns
@@ -257,7 +252,7 @@ class ResticClientAsync:
     async def backup(
         self,
         paths: List[str],
-        exclude_patterns: Optional[List[str]] = None,
+        excludes: Optional[List[str]] = None,
         tags: Optional[List[str]] = None,
     ) -> str:
         """Realiza backup dos caminhos especificados.
@@ -266,7 +261,7 @@ class ResticClientAsync:
         ----------
         paths : List[str]
             Caminhos a serem incluidos no backup
-        exclude_patterns : Optional[List[str]]
+        excludes : Optional[List[str]]
             Padroes a serem excluidos do backup
         tags : Optional[List[str]]
             Tags a serem associadas ao snapshot
@@ -295,8 +290,8 @@ class ResticClientAsync:
                 cmd.extend(["--tag", tag])
         
         # Adicionar exclusoes
-        if exclude_patterns:
-            for pattern in exclude_patterns:
+        if excludes:
+            for pattern in excludes:
                 cmd.extend(["--exclude", pattern])
         
         # Adicionar caminhos
@@ -393,20 +388,20 @@ class ResticClientAsync:
     @with_async_retry()
     async def restore_snapshot(
         self,
+        target_dir: str,
         snapshot_id: str = "latest",
-        target_dir: Optional[str] = None,
-        include_patterns: Optional[List[str]] = None,
+        include_paths: Optional[List[str]] = None,
     ) -> bool:
         """Restaura um snapshot.
         
         Parameters
         ----------
+        target_dir : str
+            Diretorio de destino para restauracao
         snapshot_id : str
             ID do snapshot ou "latest"
-        target_dir : Optional[str]
-            Diretorio de destino para restauracao
-        include_patterns : Optional[List[str]]
-            Padroes a serem incluidos na restauracao
+        include_paths : Optional[List[str]]
+            Caminhos a serem incluidos na restauracao
             
         Returns
         -------
@@ -419,18 +414,14 @@ class ResticClientAsync:
             Se ocorrer um erro ao restaurar snapshot
         """
         # Construir comando
-        cmd = ["restore", snapshot_id]
-        
-        # Adicionar diretorio de destino
-        if target_dir:
-            cmd.extend(["--target", target_dir])
-            
-            # Criar diretorio de destino se nao existir
-            Path(target_dir).mkdir(parents=True, exist_ok=True)
-        
-        # Adicionar padroes de inclusao
-        if include_patterns:
-            for pattern in include_patterns:
+        cmd = ["restore", snapshot_id, "--target", target_dir]
+
+        # Garantir que o diretorio de destino existe
+        Path(target_dir).mkdir(parents=True, exist_ok=True)
+
+        # Adicionar caminhos de inclusao
+        if include_paths:
+            for pattern in include_paths:
                 cmd.extend(["--include", pattern])
         
         try:
@@ -446,7 +437,7 @@ class ResticClientAsync:
         self,
         path: str,
         snapshot_id: str = "latest",
-        target_dir: Optional[str] = None,
+        target_dir: str = ".",
     ) -> bool:
         """Restaura um arquivo especifico.
         
@@ -456,7 +447,7 @@ class ResticClientAsync:
             Caminho do arquivo a ser restaurado
         snapshot_id : str
             ID do snapshot ou "latest"
-        target_dir : Optional[str]
+        target_dir : str
             Diretorio de destino para restauracao
             
         Returns
@@ -470,9 +461,9 @@ class ResticClientAsync:
             Se ocorrer um erro ao restaurar arquivo
         """
         return await self.restore_snapshot(
-            snapshot_id=snapshot_id,
             target_dir=target_dir,
-            include_patterns=[path],
+            snapshot_id=snapshot_id,
+            include_paths=[path],
         )
     
     @with_async_retry()
