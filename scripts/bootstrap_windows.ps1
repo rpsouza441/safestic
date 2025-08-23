@@ -34,21 +34,32 @@ function Test-Command {
     }
 }
 
-# Verifica se o Python real esta instalado e nao apenas o alias da Microsoft Store
-function Test-PythonInstalled {
-    if (-not (Test-Command "python")) {
-        return $false
-    }
+function Get-InstalledPythonExe {
     try {
         $cmd = Get-Command "python" -ErrorAction Stop
-        if ($cmd.Source -like "*Microsoft\\WindowsApps*") {
-            return $false
+        if ($cmd.Source -notlike "*Microsoft\\WindowsApps*") {
+            return $cmd.Source
         }
-        python --version 2>$null | Out-Null
-        return $true
     } catch {
-        return $false
+        # Ignore errors and fall back to common locations
     }
+
+    $possiblePaths = @(
+        "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe",
+        "$env:ProgramFiles\Python312\python.exe",
+        "$env:ProgramFiles\Python311\python.exe",
+        "$env:ProgramFiles\Python310\python.exe"
+    )
+
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+
+    return $null
 }
 
 function Install-WithWinget {
@@ -224,7 +235,8 @@ if (-not (Test-Command "make")) {
 }
 
 # Instalar Python 3.10+
-if (-not (Test-PythonInstalled)) {
+$pythonExe = Get-InstalledPythonExe
+if (-not $pythonExe) {
     Write-Status "Python nao encontrado. Instalando..."
     $installed = $false
     if ($hasWinget) {
@@ -237,18 +249,32 @@ if (-not (Test-PythonInstalled)) {
         Write-Status "Falha ao instalar Python" "ERROR"
         exit 1
     }
-    $pythonVersion = (python --version 2>&1 | Select-String '^Python' | Select-Object -First 1).Line.Trim()
-    Write-Status "Python instalado: $pythonVersion" "SUCCESS"
-} else {
-    $pythonVersion = (python --version 2>&1 | Select-String '^Python' | Select-Object -First 1).Line.Trim()
-    Write-Status "Python ja instalado: $pythonVersion" "SUCCESS"
-    # Verificar versao minima
-    $versionString = $pythonVersion -replace '^Python\s+', ''
-    $version = [Version]$versionString
-    if ($version -lt [Version]"3.10.0") {
-        Write-Status "Python $version e muito antigo. Minimo: 3.10" "ERROR"
+    $pythonExe = Get-InstalledPythonExe
+    if (-not $pythonExe) {
+        Write-Status "Python instalado mas nao encontrado" "ERROR"
         exit 1
     }
+    $pythonStatus = "instalado"
+} else {
+    $pythonStatus = "ja instalado"
+}
+
+$pythonDir = Split-Path $pythonExe -Parent
+if ($env:PATH -notlike "*$pythonDir*") {
+    $env:PATH = "$pythonDir;$env:PATH"
+    Write-Status "PATH atualizado com Python" "SUCCESS"
+}
+
+$pythonVersion = & $pythonExe --version 2>&1 | Select-String '^Python' | Select-Object -First 1
+$pythonVersion = $pythonVersion.Line.Trim()
+Write-Status "Python $pythonStatus: $pythonVersion" "SUCCESS"
+
+# Verificar versao minima
+$versionString = $pythonVersion -replace '^Python\s+', ''
+$version = [Version]$versionString
+if ($version -lt [Version]"3.10.0") {
+    Write-Status "Python $version e muito antigo. Minimo: 3.10" "ERROR"
+    exit 1
 }
 
 # Instalar pip (geralmente vem com Python)
