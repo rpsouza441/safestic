@@ -17,9 +17,9 @@ from typing import List, Optional
 # Adicionar diretorio pai ao path para importar o pacote safestic
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from services.credentials import load_credentials
 from services.logger import setup_logger
 from services.restic_client_async import ResticClientAsync
+from services.restic_client import load_env_and_get_credential_source
 
 
 async def backup_directory(client: ResticClientAsync, path: str, tags: Optional[List[str]] = None) -> str:
@@ -65,30 +65,18 @@ async def main():
         log_file="logs/async_backup.log",
     )
     
-    # Carregar credenciais
-    try:
-        credentials = load_credentials(source="env")
-        repository = credentials.get("RESTIC_REPOSITORY")
-        password = credentials.get("RESTIC_PASSWORD")
-        
-        if not repository or not password:
-            logger.error("Credenciais incompletas. Verifique as variaveis RESTIC_REPOSITORY e RESTIC_PASSWORD.")
-            return 1
-    except Exception as e:
-        logger.error(f"Erro ao carregar credenciais: {str(e)}")
-        return 1
-    
+    # Determinar fonte de credenciais e criar cliente
+    credential_source = load_env_and_get_credential_source()
+    client = ResticClientAsync(credential_source=credential_source)
+
     # Obter diretorios para backup
     backup_dirs_str = os.getenv("BACKUP_SOURCE_DIRS", "")
     if not backup_dirs_str:
         logger.error("Nenhum diretorio para backup especificado. Defina a variavel BACKUP_SOURCE_DIRS.")
         return 1
-    
+
     backup_dirs = [d.strip() for d in backup_dirs_str.split(",")]
     logger.info(f"Diretorios para backup: {backup_dirs}")
-    
-    # Criar cliente Restic assincrono
-    client = ResticClientAsync(repository=repository, password=password)
     
     # Verificar repositorio
     try:

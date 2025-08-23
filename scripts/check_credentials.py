@@ -102,31 +102,55 @@ def check_cloud_credentials() -> Tuple[bool, List[str]]:
                 messages.append("AWS_SECRET_ACCESS_KEY configurado")
             
     elif provider == 'azure':
-        azure_name = os.getenv('AZURE_ACCOUNT_NAME')
-        azure_key = os.getenv('AZURE_ACCOUNT_KEY')
-        
+        azure_name = None
+        azure_key = None
+
+        if get_credential:
+            try:
+                azure_name = get_credential('AZURE_ACCOUNT_NAME', credential_source)
+                azure_key = get_credential('AZURE_ACCOUNT_KEY', credential_source)
+            except Exception:
+                pass
+
+        if not azure_name:
+            azure_name = os.getenv('AZURE_ACCOUNT_NAME')
+        if not azure_key:
+            azure_key = os.getenv('AZURE_ACCOUNT_KEY')
+
         if not azure_name:
             messages.append("AZURE_ACCOUNT_NAME nao configurado")
             all_configured = False
         else:
             messages.append("AZURE_ACCOUNT_NAME configurado")
-            
+
         if not azure_key:
             messages.append("AZURE_ACCOUNT_KEY nao configurado")
             all_configured = False
         else:
             messages.append("AZURE_ACCOUNT_KEY configurado")
-            
+
     elif provider == 'gcp':
-        gcp_project = os.getenv('GOOGLE_PROJECT_ID')
-        gcp_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        
+        gcp_project = None
+        gcp_creds = None
+
+        if get_credential:
+            try:
+                gcp_project = get_credential('GOOGLE_PROJECT_ID', credential_source)
+                gcp_creds = get_credential('GOOGLE_APPLICATION_CREDENTIALS', credential_source)
+            except Exception:
+                pass
+
+        if not gcp_project:
+            gcp_project = os.getenv('GOOGLE_PROJECT_ID')
+        if not gcp_creds:
+            gcp_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
         if not gcp_project:
             messages.append("GOOGLE_PROJECT_ID nao configurado")
             all_configured = False
         else:
             messages.append("GOOGLE_PROJECT_ID configurado")
-            
+
         if not gcp_creds or not Path(gcp_creds).exists():
             messages.append("GOOGLE_APPLICATION_CREDENTIALS nao configurado ou arquivo nao encontrado")
             all_configured = False
