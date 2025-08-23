@@ -12,7 +12,7 @@ import subprocess
 import json
 from pathlib import Path
 
-from services.restic_client import load_env_and_get_credential_source
+from services.env import get_credential_source
 
 # Importar load_restic_env para carregar configurações como no Windows
 try:
@@ -104,7 +104,7 @@ def check_azure_credentials():
     
     if HAS_RESTIC_SERVICE:
         try:
-            credential_source = load_env_and_get_credential_source()
+            credential_source = get_credential_source()
             
             print(f"🔧 Usando load_restic_env com credential_source='{credential_source}' (como no Windows)")
             repository, env_vars, provider = load_restic_env(credential_source)
@@ -116,7 +116,7 @@ def check_azure_credentials():
     
     if not HAS_RESTIC_SERVICE or not repository:
         # Fallback para carregamento manual
-        load_env_and_get_credential_source()
+        get_credential_source()
         env_vars = dict(os.environ)
         repository = os.getenv("RESTIC_REPOSITORY")
         provider = os.getenv("STORAGE_PROVIDER")
@@ -130,7 +130,7 @@ def check_azure_credentials():
         "AZURE_ACCOUNT_KEY": env_vars.get("AZURE_ACCOUNT_KEY"),
         "STORAGE_PROVIDER": provider or env_vars.get("STORAGE_PROVIDER"),
         "STORAGE_BUCKET": env_vars.get("STORAGE_BUCKET"),
-        "CREDENTIAL_SOURCE": env_vars.get("CREDENTIAL_SOURCE", "env")
+        "CREDENTIAL_SOURCE": env_vars.get("CREDENTIAL_SOURCE", get_credential_source())
     }
     
     print("Variáveis de ambiente:")
@@ -167,14 +167,14 @@ def test_azure_connectivity():
     
     if HAS_RESTIC_SERVICE:
         try:
-            credential_source = load_env_and_get_credential_source()
+            credential_source = get_credential_source()
             repository, env_vars, provider = load_restic_env(credential_source)
         except Exception:
-            load_env_and_get_credential_source()
+            get_credential_source()
             env_vars = dict(os.environ)
             repository = os.getenv("RESTIC_REPOSITORY")
     else:
-        load_env_and_get_credential_source()
+        get_credential_source()
         env_vars = dict(os.environ)
         repository = os.getenv("RESTIC_REPOSITORY")
     

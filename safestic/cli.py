@@ -7,8 +7,8 @@ from pathlib import Path
 from services.restic_client import (
     ResticClient,
     ResticError,
-    load_env_and_get_credential_source,
 )
+from services.env import get_credential_source
 from services.restic import load_restic_config
 from services.script import ResticScript
 
@@ -29,7 +29,7 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 def cmd_init(args: argparse.Namespace) -> None:
     """Initialize repository if needed."""
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
     with ResticScript("init", credential_source=credential_source) as ctx:
         client = ResticClient(
             repository=ctx.repository,
@@ -51,7 +51,7 @@ def cmd_init(args: argparse.Namespace) -> None:
 
 def cmd_dry_run(args: argparse.Namespace) -> None:
     """Display configured backup paths and check their existence."""
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
     config = load_restic_config(credential_source)
     print("Configuracao de backup:")
     print(f"Diretorios: {config.backup_source_dirs}")

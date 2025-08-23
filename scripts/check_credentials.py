@@ -20,9 +20,9 @@ try:
 except ImportError:
     get_credential = None
 
-from services.restic_client import load_env_and_get_credential_source
+from services.env import get_credential_source
 
-credential_source = load_env_and_get_credential_source().lower()
+credential_source = get_credential_source().lower()
 
 
 def check_restic_password() -> Tuple[bool, str]:

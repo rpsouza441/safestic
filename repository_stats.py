@@ -6,7 +6,8 @@ import logging
 import sys
 
 from services.script import ResticScript
-from services.restic_client import ResticClient, ResticError, load_env_and_get_credential_source
+from services.restic_client import ResticClient, ResticError
+from services.env import get_credential_source
 
 
 def show_repository_stats() -> None:
@@ -14,7 +15,7 @@ def show_repository_stats() -> None:
     
     Utiliza o ResticClient para obter estatisticas com retry automatico e tratamento de erros.
     """
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
     with ResticScript("repository_stats", credential_source=credential_source) as ctx:
         # Configurar logging
         logging.basicConfig(

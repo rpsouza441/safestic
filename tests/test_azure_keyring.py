@@ -27,6 +27,7 @@ except ImportError:
 try:
     from services.credentials import get_credential, CredentialManager
     from services.restic import load_restic_config
+    from services.env import get_credential_source
 except ImportError as e:
     print(f"❌ Erro ao importar módulos SafeStic: {e}")
     sys.exit(1)
@@ -72,18 +73,18 @@ def test_env_loading():
     # Verificar variáveis importantes
     important_vars = [
         'STORAGE_PROVIDER',
-        'STORAGE_BUCKET', 
+        'STORAGE_BUCKET',
         'CREDENTIAL_SOURCE'
     ]
-    
+
     for var in important_vars:
-        value = os.getenv(var)
+        value = get_credential_source() if var == 'CREDENTIAL_SOURCE' else os.getenv(var)
         if value:
             print(f"✅ {var}: {value}")
         else:
             print(f"❌ {var}: Não definida")
-    
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+
+    credential_source = get_credential_source()
     return credential_source
 
 def test_keyring_access():
@@ -130,7 +131,7 @@ def test_azure_credentials():
     print("\n🔍 TESTE DE CREDENCIAIS AZURE")
     print("=" * 50)
     
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    credential_source = get_credential_source()
     print(f"Fonte de credenciais: {credential_source}")
     
     azure_creds = [
@@ -159,7 +160,7 @@ def test_restic_config():
     print("\n🔍 TESTE DE CONFIGURAÇÃO RESTIC")
     print("=" * 50)
     
-    credential_source = os.getenv('CREDENTIAL_SOURCE', 'env')
+    credential_source = get_credential_source()
     
     try:
         config = load_restic_config(credential_source)

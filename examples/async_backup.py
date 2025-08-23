@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.logger import setup_logger
 from services.restic_client_async import ResticClientAsync
-from services.restic_client import load_env_and_get_credential_source
+from services.env import get_credential_source
 
 
 async def backup_directory(client: ResticClientAsync, path: str, tags: Optional[List[str]] = None) -> str:
@@ -66,7 +66,7 @@ async def main():
     )
     
     # Determinar fonte de credenciais e criar cliente
-    credential_source = load_env_and_get_credential_source()
+    credential_source = get_credential_source()
     client = ResticClientAsync(credential_source=credential_source)
 
     # Obter diretorios para backup

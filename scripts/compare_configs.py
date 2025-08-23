@@ -12,6 +12,7 @@ import json
 import platform
 from pathlib import Path
 from dotenv import load_dotenv
+from services.env import get_credential_source
 
 def get_system_info():
     """Coleta informações do sistema."""
@@ -51,7 +52,7 @@ def get_env_variables():
     
     env_vars = {}
     for var in important_vars:
-        value = os.getenv(var)
+        value = get_credential_source() if var == "CREDENTIAL_SOURCE" else os.getenv(var)
         if value:
             # Mascarar credenciais sensíveis
             if any(sensitive in var.upper() for sensitive in ["PASSWORD", "KEY", "SECRET"]):
