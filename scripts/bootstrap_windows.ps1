@@ -34,21 +34,52 @@ function Test-Command {
     }
 }
 
+# Verifica se o Python real esta instalado e nao apenas o alias da Microsoft Store
+function Test-PythonInstalled {
+    if (-not (Test-Command "python")) {
+        return $false
+    }
+    try {
+        $cmd = Get-Command "python" -ErrorAction Stop
+        if ($cmd.Source -like "*Microsoft\\WindowsApps*") {
+            return $false
+        }
+        python --version 2>$null | Out-Null
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# Tenta localizar o executavel python instalado no sistema
+function Get-InstalledPythonExe {
+    $searchPaths = @(
+        "$env:LocalAppData\Programs\Python",
+        "$env:ProgramFiles\Python",
+        "${env:ProgramFiles(x86)}\Python"
+    )
+    foreach ($base in $searchPaths) {
+        if (Test-Path $base) {
+            $exe = Get-ChildItem -Path $base -Filter python.exe -Recurse -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending |
+                Select-Object -First 1
+            if ($exe) { return $exe.FullName }
+        }
+    }
+    return $null
+}
+
 function Install-WithWinget {
     param([string]$Package, [string]$Name)
     try {
         Write-Status "Instalando $Name via winget..."
         Write-Status "Isso pode levar alguns minutos. Aguarde..." "WARNING"
-        
+
         # Criar job para mostrar progresso
         $job = Start-Job -ScriptBlock {
-            param($pkg, $assumeYes)
-            if ($assumeYes) {
-                winget install --id $pkg --silent --accept-package-agreements --accept-source-agreements --verbose
-            } else {
-                winget install --id $pkg --interactive --verbose
-            }
-        } -ArgumentList $Package, $AssumeYes
+            param($pkg)
+            winget install --id $pkg --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --verbose
+        } -ArgumentList $Package
         
         # Mostrar progresso enquanto instala
         $dots = 0
@@ -81,16 +112,12 @@ function Install-WithChoco {
     try {
         Write-Status "Instalando $Name via chocolatey..."
         Write-Status "Isso pode levar alguns minutos. Aguarde..." "WARNING"
-        
+
         # Criar job para mostrar progresso
         $job = Start-Job -ScriptBlock {
-            param($pkg, $assumeYes)
-            if ($assumeYes) {
-                choco install $pkg -y --verbose
-            } else {
-                choco install $pkg --verbose
-            }
-        } -ArgumentList $Package, $AssumeYes
+            param($pkg)
+            choco install $pkg -y --verbose --no-progress
+        } -ArgumentList $Package
         
         # Mostrar progresso enquanto instala
         $dots = 0
@@ -207,7 +234,7 @@ if (-not (Test-Command "make")) {
 }
 
 # Instalar Python 3.10+
-if (-not (Test-Command "python")) {
+if (-not (Test-PythonInstalled)) {
     Write-Status "Python nao encontrado. Instalando..."
     $installed = $false
     if ($hasWinget) {
@@ -218,6 +245,16 @@ if (-not (Test-Command "python")) {
     }
     if (-not $installed) {
         Write-Status "Falha ao instalar Python" "ERROR"
+        exit 1
+    }
+    $pythonExe = Get-InstalledPythonExe
+    if ($pythonExe) {
+        $pythonDir = Split-Path $pythonExe -Parent
+        $env:PATH = "$pythonDir;$env:PATH"
+        $pythonVersion = & $pythonExe --version 2>&1 | Select-String '^Python' | Select-Object -First 1 | ForEach-Object { $_.Line.Trim() }
+        Write-Status "Python instalado: $pythonVersion" "SUCCESS"
+    } else {
+        Write-Status "Python instalado, mas nao encontrado" "ERROR"
         exit 1
     }
 } else {
