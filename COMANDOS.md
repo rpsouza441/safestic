@@ -16,6 +16,11 @@ Para ver a lista completa de comandos:
 make help
 ```
 
+## 📝 Logging
+
+Os comandos CLI ja configuram o logging automaticamente via `ResticScript`. Use `ctx.log(...)` para registrar mensagens e evite
+chamar `logging.basicConfig` ou outras configuracoes globais.
+
 ## 🔑 Configuração de Senhas (RESTIC_PASSWORD)
 
 O `RESTIC_PASSWORD` é **obrigatório** para criptografar seus backups. O Safestic oferece várias formas seguras de configurá-lo:

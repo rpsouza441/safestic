@@ -1,4 +1,3 @@
-import logging
 import sys
 
 from services.script import ResticScript
@@ -14,12 +13,6 @@ def run_backup() -> None:
     credential_source = get_credential_source()
 
     with ResticScript("backup", credential_source=credential_source) as ctx:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-
         config = ctx.config
         if not config or not config.backup_source_dirs:
             ctx.log("[FATAL] Configuracao de backup ausente ou incompleta")

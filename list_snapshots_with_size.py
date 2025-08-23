@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-import logging
 
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
@@ -17,13 +16,6 @@ def list_snapshots_with_size() -> None:
     """
     credential_source = get_credential_source()
     with ResticScript("list_snapshots_with_size", credential_source=credential_source) as ctx:
-        # Configurar logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-        
         try:
             # Criar cliente Restic com retry usando o ambiente já carregado
             client = ResticClient(

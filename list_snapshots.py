@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-import logging
 from services.script import ResticScript
 from services.restic_client import ResticClient, ResticError
 from services.env import get_credential_source
@@ -18,13 +17,6 @@ def list_snapshots() -> None:
     credential_source = get_credential_source()
 
     with ResticScript("list_snapshots", credential_source=credential_source) as ctx:
-        # Configurar logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-        
         ctx.log(f"Listando snapshots do repositorio: {ctx.repository}\n")
 
         try:

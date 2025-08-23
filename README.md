@@ -19,6 +19,14 @@ Safestic e uma ferramenta de backup automatizada que utiliza o Restic para criar
 
 ---
 
+## 📋 Logging Estruturado
+
+Todos os scripts CLI utilizam o gerenciador de contexto `ResticScript`, que prepara o arquivo de log e configura a saida no formato JSON.
+Para registrar mensagens use apenas `ctx.log(...)` dentro desse contexto. Nao e necessario chamar `logging.basicConfig` ou qualquer
+configuracao global de logging.
+
+---
+
 ## 🚀 Funcionalidades
 
 - Backup incremental, seguro e criptografado com Restic

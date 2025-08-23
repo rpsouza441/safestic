@@ -1,5 +1,4 @@
 import argparse
-import logging
 
 from services.script import ResticScript
 from services.restic_client import (
@@ -41,12 +40,6 @@ def run_restore_file(snapshot_id: str, include_path: str) -> None:
     """
     credential_source = get_credential_source()
     with ResticScript("restore_file", credential_source=credential_source) as ctx:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler()],
-        )
-
         base_restore_target = (
             ctx.config.restore_target_dir
             if ctx.config and ctx.config.restore_target_dir
