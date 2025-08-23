@@ -53,6 +53,17 @@ function command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Determinar comando sudo (ou vazio se rodando como root)
+SUDO="sudo"
+if ! command_exists sudo; then
+    if [[ $EUID -eq 0 ]]; then
+        SUDO=""
+    else
+        write_status "sudo nao encontrado. Instale o sudo ou execute como root." "ERROR"
+        exit 1
+    fi
+fi
+
 function detect_distro() {
     if [[ -f /etc/os-release ]]; then
         . /etc/os-release
@@ -71,38 +82,38 @@ function install_package() {
     case $distro in
         ubuntu|debian)
             if $ASSUME_YES; then
-                sudo apt-get install -y "$package"
+                $SUDO apt-get install -y "$package"
             else
-                sudo apt-get install "$package"
+                $SUDO apt-get install "$package"
             fi
             ;;
         fedora|rhel|centos)
             if command_exists dnf; then
                 if $ASSUME_YES; then
-                    sudo dnf install -y "$package"
+                    $SUDO dnf install -y "$package"
                 else
-                    sudo dnf install "$package"
+                    $SUDO dnf install "$package"
                 fi
             else
                 if $ASSUME_YES; then
-                    sudo yum install -y "$package"
+                    $SUDO yum install -y "$package"
                 else
-                    sudo yum install "$package"
+                    $SUDO yum install "$package"
                 fi
             fi
             ;;
         arch|manjaro)
             if $ASSUME_YES; then
-                sudo pacman -S --noconfirm "$package"
+                $SUDO pacman -S --noconfirm "$package"
             else
-                sudo pacman -S "$package"
+                $SUDO pacman -S "$package"
             fi
             ;;
         opensuse*)
             if $ASSUME_YES; then
-                sudo zypper install -y "$package"
+                $SUDO zypper install -y "$package"
             else
-                sudo zypper install "$package"
+                $SUDO zypper install "$package"
             fi
             ;;
         *)
@@ -118,20 +129,20 @@ function update_package_manager() {
     write_status "Atualizando lista de pacotes..."
     case $distro in
         ubuntu|debian)
-            sudo apt-get update
+            $SUDO apt-get update
             ;;
         fedora|rhel|centos)
             if command_exists dnf; then
-                sudo dnf check-update || true
+                $SUDO dnf check-update || true
             else
-                sudo yum check-update || true
+                $SUDO yum check-update || true
             fi
             ;;
         arch|manjaro)
-            sudo pacman -Sy
+            $SUDO pacman -Sy
             ;;
         opensuse*)
-            sudo zypper refresh
+            $SUDO zypper refresh
             ;;
     esac
 }
@@ -195,8 +206,8 @@ function install_restic() {
     
     if curl -L -o "$temp_file" "$download_url"; then
         bunzip2 "$temp_file"
-        sudo mv "/tmp/restic" "/usr/local/bin/restic"
-        sudo chmod +x "/usr/local/bin/restic"
+        $SUDO mv "/tmp/restic" "/usr/local/bin/restic"
+        $SUDO chmod +x "/usr/local/bin/restic"
         write_status "Restic instalado com sucesso: $(restic version | head -n1)" "SUCCESS"
     else
         write_status "Falha ao baixar Restic" "ERROR"
