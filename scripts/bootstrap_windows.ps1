@@ -221,10 +221,11 @@ if (-not (Test-Command "python")) {
         exit 1
     }
 } else {
-    $pythonVersion = python --version
+    $pythonVersion = (python --version 2>&1 | Select-String '^Python' | Select-Object -First 1).Line.Trim()
     Write-Status "Python ja instalado: $pythonVersion" "SUCCESS"
     # Verificar versao minima
-    $version = [Version]($pythonVersion -replace "Python ", "")
+    $versionString = $pythonVersion -replace '^Python\s+', ''
+    $version = [Version]$versionString
     if ($version -lt [Version]"3.10.0") {
         Write-Status "Python $version e muito antigo. Minimo: 3.10" "ERROR"
         exit 1
